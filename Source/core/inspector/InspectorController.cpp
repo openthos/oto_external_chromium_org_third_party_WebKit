@@ -31,7 +31,7 @@
 #include "config.h"
 #include "core/inspector/InspectorController.h"
 
-#include "bindings/v8/DOMWrapperWorld.h"
+#include "bindings/core/v8/DOMWrapperWorld.h"
 #include "core/InspectorBackendDispatcher.h"
 #include "core/InspectorFrontend.h"
 #include "core/inspector/IdentifiersFactory.h"
@@ -64,6 +64,7 @@
 #include "core/inspector/PageConsoleAgent.h"
 #include "core/inspector/PageDebuggerAgent.h"
 #include "core/inspector/PageRuntimeAgent.h"
+#include "core/page/ContextMenuProvider.h"
 #include "core/page/Page.h"
 #include "core/rendering/RenderLayer.h"
 #include "platform/PlatformMouseEvent.h"
@@ -75,6 +76,8 @@ InspectorController::InspectorController(Page* page, InspectorClient* inspectorC
     , m_injectedScriptManager(InjectedScriptManager::createForPage())
     , m_state(adoptPtr(new InspectorCompositeState(inspectorClient)))
     , m_overlay(InspectorOverlay::create(page, inspectorClient))
+    , m_resourceAgent(0)
+    , m_cssAgent(0)
     , m_layerTreeAgent(0)
     , m_page(page)
     , m_inspectorClient(inspectorClient)
@@ -153,7 +156,9 @@ void InspectorController::initializeDeferredAgents()
     m_resourceAgent = resourceAgentPtr.get();
     m_agents.append(resourceAgentPtr.release());
 
-    m_agents.append(InspectorCSSAgent::create(m_domAgent, m_pageAgent, m_resourceAgent));
+    OwnPtr<InspectorCSSAgent> cssAgentPtr(InspectorCSSAgent::create(m_domAgent, m_pageAgent, m_resourceAgent));
+    m_cssAgent = cssAgentPtr.get();
+    m_agents.append(cssAgentPtr.release());
 
     m_agents.append(InspectorDOMStorageAgent::create(m_pageAgent));
 
@@ -190,7 +195,6 @@ void InspectorController::willBeDestroyed()
 
 void InspectorController::registerModuleAgent(PassOwnPtr<InspectorAgent> agent)
 {
-    m_moduleAgents.append(agent.get());
     m_agents.append(agent);
 }
 
@@ -324,6 +328,13 @@ void InspectorController::setInjectedScriptForOrigin(const String& origin, const
         inspectorAgent->setInjectedScriptForOrigin(origin, source);
 }
 
+void InspectorController::showContextMenu(float x, float y, PassRefPtr<ContextMenuProvider> menuProvider)
+{
+    if (!m_inspectorClient)
+        return;
+    m_inspectorClient->showContextMenu(x, y, menuProvider);
+}
+
 void InspectorController::dispatchMessageFromFrontend(const String& message)
 {
     if (m_inspectorBackendDispatcher)
@@ -372,9 +383,9 @@ bool InspectorController::handleKeyboardEvent(LocalFrame* frame, const PlatformK
     return false;
 }
 
-void InspectorController::requestPageScaleFactor(float scale, const IntPoint& origin)
+void InspectorController::deviceOrPageScaleFactorChanged()
 {
-    m_inspectorClient->requestPageScaleFactor(scale, origin);
+    m_pageAgent->deviceOrPageScaleFactorChanged();
 }
 
 bool InspectorController::deviceEmulationEnabled()
@@ -423,9 +434,7 @@ void InspectorController::flushPendingFrontendMessages()
 
 void InspectorController::didCommitLoadForMainFrame()
 {
-    Vector<InspectorAgent*> agents = m_moduleAgents;
-    for (size_t i = 0; i < agents.size(); i++)
-        agents[i]->didCommitLoadForMainFrame();
+    m_agents.didCommitLoadForMainFrame();
 }
 
 void InspectorController::didBeginFrame(int frameId)

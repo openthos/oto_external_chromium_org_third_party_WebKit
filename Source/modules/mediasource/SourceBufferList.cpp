@@ -46,10 +46,12 @@ SourceBufferList::SourceBufferList(ExecutionContext* context, GenericEventQueue*
 
 SourceBufferList::~SourceBufferList()
 {
+#if !ENABLE(OILPAN)
     ASSERT(m_list.isEmpty());
+#endif
 }
 
-void SourceBufferList::add(PassRefPtrWillBeRawPtr<SourceBuffer> buffer)
+void SourceBufferList::add(SourceBuffer* buffer)
 {
     m_list.append(buffer);
     scheduleEvent(EventTypeNames::addsourcebuffer);

@@ -56,11 +56,7 @@ StyleEngine::StyleEngine(Document& document)
     , m_isMaster(!document.importsController() || document.importsController()->master() == &document)
     , m_pendingStylesheets(0)
     , m_injectedStyleSheetCacheValid(false)
-#if ENABLE(OILPAN)
-    , m_documentStyleSheetCollection(new DocumentStyleSheetCollection(document))
-#else
-    , m_documentStyleSheetCollection(document)
-#endif
+    , m_documentStyleSheetCollection(DocumentStyleSheetCollection::create(document))
     , m_documentScopeDirty(true)
     , m_usesSiblingRules(false)
     , m_usesSiblingRulesOverride(false)
@@ -468,10 +464,8 @@ void StyleEngine::appendActiveAuthorStyleSheets()
     TreeScopeSet::iterator begin = m_activeTreeScopes.begin();
     TreeScopeSet::iterator end = m_activeTreeScopes.end();
     for (TreeScopeSet::iterator it = begin; it != end; ++it) {
-        if (TreeScopeStyleSheetCollection* collection = m_styleSheetCollectionMap.get(*it)) {
-            m_resolver->setBuildScopedStyleTreeInDocumentOrder(!collection->scopingNodesForStyleScoped());
+        if (TreeScopeStyleSheetCollection* collection = m_styleSheetCollectionMap.get(*it))
             m_resolver->appendAuthorStyleSheets(collection->activeAuthorStyleSheets());
-        }
     }
     m_resolver->finishAppendAuthorStyleSheets();
     m_resolver->setBuildScopedStyleTreeInDocumentOrder(false);

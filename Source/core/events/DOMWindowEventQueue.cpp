@@ -27,7 +27,6 @@
 #include "config.h"
 #include "core/events/DOMWindowEventQueue.h"
 
-#include "core/dom/Document.h"
 #include "core/events/Event.h"
 #include "core/frame/LocalDOMWindow.h"
 #include "core/frame/SuspendableTimer.h"
@@ -67,8 +66,10 @@ DOMWindowEventQueue::~DOMWindowEventQueue()
 
 void DOMWindowEventQueue::trace(Visitor* visitor)
 {
+#if ENABLE(OILPAN)
     visitor->trace(m_pendingEventTimer);
     visitor->trace(m_queuedEvents);
+#endif
     EventQueue::trace(visitor);
 }
 

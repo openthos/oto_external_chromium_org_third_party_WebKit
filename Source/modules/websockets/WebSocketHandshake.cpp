@@ -36,7 +36,7 @@
 #include "core/dom/Document.h"
 #include "core/inspector/ScriptCallStack.h"
 #include "core/loader/CookieJar.h"
-#include "modules/websockets/WebSocket.h"
+#include "modules/websockets/DOMWebSocket.h"
 #include "platform/Cookie.h"
 #include "platform/Crypto.h"
 #include "platform/Logging.h"
@@ -273,7 +273,7 @@ void WebSocketHandshake::reset()
 
 void WebSocketHandshake::clearDocument()
 {
-    m_document = 0;
+    m_document = nullptr;
 }
 
 int WebSocketHandshake::readServerHandshake(const char* header, size_t len)
@@ -533,7 +533,7 @@ bool WebSocketHandshake::checkResponseHeaders()
             return false;
         }
         Vector<String> result;
-        m_clientProtocol.split(String(WebSocket::subprotocolSeperator()), result);
+        m_clientProtocol.split(String(DOMWebSocket::subprotocolSeperator()), result);
         if (!result.contains(serverWebSocketProtocol)) {
             m_failureReason = formatHandshakeFailureReason("'Sec-WebSocket-Protocol' header value '" + serverWebSocketProtocol + "' in response does not match any of sent values");
             return false;
@@ -543,6 +543,11 @@ bool WebSocketHandshake::checkResponseHeaders()
         return false;
     }
     return true;
+}
+
+void WebSocketHandshake::trace(Visitor* visitor)
+{
+    visitor->trace(m_document);
 }
 
 } // namespace WebCore

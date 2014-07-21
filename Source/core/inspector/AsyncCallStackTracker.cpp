@@ -31,14 +31,17 @@
 #include "config.h"
 #include "core/inspector/AsyncCallStackTracker.h"
 
-#include "bindings/v8/V8RecursionScope.h"
+#include "bindings/core/v8/V8Binding.h"
+#include "bindings/core/v8/V8RecursionScope.h"
 #include "core/dom/ContextLifecycleObserver.h"
 #include "core/dom/ExecutionContext.h"
+#include "core/dom/ExecutionContextTask.h"
+#include "core/events/Event.h"
 #include "core/events/EventTarget.h"
 #include "core/xml/XMLHttpRequest.h"
 #include "core/xml/XMLHttpRequestUpload.h"
-#include "wtf/text/AtomicStringHash.h"
 #include "wtf/text/StringBuilder.h"
+#include "wtf/text/StringHash.h"
 #include <v8.h>
 
 namespace {
@@ -79,6 +82,8 @@ public:
     HashMap<Event*, RefPtr<AsyncCallChain> > m_eventCallChains;
     HashMap<EventTarget*, RefPtr<AsyncCallChain> > m_xhrCallChains;
     HashMap<MutationObserver*, RefPtr<AsyncCallChain> > m_mutationObserverCallChains;
+    HashMap<ExecutionContextTask*, RefPtr<AsyncCallChain> > m_executionContextTaskCallChains;
+    HashMap<String, RefPtr<AsyncCallChain> > m_v8AsyncTaskCallChains;
 };
 
 static XMLHttpRequest* toXmlHttpRequest(EventTarget* eventTarget)
@@ -157,11 +162,11 @@ void AsyncCallStackTracker::willFireTimer(ExecutionContext* context, int timerId
     ASSERT(!m_currentAsyncCallChain);
     if (ExecutionContextData* data = m_executionContextDataMap.get(context)) {
         if (data->m_intervalTimerIds.contains(timerId))
-            setCurrentAsyncCallChain(data->m_timerCallChains.get(timerId));
+            setCurrentAsyncCallChain(context, data->m_timerCallChains.get(timerId));
         else
-            setCurrentAsyncCallChain(data->m_timerCallChains.take(timerId));
+            setCurrentAsyncCallChain(context, data->m_timerCallChains.take(timerId));
     } else {
-        setCurrentAsyncCallChain(nullptr);
+        setCurrentAsyncCallChain(context, nullptr);
     }
 }
 
@@ -193,9 +198,9 @@ void AsyncCallStackTracker::willFireAnimationFrame(ExecutionContext* context, in
     ASSERT(callbackId > 0);
     ASSERT(!m_currentAsyncCallChain);
     if (ExecutionContextData* data = m_executionContextDataMap.get(context))
-        setCurrentAsyncCallChain(data->m_animationFrameCallChains.take(callbackId));
+        setCurrentAsyncCallChain(context, data->m_animationFrameCallChains.take(callbackId));
     else
-        setCurrentAsyncCallChain(nullptr);
+        setCurrentAsyncCallChain(context, nullptr);
 }
 
 void AsyncCallStackTracker::didEnqueueEvent(EventTarget* eventTarget, Event* event, const ScriptValue& callFrames)
@@ -221,12 +226,13 @@ void AsyncCallStackTracker::willHandleEvent(EventTarget* eventTarget, Event* eve
     ASSERT(eventTarget->executionContext());
     ASSERT(isEnabled());
     if (XMLHttpRequest* xhr = toXmlHttpRequest(eventTarget)) {
-        willHandleXHREvent(xhr, eventTarget, event);
+        willHandleXHREvent(xhr, event);
     } else {
-        if (ExecutionContextData* data = m_executionContextDataMap.get(eventTarget->executionContext()))
-            setCurrentAsyncCallChain(data->m_eventCallChains.get(event));
+        ExecutionContext* context = eventTarget->executionContext();
+        if (ExecutionContextData* data = m_executionContextDataMap.get(context))
+            setCurrentAsyncCallChain(context, data->m_eventCallChains.get(event));
         else
-            setCurrentAsyncCallChain(nullptr);
+            setCurrentAsyncCallChain(context, nullptr);
     }
 }
 
@@ -240,19 +246,23 @@ void AsyncCallStackTracker::willLoadXHR(XMLHttpRequest* xhr, const ScriptValue& 
     data->m_xhrCallChains.set(xhr, createAsyncCallChain(xhrSendName, callFrames));
 }
 
-void AsyncCallStackTracker::willHandleXHREvent(XMLHttpRequest* xhr, EventTarget* eventTarget, Event* event)
+void AsyncCallStackTracker::didLoadXHR(XMLHttpRequest* xhr)
 {
     ASSERT(xhr->executionContext());
     ASSERT(isEnabled());
-    if (ExecutionContextData* data = m_executionContextDataMap.get(xhr->executionContext())) {
-        bool isXHRDownload = (xhr == eventTarget);
-        if (isXHRDownload && event->type() == EventTypeNames::loadend)
-            setCurrentAsyncCallChain(data->m_xhrCallChains.take(xhr));
-        else
-            setCurrentAsyncCallChain(data->m_xhrCallChains.get(xhr));
-    } else {
-        setCurrentAsyncCallChain(nullptr);
-    }
+    if (ExecutionContextData* data = m_executionContextDataMap.get(xhr->executionContext()))
+        data->m_xhrCallChains.remove(xhr);
+}
+
+void AsyncCallStackTracker::willHandleXHREvent(XMLHttpRequest* xhr, Event* event)
+{
+    ExecutionContext* context = xhr->executionContext();
+    ASSERT(context);
+    ASSERT(isEnabled());
+    if (ExecutionContextData* data = m_executionContextDataMap.get(context))
+        setCurrentAsyncCallChain(context, data->m_xhrCallChains.get(xhr));
+    else
+        setCurrentAsyncCallChain(context, nullptr);
 }
 
 void AsyncCallStackTracker::didEnqueueMutationRecord(ExecutionContext* context, MutationObserver* observer, const ScriptValue& callFrames)
@@ -287,9 +297,65 @@ void AsyncCallStackTracker::willDeliverMutationRecords(ExecutionContext* context
     ASSERT(context);
     ASSERT(isEnabled());
     if (ExecutionContextData* data = m_executionContextDataMap.get(context))
-        setCurrentAsyncCallChain(data->m_mutationObserverCallChains.take(observer));
+        setCurrentAsyncCallChain(context, data->m_mutationObserverCallChains.take(observer));
     else
-        setCurrentAsyncCallChain(nullptr);
+        setCurrentAsyncCallChain(context, nullptr);
+}
+
+void AsyncCallStackTracker::didPostExecutionContextTask(ExecutionContext* context, ExecutionContextTask* task, const ScriptValue& callFrames)
+{
+    ASSERT(context);
+    ASSERT(isEnabled());
+    if (!validateCallFrames(callFrames))
+        return;
+    ExecutionContextData* data = createContextDataIfNeeded(context);
+    data->m_executionContextTaskCallChains.set(task, createAsyncCallChain(task->taskNameForInstrumentation(), callFrames));
+}
+
+void AsyncCallStackTracker::didKillAllExecutionContextTasks(ExecutionContext* context)
+{
+    ASSERT(context);
+    ASSERT(isEnabled());
+    if (ExecutionContextData* data = m_executionContextDataMap.get(context))
+        data->m_executionContextTaskCallChains.clear();
+}
+
+void AsyncCallStackTracker::willPerformExecutionContextTask(ExecutionContext* context, ExecutionContextTask* task)
+{
+    ASSERT(context);
+    ASSERT(isEnabled());
+    if (ExecutionContextData* data = m_executionContextDataMap.get(context))
+        setCurrentAsyncCallChain(context, data->m_executionContextTaskCallChains.take(task));
+    else
+        setCurrentAsyncCallChain(context, nullptr);
+}
+
+static String makeV8AsyncTaskUniqueId(const String& eventName, int id)
+{
+    StringBuilder builder;
+    builder.append(eventName);
+    builder.appendNumber(id);
+    return builder.toString();
+}
+
+void AsyncCallStackTracker::didEnqueueV8AsyncTask(ExecutionContext* context, const String& eventName, int id, const ScriptValue& callFrames)
+{
+    ASSERT(context);
+    ASSERT(isEnabled());
+    if (!validateCallFrames(callFrames))
+        return;
+    ExecutionContextData* data = createContextDataIfNeeded(context);
+    data->m_v8AsyncTaskCallChains.set(makeV8AsyncTaskUniqueId(eventName, id), createAsyncCallChain(eventName, callFrames));
+}
+
+void AsyncCallStackTracker::willHandleV8AsyncTask(ExecutionContext* context, const String& eventName, int id)
+{
+    ASSERT(context);
+    ASSERT(isEnabled());
+    if (ExecutionContextData* data = m_executionContextDataMap.get(context))
+        setCurrentAsyncCallChain(context, data->m_v8AsyncTaskCallChains.take(makeV8AsyncTaskUniqueId(eventName, id)));
+    else
+        setCurrentAsyncCallChain(context, nullptr);
 }
 
 void AsyncCallStackTracker::didFireAsyncCall()
@@ -299,15 +365,19 @@ void AsyncCallStackTracker::didFireAsyncCall()
 
 PassRefPtr<AsyncCallStackTracker::AsyncCallChain> AsyncCallStackTracker::createAsyncCallChain(const String& description, const ScriptValue& callFrames)
 {
+    if (callFrames.isEmpty()) {
+        ASSERT(m_currentAsyncCallChain);
+        return m_currentAsyncCallChain; // Propogate async call stack chain.
+    }
     RefPtr<AsyncCallChain> chain = adoptRef(m_currentAsyncCallChain ? new AsyncCallStackTracker::AsyncCallChain(*m_currentAsyncCallChain) : new AsyncCallStackTracker::AsyncCallChain());
     ensureMaxAsyncCallChainDepth(chain.get(), m_maxAsyncCallStackDepth - 1);
     chain->m_callStacks.prepend(adoptRef(new AsyncCallStackTracker::AsyncCallStack(description, callFrames)));
     return chain.release();
 }
 
-void AsyncCallStackTracker::setCurrentAsyncCallChain(PassRefPtr<AsyncCallChain> chain)
+void AsyncCallStackTracker::setCurrentAsyncCallChain(ExecutionContext* context, PassRefPtr<AsyncCallChain> chain)
 {
-    if (V8RecursionScope::recursionLevel(v8::Isolate::GetCurrent())) {
+    if (V8RecursionScope::recursionLevel(toIsolate(context))) {
         if (m_currentAsyncCallChain)
             ++m_nestedAsyncCallCount;
     } else {
@@ -334,7 +404,7 @@ void AsyncCallStackTracker::ensureMaxAsyncCallChainDepth(AsyncCallChain* chain, 
 
 bool AsyncCallStackTracker::validateCallFrames(const ScriptValue& callFrames)
 {
-    return !callFrames.isEmpty();
+    return !callFrames.isEmpty() || m_currentAsyncCallChain;
 }
 
 AsyncCallStackTracker::ExecutionContextData* AsyncCallStackTracker::createContextDataIfNeeded(ExecutionContext* context)

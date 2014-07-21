@@ -5,10 +5,9 @@
 #ifndef WebKitGamepad_h
 #define WebKitGamepad_h
 
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "modules/gamepad/GamepadCommon.h"
 #include "platform/heap/Handle.h"
-#include "wtf/RefCounted.h"
 #include "wtf/Vector.h"
 
 namespace WebCore {

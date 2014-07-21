@@ -26,9 +26,8 @@
 #include "config.h"
 #include "core/editing/DeleteFromTextNodeCommand.h"
 
-#include "bindings/v8/ExceptionState.h"
-#include "bindings/v8/ExceptionStatePlaceholder.h"
-#include "core/dom/Document.h"
+#include "bindings/core/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionStatePlaceholder.h"
 #include "core/dom/Text.h"
 
 namespace WebCore {
@@ -63,7 +62,7 @@ void DeleteFromTextNodeCommand::doUnapply()
 {
     ASSERT(m_node);
 
-    if (!m_node->rendererIsEditable())
+    if (!m_node->hasEditableStyle())
         return;
 
     m_node->insertData(m_offset, m_text, IGNORE_EXCEPTION, CharacterData::DeprecatedRecalcStyleImmediatlelyForEditing);

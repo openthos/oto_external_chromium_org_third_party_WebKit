@@ -26,7 +26,7 @@
 #ifndef SpeechRecognitionAlternative_h
 #define SpeechRecognitionAlternative_h
 
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "platform/heap/Handle.h"
 #include "wtf/text/WTFString.h"
 
@@ -34,7 +34,7 @@ namespace WebCore {
 
 class ExecutionContext;
 
-class SpeechRecognitionAlternative : public GarbageCollectedFinalized<SpeechRecognitionAlternative>, public ScriptWrappable {
+class SpeechRecognitionAlternative FINAL : public GarbageCollectedFinalized<SpeechRecognitionAlternative>, public ScriptWrappable {
 public:
     static SpeechRecognitionAlternative* create(const String&, double);
 

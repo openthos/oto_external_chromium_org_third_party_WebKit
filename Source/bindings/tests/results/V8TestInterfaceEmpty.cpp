@@ -7,10 +7,10 @@
 #include "config.h"
 #include "V8TestInterfaceEmpty.h"
 
-#include "bindings/v8/ExceptionState.h"
-#include "bindings/v8/V8DOMConfiguration.h"
-#include "bindings/v8/V8HiddenValue.h"
-#include "bindings/v8/V8ObjectConstructor.h"
+#include "bindings/core/v8/ExceptionState.h"
+#include "bindings/core/v8/V8DOMConfiguration.h"
+#include "bindings/core/v8/V8HiddenValue.h"
+#include "bindings/core/v8/V8ObjectConstructor.h"
 #include "core/dom/ContextFeatures.h"
 #include "core/dom/Document.h"
 #include "platform/RuntimeEnabledFeatures.h"
@@ -44,7 +44,7 @@ template <typename T> void V8_USE(T) { }
 
 } // namespace TestInterfaceEmptyV8Internal
 
-static void configureV8TestInterfaceEmptyTemplate(v8::Handle<v8::FunctionTemplate> functionTemplate, v8::Isolate* isolate)
+static void installV8TestInterfaceEmptyTemplate(v8::Handle<v8::FunctionTemplate> functionTemplate, v8::Isolate* isolate)
 {
     functionTemplate->ReadOnlyPrototype();
 
@@ -63,7 +63,7 @@ static void configureV8TestInterfaceEmptyTemplate(v8::Handle<v8::FunctionTemplat
 
 v8::Handle<v8::FunctionTemplate> V8TestInterfaceEmpty::domTemplate(v8::Isolate* isolate)
 {
-    return V8DOMConfiguration::domClassTemplate(isolate, const_cast<WrapperTypeInfo*>(&wrapperTypeInfo), configureV8TestInterfaceEmptyTemplate);
+    return V8DOMConfiguration::domClassTemplate(isolate, const_cast<WrapperTypeInfo*>(&wrapperTypeInfo), installV8TestInterfaceEmptyTemplate);
 }
 
 bool V8TestInterfaceEmpty::hasInstance(v8::Handle<v8::Value> v8Value, v8::Isolate* isolate)

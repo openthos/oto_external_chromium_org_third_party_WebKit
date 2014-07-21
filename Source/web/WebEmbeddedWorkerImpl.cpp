@@ -48,6 +48,7 @@
 #include "platform/SharedBuffer.h"
 #include "platform/heap/Handle.h"
 #include "platform/network/ContentSecurityPolicyParsers.h"
+#include "public/platform/WebURLRequest.h"
 #include "public/web/WebServiceWorkerContextClient.h"
 #include "public/web/WebServiceWorkerNetworkProvider.h"
 #include "public/web/WebSettings.h"
@@ -81,7 +82,7 @@ public:
     {
         ASSERT(loadingContext);
         m_callback = callback;
-        m_scriptLoader->setTargetType(ResourceRequest::TargetIsServiceWorker);
+        m_scriptLoader->setRequestContext(blink::WebURLRequest::RequestContextServiceWorker);
         m_scriptLoader->loadAsynchronously(
             *loadingContext, scriptURL, DenyCrossOriginRequests, this);
     }
@@ -187,6 +188,11 @@ void WebEmbeddedWorkerImpl::terminateWorkerContext()
     m_askedToTerminate = true;
     if (m_mainScriptLoader)
         m_mainScriptLoader->cancel();
+    if (m_pauseAfterDownloadState == IsPausedAfterDownload) {
+        // This may delete 'this'.
+        m_workerContextClient->workerContextFailedToStart();
+        return;
+    }
     if (m_workerThread)
         m_workerThread->stop();
 }
@@ -224,6 +230,7 @@ void dispatchOnInspectorBackendTask(ExecutionContext* context, const String& mes
 
 void WebEmbeddedWorkerImpl::resumeAfterDownload()
 {
+    ASSERT(!m_askedToTerminate);
     bool wasPaused = (m_pauseAfterDownloadState == IsPausedAfterDownload);
     m_pauseAfterDownloadState = DontPauseAfterDownload;
     if (wasPaused)
@@ -233,28 +240,28 @@ void WebEmbeddedWorkerImpl::resumeAfterDownload()
 void WebEmbeddedWorkerImpl::resumeWorkerContext()
 {
     if (m_workerThread)
-        m_workerThread->runLoop().postDebuggerTask(createCallbackTask(resumeWorkerContextTask, true));
+        m_workerThread->runLoop().postDebuggerTask(createCrossThreadTask(resumeWorkerContextTask, true));
 }
 
 void WebEmbeddedWorkerImpl::attachDevTools()
 {
     if (m_workerThread)
-        m_workerThread->runLoop().postDebuggerTask(createCallbackTask(connectToWorkerContextInspectorTask, true));
+        m_workerThread->runLoop().postDebuggerTask(createCrossThreadTask(connectToWorkerContextInspectorTask, true));
 }
 
 void WebEmbeddedWorkerImpl::reattachDevTools(const WebString& savedState)
 {
-    m_workerThread->runLoop().postDebuggerTask(createCallbackTask(reconnectToWorkerContextInspectorTask, String(savedState)));
+    m_workerThread->runLoop().postDebuggerTask(createCrossThreadTask(reconnectToWorkerContextInspectorTask, String(savedState)));
 }
 
 void WebEmbeddedWorkerImpl::detachDevTools()
 {
-    m_workerThread->runLoop().postDebuggerTask(createCallbackTask(disconnectFromWorkerContextInspectorTask, true));
+    m_workerThread->runLoop().postDebuggerTask(createCrossThreadTask(disconnectFromWorkerContextInspectorTask, true));
 }
 
 void WebEmbeddedWorkerImpl::dispatchDevToolsMessage(const WebString& message)
 {
-    m_workerThread->runLoop().postDebuggerTask(createCallbackTask(dispatchOnInspectorBackendTask, String(message)));
+    m_workerThread->runLoop().postDebuggerTask(createCrossThreadTask(dispatchOnInspectorBackendTask, String(message)));
     WorkerDebuggerAgent::interruptAndDispatchInspectorCommands(m_workerThread.get());
 }
 
@@ -328,12 +335,10 @@ void WebEmbeddedWorkerImpl::onScriptLoaderFinished()
 void WebEmbeddedWorkerImpl::startWorkerThread()
 {
     ASSERT(m_pauseAfterDownloadState == DontPauseAfterDownload);
-    if (m_askedToTerminate)
-        return;
+    ASSERT(!m_askedToTerminate);
 
-    // FIXME: startMode is deprecated, switch to waitForDebuggerMode once chromium is setting that value.
     WorkerThreadStartMode startMode =
-        (m_workerStartData.startMode == WebEmbeddedWorkerStartModePauseOnStart)
+        (m_workerStartData.waitForDebuggerMode == WebEmbeddedWorkerStartData::WaitForDebugger)
         ? PauseWorkerGlobalScopeOnStart : DontPauseWorkerGlobalScopeOnStart;
 
     OwnPtrWillBeRawPtr<WorkerClients> workerClients = WorkerClients::create();

@@ -32,9 +32,11 @@
 #include "config.h"
 #include "core/loader/NavigationScheduler.h"
 
-#include "bindings/v8/ScriptController.h"
+#include "bindings/core/v8/ScriptController.h"
 #include "core/events/Event.h"
+#include "core/fetch/ResourceLoaderOptions.h"
 #include "core/frame/LocalFrame.h"
+#include "core/frame/csp/ContentSecurityPolicy.h"
 #include "core/html/HTMLFormElement.h"
 #include "core/inspector/InspectorInstrumentation.h"
 #include "core/loader/DocumentLoader.h"
@@ -101,13 +103,16 @@ protected:
         , m_originDocument(originDocument)
         , m_url(url)
         , m_referrer(referrer)
+        , m_shouldCheckMainWorldContentSecurityPolicy(CheckContentSecurityPolicy)
     {
+        if (ContentSecurityPolicy::shouldBypassMainWorld(originDocument))
+            m_shouldCheckMainWorldContentSecurityPolicy = DoNotCheckContentSecurityPolicy;
     }
 
     virtual void fire(LocalFrame* frame) OVERRIDE
     {
         OwnPtr<UserGestureIndicator> gestureIndicator = createUserGestureIndicator();
-        FrameLoadRequest request(m_originDocument.get(), ResourceRequest(KURL(ParsedURLString, m_url), m_referrer), "_self");
+        FrameLoadRequest request(m_originDocument.get(), ResourceRequest(KURL(ParsedURLString, m_url), m_referrer), "_self", m_shouldCheckMainWorldContentSecurityPolicy);
         request.setLockBackForwardList(lockBackForwardList());
         request.setClientRedirect(ClientRedirect);
         frame->loader().load(request);
@@ -121,6 +126,7 @@ private:
     RefPtrWillBePersistent<Document> m_originDocument;
     String m_url;
     Referrer m_referrer;
+    ContentSecurityPolicyCheck m_shouldCheckMainWorldContentSecurityPolicy;
 };
 
 class ScheduledRedirect FINAL : public ScheduledURLNavigation {
@@ -319,6 +325,12 @@ void NavigationScheduler::scheduleLocationChange(Document* originDocument, const
     }
 
     schedule(adoptPtr(new ScheduledLocationChange(originDocument, url, referrer, lockBackForwardList)));
+}
+
+void NavigationScheduler::schedulePageBlock(Document* originDocument, const Referrer& referrer)
+{
+    ASSERT(m_frame->page());
+    schedule(adoptPtr(new ScheduledLocationChange(originDocument, SecurityOrigin::urlWithUniqueSecurityOrigin(), referrer, false)));
 }
 
 void NavigationScheduler::scheduleFormSubmission(PassRefPtrWillBeRawPtr<FormSubmission> submission)

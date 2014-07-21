@@ -31,7 +31,6 @@
 #include "core/dom/Document.h"
 #include "core/dom/DocumentOrderedList.h"
 #include "core/dom/StyleSheetCollection.h"
-#include "core/dom/StyleSheetScopingNodeList.h"
 #include "core/dom/TreeScope.h"
 #include "wtf/FastAllocBase.h"
 #include "wtf/HashMap.h"
@@ -43,11 +42,8 @@
 namespace WebCore {
 
 class ContainerNode;
-class DocumentStyleSheetCollector;
-class StyleEngine;
 class Node;
 class StyleSheetContents;
-class StyleSheetList;
 class StyleRuleFontFace;
 
 class TreeScopeStyleSheetCollection : public StyleSheetCollection {
@@ -59,16 +55,11 @@ public:
     bool usesRemUnits() const { return m_usesRemUnits; }
 
     DocumentOrderedList& styleSheetCandidateNodes() { return m_styleSheetCandidateNodes; }
-    DocumentOrderedList* scopingNodesForStyleScoped() { return m_scopingNodesForStyleScoped.scopingNodes(); }
-    ListHashSet<Node*, 4>* scopingNodesRemoved() { return m_scopingNodesForStyleScoped.scopingNodesRemoved(); }
 
     void clearMediaQueryRuleSetStyleSheets();
     void enableExitTransitionStylesheets();
 
-    virtual void trace(Visitor* visitor) OVERRIDE
-    {
-        StyleSheetCollection::trace(visitor);
-    }
+    virtual void trace(Visitor*) OVERRIDE;
 
 protected:
     explicit TreeScopeStyleSheetCollection(TreeScope&);
@@ -94,7 +85,6 @@ protected:
     };
 
     void analyzeStyleSheetChange(StyleResolverUpdateMode, const StyleSheetCollection&, StyleSheetChange&);
-    void resetAllRuleSetsInTreeScope(StyleResolver*);
     void updateUsesRemUnits();
 
 private:
@@ -107,10 +97,8 @@ protected:
     bool m_usesRemUnits;
 
     DocumentOrderedList m_styleSheetCandidateNodes;
-    StyleSheetScopingNodeList m_scopingNodesForStyleScoped;
 };
 
 }
 
 #endif
-

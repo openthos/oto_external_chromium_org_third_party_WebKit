@@ -87,7 +87,11 @@ InjectedScriptHostClass.prototype.getEventListeners = function(object) { }
 /**
  * @param {string} expression
  */
-InjectedScriptHostClass.prototype.evaluate = function(expression) { }
+InjectedScriptHostClass.prototype.eval = function(expression) { }
+/**
+ * @param {string} expression
+ */
+InjectedScriptHostClass.prototype.evaluateWithExceptionDetails = function(expression) { }
 /**
  * @param {*} fn
  */
@@ -143,7 +147,10 @@ function JavaScriptCallFrame()
 JavaScriptCallFrame.prototype.scopeType = function(index) { }
 
 JavaScriptCallFrame.prototype.restart = function() { }
-
+/**
+ * @param {string} expression
+ */
+JavaScriptCallFrame.prototype.evaluateWithExceptionDetails = function(expression) { }
 /**
  * @param {number} scopeNumber
  * @param {string} variableName
@@ -159,26 +166,6 @@ function JavaScriptFunction()
     /** @type {Array} */
     this.rawScopes;
 }
-
-// http://code.google.com/p/v8/wiki/JavaScriptStackTraceApi
-/**
- * @constructor
- */
-function CallSite()
-{
-}
-/**
- * @return {string}
- */
-CallSite.prototype.getFileName = function() { }
-/**
- * @return {number}
- */
-CallSite.prototype.getLineNumber = function() { }
-/**
- * @return {number}
- */
-CallSite.prototype.getColumnNumber = function() { }
 
 // FIXME: Remove once ES6 is supported natively by JS compiler.
 

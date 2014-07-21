@@ -30,7 +30,7 @@
 #include "config.h"
 #include "core/frame/LocalFrame.h"
 
-#include "bindings/v8/ScriptController.h"
+#include "bindings/core/v8/ScriptController.h"
 #include "core/dom/DocumentType.h"
 #include "core/editing/Editor.h"
 #include "core/editing/FrameSelection.h"
@@ -52,6 +52,7 @@
 #include "core/page/Chrome.h"
 #include "core/page/EventHandler.h"
 #include "core/page/FocusController.h"
+#include "core/page/Page.h"
 #include "core/page/scrolling/ScrollingCoordinator.h"
 #include "core/rendering/HitTestResult.h"
 #include "core/rendering/RenderLayer.h"
@@ -156,30 +157,6 @@ void LocalFrame::setView(PassRefPtr<FrameView> view)
         else
             m_view->setVisibleContentScaleFactor(page()->pageScaleFactor());
     }
-}
-
-void LocalFrame::sendOrientationChangeEvent()
-{
-    if (!RuntimeEnabledFeatures::orientationEventEnabled() && !RuntimeEnabledFeatures::screenOrientationEnabled())
-        return;
-
-    if (page()->visibilityState() != PageVisibilityStateVisible)
-        return;
-
-    LocalDOMWindow* window = domWindow();
-    if (!window)
-        return;
-    window->dispatchEvent(Event::create(EventTypeNames::orientationchange));
-
-    // Notify subframes.
-    Vector<RefPtr<LocalFrame> > childFrames;
-    for (Frame* child = tree().firstChild(); child; child = child->tree().nextSibling()) {
-        if (child->isLocalFrame())
-            childFrames.append(toLocalFrame(child));
-    }
-
-    for (size_t i = 0; i < childFrames.size(); ++i)
-        childFrames[i]->sendOrientationChangeEvent();
 }
 
 void LocalFrame::setPrinting(bool printing, const FloatSize& pageSize, const FloatSize& originalPageSize, float maximumShrinkRatio)
@@ -331,7 +308,7 @@ Document* LocalFrame::documentAtPoint(const IntPoint& point)
     HitTestResult result = HitTestResult(pt);
 
     if (contentRenderer())
-        result = eventHandler().hitTestResultAtPoint(pt, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::ConfusingAndOftenMisusedDisallowShadowContent);
+        result = eventHandler().hitTestResultAtPoint(pt, HitTestRequest::ReadOnly | HitTestRequest::Active);
     return result.innerNode() ? &result.innerNode()->document() : 0;
 }
 
@@ -366,15 +343,15 @@ void LocalFrame::createView(const IntSize& viewportSize, const Color& background
     ASSERT(this);
     ASSERT(page());
 
-    bool isMainFrame = this->isMainFrame();
+    bool isLocalRoot = this->isLocalRoot();
 
-    if (isMainFrame && view())
+    if (isLocalRoot && view())
         view()->setParentVisible(false);
 
     setView(nullptr);
 
     RefPtr<FrameView> frameView;
-    if (isMainFrame) {
+    if (isLocalRoot) {
         frameView = FrameView::create(this, viewportSize);
 
         // The layout size is set by WebViewImpl to support @viewport
@@ -388,7 +365,7 @@ void LocalFrame::createView(const IntSize& viewportSize, const Color& background
 
     frameView->updateBackgroundRecursively(backgroundColor, transparent);
 
-    if (isMainFrame)
+    if (isLocalRoot)
         frameView->setParentVisible(true);
 
     // FIXME: Not clear what the right thing for OOPI is here.
@@ -449,13 +426,6 @@ String LocalFrame::localLayerTreeAsText(unsigned flags) const
         return String();
 
     return contentRenderer()->compositor()->layerTreeAsText(static_cast<LayerTreeFlags>(flags));
-}
-
-String LocalFrame::trackedRepaintRectsAsText() const
-{
-    if (!m_view)
-        return String();
-    return m_view->trackedPaintInvalidationRectsAsText();
 }
 
 void LocalFrame::setPageZoomFactor(float factor)

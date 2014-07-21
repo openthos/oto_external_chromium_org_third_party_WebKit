@@ -30,125 +30,44 @@ ui.results = ui.results || {};
 
 var kResultsPrefetchDelayMS = 500;
 
-ui.results.Comparison = base.extends('div', {
-    init: function()
-    {
-        this.className = 'comparison';
-        this.innerHTML = '<div><h2>Expected</h2><div class="results-container expected"></div></div>' +
-                         '<div><h2>Actual</h2><div class="results-container actual"></div></div>' +
-                         '<div><h2>Diff</h2><div class="results-container diff"></div></div>';
-    },
-    _selectorForKind: function(kind)
-    {
-        switch (kind) {
-        case results.kExpectedKind:
-            return '.expected';
-        case results.kActualKind:
-            return '.actual';
-        case results.kDiffKind:
-            return '.diff';
-        }
-        return '.unknown';
-    },
-    update: function(kind, result)
-    {
-        var selector = this._selectorForKind(kind);
-        $(selector, this).empty().append(result);
-        return result;
-    },
-});
-
-// We'd really like TextResult and ImageResult to extend a common Result base
-// class, but we can't seem to do that because they inherit from different
-// HTMLElements. We could have them inherit from <div>, but that seems lame.
-
-ui.results.TextResult = base.extends('iframe', {
-    init: function(url)
-    {
-        this.className = 'text-result';
-        this.src = url;
-    }
-});
-
-ui.results.ImageResult = base.extends('img', {
-    init: function(url)
-    {
-        this.className = 'image-result';
-        this.src = url;
-    }
-});
-
-ui.results.AudioResult = base.extends('audio', {
-    init: function(url)
-    {
-        this.className = 'audio-result';
-        this.src = url;
-        this.controls = 'controls';
-    }
-});
-
-function constructorForResultType(type)
-{
-    if (type == results.kImageType)
-        return ui.results.ImageResult;
-    if (type == results.kAudioType)
-        return ui.results.AudioResult;
-    return ui.results.TextResult;
-}
-
 ui.results.ResultsGrid = base.extends('div', {
     init: function()
     {
         this.className = 'results-grid';
     },
-    _addResult: function(comparison, constructor, resultsURLsByKind, kind)
-    {
-        var url = resultsURLsByKind[kind];
-        if (!url)
-            return;
-        comparison.update(kind, new constructor(url));
-    },
-    addComparison: function(resultType, resultsURLsByKind)
-    {
-        var comparison = new ui.results.Comparison();
-        var constructor = constructorForResultType(resultType);
-
-        this._addResult(comparison, constructor, resultsURLsByKind, results.kExpectedKind);
-        this._addResult(comparison, constructor, resultsURLsByKind, results.kActualKind);
-        this._addResult(comparison, constructor, resultsURLsByKind, results.kDiffKind);
-
-        this.appendChild(comparison);
-        return comparison;
-    },
-    addRow: function(resultType, url)
-    {
-        var constructor = constructorForResultType(resultType);
-        var view = new constructor(url);
-        this.appendChild(view);
-        return view;
-    },
     addResults: function(resultsURLs)
     {
         var resultsURLsByTypeAndKind = {};
-
-        resultsURLsByTypeAndKind[results.kImageType] = {};
-        resultsURLsByTypeAndKind[results.kAudioType] = {};
-        resultsURLsByTypeAndKind[results.kTextType] = {};
-
         resultsURLs.forEach(function(url) {
-            resultsURLsByTypeAndKind[results.resultType(url)][results.resultKind(url)] = url;
+            var resultType = results.resultType(url);
+            if (!resultsURLsByTypeAndKind[resultType])
+                resultsURLsByTypeAndKind[resultType] = {};
+            resultsURLsByTypeAndKind[resultType][results.resultKind(url)] = url;
         });
 
-        $.each(resultsURLsByTypeAndKind, function(resultType, resultsURLsByKind) {
-            if ($.isEmptyObject(resultsURLsByKind))
-                return;
+        Object.keys(resultsURLsByTypeAndKind, function(resultType, resultsURLsByKind) {
             if (results.kUnknownKind in resultsURLsByKind) {
                 // This is something like "crash" that isn't a comparison.
-                this.addRow(resultType, resultsURLsByKind[results.kUnknownKind]);
+                var result = document.createElement('ct-test-output');
+                result.url = resultsURLsByKind[results.kUnknownKind];
+                result.type = results.kTextType;
+                this.appendChild(result);
                 return;
             }
-            this.addComparison(resultType, resultsURLsByKind);
+
+            var comparison = document.createElement('ct-results-comparison');
+            comparison.type = resultType;
+
+            if (results.kActualKind in resultsURLsByKind)
+                comparison.actualUrl = resultsURLsByKind[results.kActualKind];
+            if (results.kExpectedKind in resultsURLsByKind)
+                comparison.expectedUrl = resultsURLsByKind[results.kExpectedKind];
+            if (results.kDiffKind in resultsURLsByKind)
+                comparison.diffUrl = resultsURLsByKind[results.kDiffKind];
+
+            this.appendChild(comparison);
         }.bind(this));
+
         if (!this.children.length)
             this.textContent = 'No results to display.'
     }
@@ -170,25 +89,16 @@ ui.results.ResultsDetails = base.extends('div', {
             var resultsGrid = new ui.results.ResultsGrid();
             resultsGrid.addResults(resultsURLs);
 
-            $(this).empty().append(
+            this.innerHTML = ''
+            this.appendChild(
                 new ui.actions.List([
                     new ui.actions.Previous(),
                     new ui.actions.Next()
-                ])).append(resultsGrid);
-
-
+                ]))
+            this.appendChild(resultsGrid);
         }.bind(this));
     },
 });
-
-function isAnyReftest(testName, resultsByTest)
-{
-    return Object.keys(resultsByTest[testName]).map(function(builder) {
-        return resultsByTest[testName][builder];
-    }).some(function(resultNode) {
-        return resultNode.reftest_type && resultNode.reftest_type.length;
-    });
-}
 
 ui.results.FlakinessData = base.extends('iframe', {
     init: function()
@@ -270,8 +180,7 @@ ui.results.TestSelector = base.extends('div', {
 
         var cancelResize = function(event) { this._is_resizing = false; }.bind(this);
         this.addEventListener('mouseup', cancelResize);
-        // FIXME: Use addEventListener once WebKit adds support for mouseleave/mouseenter.
-        $(window).bind('mouseleave', cancelResize);
+        document.body.addEventListener('mouseleave', cancelResize);
 
         this.addEventListener('mousemove', function(event) {
             if (!this._is_resizing)
@@ -361,7 +270,8 @@ ui.results.BuilderSelector = base.extends('div', {
             var builderHash = base.underscoredBuilderName(builderName);
 
             var link = document.createElement('a');
-            $(link).attr('href', "#" + builderHash).text(ui.displayNameForBuilder(builderName));
+            link.href = "#" + builderHash;
+            link.textContent = ui.displayNameForBuilder(builderName);
             tabStrip.appendChild(document.createElement('li')).appendChild(link);
 
             var content = this._delegate.contentForTestAndBuilder(testName, builderName);
@@ -405,15 +315,7 @@ ui.results.View = base.extends('div', {
     },
     contentForTest: function(testName)
     {
-        var rebaselineAction;
-        if (isAnyReftest(testName, this._resultsByTest))
-            rebaselineAction = $('<div class="non-action-button">Reftests cannot be rebaselined. Email webkit-gardening@chromium.org if unsure how to fix this.</div>');
-        else
-            rebaselineAction = new ui.actions.List([new ui.actions.Rebaseline().makeDefault()]);
-        $(rebaselineAction).addClass('rebaseline-action');
-
         var builderSelector = new ui.results.BuilderSelector(this, testName, this._resultsByTest[testName]);
-        $(builderSelector).append(rebaselineAction).append($('<br style="clear:both">'));
         $(builderSelector).bind('tabsselect', function(event, ui) {
             // We will probably have pre-fetched the tab already, but we need to make sure.
             ui.panel.show();
@@ -427,7 +329,7 @@ ui.results.View = base.extends('div', {
     },
     setResultsByTest: function(resultsByTest)
     {
-        $(this).empty();
+        this.innerHTML = '';
         this._resultsByTest = resultsByTest;
         this._testSelector = new ui.results.TestSelector(this, resultsByTest);
         this.appendChild(this._testSelector);

@@ -203,6 +203,37 @@ void StyleBuilderFunctions::applyValueCSSPropertyColor(StyleResolverState& state
         state.style()->setVisitedLinkColor(state.document().textLinkColors().colorFromPrimitiveValue(primitiveValue, state.style()->color(), true));
 }
 
+void StyleBuilderFunctions::applyInitialCSSPropertyJustifyItems(StyleResolverState& state)
+{
+    state.style()->setJustifyItems(RenderStyle::initialJustifyItems());
+    state.style()->setJustifyItemsOverflowAlignment(RenderStyle::initialJustifyItemsOverflowAlignment());
+    state.style()->setJustifyItemsPositionType(RenderStyle::initialJustifyItemsPositionType());
+}
+
+void StyleBuilderFunctions::applyInheritCSSPropertyJustifyItems(StyleResolverState& state)
+{
+    state.style()->setJustifyItems(state.parentStyle()->justifyItems());
+    state.style()->setJustifyItemsOverflowAlignment(state.parentStyle()->justifyItemsOverflowAlignment());
+    state.style()->setJustifyItemsPositionType(state.parentStyle()->justifyItemsPositionType());
+}
+
+void StyleBuilderFunctions::applyValueCSSPropertyJustifyItems(StyleResolverState& state, CSSValue* value)
+{
+
+    CSSPrimitiveValue* primitiveValue = toCSSPrimitiveValue(value);
+    if (Pair* pairValue = primitiveValue->getPairValue()) {
+        if (pairValue->first()->getValueID() == CSSValueLegacy) {
+            state.style()->setJustifyItemsPositionType(LegacyPosition);
+            state.style()->setJustifyItems(*pairValue->second());
+        } else {
+            state.style()->setJustifyItems(*pairValue->first());
+            state.style()->setJustifyItemsOverflowAlignment(*pairValue->second());
+        }
+    } else {
+        state.style()->setJustifyItems(*primitiveValue);
+    }
+}
+
 void StyleBuilderFunctions::applyInitialCSSPropertyCursor(StyleResolverState& state)
 {
     state.style()->clearCursorList();
@@ -223,7 +254,7 @@ void StyleBuilderFunctions::applyValueCSSPropertyCursor(StyleResolverState& stat
         int len = list->length();
         state.style()->setCursor(CURSOR_AUTO);
         for (int i = 0; i < len; i++) {
-            CSSValue* item = list->itemWithoutBoundsCheck(i);
+            CSSValue* item = list->item(i);
             if (item->isCursorImageValue()) {
                 CSSCursorImageValue* image = toCSSCursorImageValue(item);
                 if (image->updateIfSVGCursorIsUsed(state.element())) // Elements with SVG cursors are not allowed to share style.
@@ -244,29 +275,6 @@ void StyleBuilderFunctions::applyValueCSSPropertyDirection(StyleResolverState& s
     Element* element = state.element();
     if (element && element == element->document().documentElement())
         element->document().setDirectionSetOnDocumentElement(true);
-}
-
-static inline bool isValidDisplayValue(StyleResolverState& state, EDisplay displayPropertyValue)
-{
-    if (state.element() && state.element()->isSVGElement() && state.style()->styleType() == NOPSEUDO)
-        return (displayPropertyValue == INLINE || displayPropertyValue == BLOCK || displayPropertyValue == NONE);
-    return true;
-}
-
-void StyleBuilderFunctions::applyInheritCSSPropertyDisplay(StyleResolverState& state)
-{
-    EDisplay display = state.parentStyle()->display();
-    if (!isValidDisplayValue(state, display))
-        return;
-    state.style()->setDisplay(display);
-}
-
-void StyleBuilderFunctions::applyValueCSSPropertyDisplay(StyleResolverState& state, CSSValue* value)
-{
-    EDisplay display = *toCSSPrimitiveValue(value);
-    if (!isValidDisplayValue(state, display))
-        return;
-    state.style()->setDisplay(display);
 }
 
 void StyleBuilderFunctions::applyInitialCSSPropertyFontFamily(StyleResolverState& state)
@@ -332,9 +340,9 @@ void StyleBuilderFunctions::applyValueCSSPropertyFontWeight(StyleResolverState& 
 void StyleBuilderFunctions::applyValueCSSPropertyGlyphOrientationVertical(StyleResolverState& state, CSSValue* value)
 {
     if (value->isPrimitiveValue() && toCSSPrimitiveValue(value)->getValueID() == CSSValueAuto)
-        state.style()->accessSVGStyle()->setGlyphOrientationVertical(GO_AUTO);
+        state.style()->accessSVGStyle().setGlyphOrientationVertical(GO_AUTO);
     else
-        state.style()->accessSVGStyle()->setGlyphOrientationVertical(StyleBuilderConverter::convertGlyphOrientation(state, value));
+        state.style()->accessSVGStyle().setGlyphOrientationVertical(StyleBuilderConverter::convertGlyphOrientation(state, value));
 }
 
 void StyleBuilderFunctions::applyInitialCSSPropertyGridTemplateAreas(StyleResolverState& state)
@@ -1030,7 +1038,7 @@ void StyleBuilderFunctions::applyValueCSSPropertyWebkitTextEmphasisStyle(StyleRe
         if (list->length() != 2)
             return;
         for (unsigned i = 0; i < 2; ++i) {
-            CSSValue* item = list->itemWithoutBoundsCheck(i);
+            CSSValue* item = list->item(i);
             if (!item->isPrimitiveValue())
                 continue;
 
@@ -1363,32 +1371,97 @@ void StyleBuilderFunctions::applyValueCSSPropertyWebkitFontFeatureSettings(Style
         state.fontBuilder().setFeatureSettingsValue(value);
 }
 
+void StyleBuilderFunctions::applyInheritCSSPropertyBaselineShift(StyleResolverState& state)
+{
+    const SVGRenderStyle& parentSvgStyle = state.parentStyle()->svgStyle();
+    EBaselineShift baselineShift = parentSvgStyle.baselineShift();
+    SVGRenderStyle& svgStyle = state.style()->accessSVGStyle();
+    svgStyle.setBaselineShift(baselineShift);
+    if (baselineShift == BS_LENGTH)
+        svgStyle.setBaselineShiftValue(parentSvgStyle.baselineShiftValue());
+}
 
 void StyleBuilderFunctions::applyValueCSSPropertyBaselineShift(StyleResolverState& state, CSSValue* value)
 {
     if (!value->isPrimitiveValue())
         return;
 
-    SVGRenderStyle* svgStyle = state.style()->accessSVGStyle();
+    SVGRenderStyle& svgStyle = state.style()->accessSVGStyle();
     CSSPrimitiveValue* primitiveValue = toCSSPrimitiveValue(value);
     if (primitiveValue->getValueID()) {
         switch (primitiveValue->getValueID()) {
         case CSSValueBaseline:
-            svgStyle->setBaselineShift(BS_BASELINE);
+            svgStyle.setBaselineShift(BS_BASELINE);
             break;
         case CSSValueSub:
-            svgStyle->setBaselineShift(BS_SUB);
+            svgStyle.setBaselineShift(BS_SUB);
             break;
         case CSSValueSuper:
-            svgStyle->setBaselineShift(BS_SUPER);
+            svgStyle.setBaselineShift(BS_SUPER);
             break;
         default:
             break;
         }
     } else {
-        svgStyle->setBaselineShift(BS_LENGTH);
-        svgStyle->setBaselineShiftValue(SVGLength::fromCSSPrimitiveValue(primitiveValue));
+        svgStyle.setBaselineShift(BS_LENGTH);
+        svgStyle.setBaselineShiftValue(SVGLength::fromCSSPrimitiveValue(primitiveValue));
     }
+}
+
+void StyleBuilderFunctions::applyValueCSSPropertyGridAutoFlow(StyleResolverState& state, CSSValue* value)
+{
+    ASSERT(value->isValueList());
+    CSSValueList* list = toCSSValueList(value);
+
+    CSSPrimitiveValue* first = list->length() >= 1 ? toCSSPrimitiveValue(list->item(0)) : nullptr;
+
+    if (!first) {
+        applyInitialCSSPropertyGridAutoFlow(state);
+        return;
+    }
+
+    CSSPrimitiveValue* second = list->length() == 2 ? toCSSPrimitiveValue(list->item(1)) : nullptr;
+
+    GridAutoFlow autoFlow = RenderStyle::initialGridAutoFlow();
+    switch (first->getValueID()) {
+    case CSSValueRow:
+        if (second) {
+            if (second->getValueID() == CSSValueDense)
+                autoFlow = AutoFlowRowDense;
+            else
+                autoFlow = AutoFlowStackRow;
+        } else {
+            autoFlow = AutoFlowRow;
+        }
+        break;
+    case CSSValueColumn:
+        if (second) {
+            if (second->getValueID() == CSSValueDense)
+                autoFlow = AutoFlowColumnDense;
+            else
+                autoFlow = AutoFlowStackColumn;
+        } else {
+            autoFlow = AutoFlowColumn;
+        }
+        break;
+    case CSSValueDense:
+        if (second && second->getValueID() == CSSValueColumn)
+            autoFlow = AutoFlowColumnDense;
+        else
+            autoFlow = AutoFlowRowDense;
+        break;
+    case CSSValueStack:
+        if (second && second->getValueID() == CSSValueColumn)
+            autoFlow = AutoFlowStackColumn;
+        else
+            autoFlow = AutoFlowStackRow;
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+        break;
+    }
+
+    state.style()->setGridAutoFlow(autoFlow);
 }
 
 } // namespace WebCore

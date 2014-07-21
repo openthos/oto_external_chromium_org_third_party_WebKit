@@ -31,17 +31,15 @@ var kCommitLogLength = 50;
 
 model.state = {};
 model.state.failureAnalysisByTest = {};
-model.state.rebaselineQueue = [];
-model.state.expectationsUpdateQueue = [];
 
 function findAndMarkRevertedRevisions(commitDataList)
 {
     var revertedRevisions = {};
-    $.each(commitDataList, function(index, commitData) {
+    Object.keys(commitDataList, function(index, commitData) {
         if (commitData.revertedRevision)
             revertedRevisions[commitData.revertedRevision] = true;
     });
-    $.each(commitDataList, function(index, commitData) {
+    Object.keys(commitDataList, function(index, commitData) {
         if (commitData.revision in revertedRevisions)
             commitData.wasReverted = true;
     });
@@ -72,30 +70,6 @@ function heuristicallyNarrowRegressionRange(failureAnalysis)
         }
     }
 }
-
-model.queueForRebaseline = function(failureInfo)
-{
-    model.state.rebaselineQueue.push(failureInfo);
-};
-
-model.takeRebaselineQueue = function()
-{
-    var queue = model.state.rebaselineQueue;
-    model.state.rebaselineQueue = [];
-    return queue;
-};
-
-model.queueForExpectationUpdate = function(failureInfo)
-{
-    model.state.expectationsUpdateQueue.push(failureInfo);
-};
-
-model.takeExpectationUpdateQueue = function()
-{
-    var queue = model.state.expectationsUpdateQueue;
-    model.state.expectationsUpdateQueue = [];
-    return queue;
-};
 
 var g_commitIndex = {};
 
@@ -176,13 +150,13 @@ model.analyzeUnexpectedFailures = function(failureCallback)
 {
     var unexpectedFailures = results.unexpectedFailuresByTest(model.state.resultsByBuilder);
 
-    $.each(model.state.failureAnalysisByTest, function(testName, failureAnalysis) {
+    Object.keys(model.state.failureAnalysisByTest, function(testName, failureAnalysis) {
         if (!(testName in unexpectedFailures))
             delete model.state.failureAnalysisByTest[testName];
     });
 
     var failurePromises = [];
-    $.each(unexpectedFailures, function(testName, resultNodesByBuilder) {
+    Object.keys(unexpectedFailures, function(testName, resultNodesByBuilder) {
         var builderNameList = Object.keys(resultNodesByBuilder);
         failurePromises.push(results.unifyRegressionRanges(builderNameList, testName).then(function(result) {
             var oldestFailingRevision = result[0];
@@ -218,23 +192,6 @@ model.unexpectedFailureInfoForTestName = function(testName)
 
     return Object.keys(resultsByTest[testName]).map(function(builderName) {
         return results.failureInfoForTestAndBuilder(resultsByTest, testName, builderName);
-    });
-};
-
-// failureCallback is called multiple times: once for each failure
-model.analyzeexpectedFailures = function(failureCallback)
-{
-    var expectedFailures = results.expectedFailuresByTest(model.state.resultsByBuilder);
-    $.each(expectedFailures, function(testName, resultNodesByBuilder) {
-        var failureAnalysis = {
-            'testName': testName,
-            'resultNodesByBuilder': resultNodesByBuilder,
-        };
-
-        // FIXME: Consider looking at the history to see how long this test
-        // has been failing.
-
-        failureCallback(failureAnalysis);
     });
 };
 

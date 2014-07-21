@@ -31,22 +31,19 @@
 #ifndef RTCIceCandidate_h
 #define RTCIceCandidate_h
 
-#include "bindings/v8/ScriptWrappable.h"
-#include "wtf/PassRefPtr.h"
-#include "wtf/RefCounted.h"
-#include "wtf/RefPtr.h"
-#include "wtf/text/WTFString.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "public/platform/WebRTCICECandidate.h"
+#include "wtf/Forward.h"
 
 namespace WebCore {
 
 class Dictionary;
 class ExceptionState;
 
-class RTCIceCandidate FINAL : public RefCountedWillBeGarbageCollectedFinalized<RTCIceCandidate>, public ScriptWrappable {
+class RTCIceCandidate FINAL : public GarbageCollectedFinalized<RTCIceCandidate>, public ScriptWrappable {
 public:
-    static PassRefPtrWillBeRawPtr<RTCIceCandidate> create(const Dictionary&, ExceptionState&);
-    static PassRefPtrWillBeRawPtr<RTCIceCandidate> create(blink::WebRTCICECandidate);
+    static RTCIceCandidate* create(const Dictionary&, ExceptionState&);
+    static RTCIceCandidate* create(blink::WebRTCICECandidate);
 
     String candidate() const;
     void setCandidate(String);

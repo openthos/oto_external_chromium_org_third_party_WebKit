@@ -5,7 +5,6 @@
 #ifndef NetworkInformation_h
 #define NetworkInformation_h
 
-#include "bindings/v8/ScriptWrappable.h"
 #include "core/dom/ActiveDOMObject.h"
 #include "core/events/EventTarget.h"
 #include "core/page/NetworkStateNotifier.h"
@@ -17,7 +16,6 @@ class ExecutionContext;
 
 class NetworkInformation FINAL
     : public RefCountedWillBeRefCountedGarbageCollected<NetworkInformation>
-    , public ScriptWrappable
     , public ActiveDOMObject
     , public EventTargetWithInlineData
     , public NetworkStateNotifier::NetworkStateObserver {
@@ -36,7 +34,7 @@ public:
     virtual const AtomicString& interfaceName() const OVERRIDE;
     virtual ExecutionContext* executionContext() const OVERRIDE;
     virtual bool addEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture = false) OVERRIDE;
-    virtual bool removeEventListener(const AtomicString& eventType, EventListener*, bool useCapture = false) OVERRIDE;
+    virtual bool removeEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture = false) OVERRIDE;
     virtual void removeAllEventListeners() OVERRIDE;
 
     // ActiveDOMObject overrides.

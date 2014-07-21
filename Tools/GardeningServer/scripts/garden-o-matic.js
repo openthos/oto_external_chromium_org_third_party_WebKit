@@ -29,11 +29,8 @@ var g_info = null;
 var g_revisionHint = null;
 
 var g_updateTimerId = 0;
-var g_buildersFailing = null;
 
 var g_unexpectedFailuresController = null;
-var g_failuresController = null;
-
 var g_nonLayoutTestFailureBuilders = null;
 
 var g_updating = false;
@@ -42,9 +39,9 @@ var g_updateButton = null;
 function updatePartyTime()
 {
     if (!g_unexpectedFailuresController.length() && !g_nonLayoutTestFailureBuilders.hasFailures())
-        $('#onebar').addClass('partytime');
+        document.getElementById('onebar').classList.add('partytime');
     else
-        $('#onebar').removeClass('partytime');
+        document.getElementById('onebar').classList.remove('partytime');
 }
 
 function updateTreeStatus()
@@ -80,9 +77,6 @@ function update()
     });
 
     Promise.all([model.updateRecentCommits(), model.updateResultsByBuilder()]).then(function() {
-        if (g_failuresController)
-            g_failuresController.update();
-
         updating.update('Analyzing test failures ...');
 
         model.analyzeUnexpectedFailures(function(failureAnalysis, total) {
@@ -110,7 +104,7 @@ function update()
     });
 }
 
-$(document).ready(function() {
+window.addEventListener('DOMContentLoaded', function() {
     g_updateTimerId = window.setInterval(update, config.kUpdateFrequency);
 
     window.setInterval(updateTreeStatus, config.kTreeStatusUpdateFrequency);
@@ -125,7 +119,8 @@ $(document).ready(function() {
         showResults: function(resultsView)
         {
             var resultsContainer = onebar.results();
-            $(resultsContainer).empty().append(resultsView);
+            resultsContainer.innerHTML = '';
+            resultsContainer.appendChild(resultsView)
             onebar.select('results');
         }
     };
@@ -153,13 +148,6 @@ $(document).ready(function() {
 
     unexpected.appendChild(g_info);
     unexpected.appendChild(unexpectedFailuresView);
-
-    var expected = onebar.expected();
-    if (expected) {
-        var failuresView = new ui.failures.List();
-        g_failuresController = new controllers.ExpectedFailures(model.state, failuresView, onebarController);
-        expected.appendChild(failuresView);
-    }
 
     update();
 });

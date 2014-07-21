@@ -23,6 +23,7 @@
 #include "core/rendering/InlineFlowBox.h"
 #include "core/rendering/PaintInfo.h"
 #include "core/rendering/RenderBlockFlow.h"
+#include "core/rendering/RenderObjectInlines.h"
 #include "core/rendering/RootInlineBox.h"
 #include "platform/Partitions.h"
 #include "platform/fonts/FontMetrics.h"
@@ -30,8 +31,6 @@
 #ifndef NDEBUG
 #include <stdio.h>
 #endif
-
-using namespace std;
 
 namespace WebCore {
 
@@ -41,14 +40,14 @@ struct SameSizeAsInlineBox {
     FloatPoint b;
     float c;
     uint32_t d : 32;
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     bool f;
 #endif
 };
 
 COMPILE_ASSERT(sizeof(InlineBox) == sizeof(SameSizeAsInlineBox), InlineBox_size_guard);
 
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
 
 InlineBox::~InlineBox()
 {

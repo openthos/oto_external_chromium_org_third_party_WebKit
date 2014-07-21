@@ -32,7 +32,7 @@
 #include "config.h"
 #include "web/ChromeClientImpl.h"
 
-#include "bindings/v8/ScriptController.h"
+#include "bindings/core/v8/ScriptController.h"
 #include "core/HTMLNames.h"
 #include "core/accessibility/AXObject.h"
 #include "core/accessibility/AXObjectCache.h"
@@ -52,6 +52,7 @@
 #include "core/page/PagePopupDriver.h"
 #include "core/page/WindowFeatures.h"
 #include "core/rendering/HitTestResult.h"
+#include "core/rendering/RenderPart.h"
 #include "core/rendering/RenderWidget.h"
 #include "platform/ColorChooser.h"
 #include "platform/ColorChooserClient.h"
@@ -200,15 +201,8 @@ void ChromeClientImpl::focusedNodeChanged(Node* node)
     m_webView->client()->focusedNodeChanged(WebNode(node));
 
     WebURL focusURL;
-    if (node && node->isLink()) {
-        // This HitTestResult hack is the easiest way to get a link URL out of a
-        // WebCore::Node.
-        HitTestResult hitTest(IntPoint(0, 0));
-        // This cast must be valid because of the isLink() check.
-        hitTest.setURLElement(toElement(node));
-        if (hitTest.isLiveLink())
-            focusURL = hitTest.absoluteLinkURL();
-    }
+    if (node && node->isElementNode() && toElement(node)->isLiveLink())
+        focusURL = toElement(node)->hrefURL();
     m_webView->client()->setKeyboardFocusURL(focusURL);
 }
 
@@ -364,7 +358,7 @@ void ChromeClientImpl::setResizable(bool value)
 
 bool ChromeClientImpl::shouldReportDetailedMessageForSource(const String& url)
 {
-    WebLocalFrameImpl* webframe = m_webView->mainFrameImpl();
+    WebLocalFrameImpl* webframe = m_webView->localFrameRootTemporary();
     return webframe->client() && webframe->client()->shouldReportDetailedMessageForSource(url);
 }
 
@@ -493,19 +487,10 @@ void ChromeClientImpl::scheduleAnimation()
     m_webView->scheduleAnimation();
 }
 
-void ChromeClientImpl::scroll(
-    const IntSize& scrollDelta, const IntRect& scrollRect,
-    const IntRect& clipRect)
+void ChromeClientImpl::scroll()
 {
-    if (!m_webView->isAcceleratedCompositingActive()) {
-        if (m_webView->client()) {
-            int dx = scrollDelta.width();
-            int dy = scrollDelta.height();
-            m_webView->client()->didScrollRect(dx, dy, intersection(scrollRect, clipRect));
-        }
-    } else {
+    if (m_webView->isAcceleratedCompositingActive())
         m_webView->scrollRootLayer();
-    }
 }
 
 IntRect ChromeClientImpl::rootViewToScreen(const IntRect& rect) const
@@ -626,9 +611,8 @@ void ChromeClientImpl::runOpenPanel(LocalFrame* frame, PassRefPtr<FileChooser> f
     params.selectedFiles = fileChooser->settings().selectedFiles;
     if (params.selectedFiles.size() > 0)
         params.initialValue = params.selectedFiles[0];
-#if ENABLE(MEDIA_CAPTURE)
     params.useMediaCapture = fileChooser->settings().useMediaCapture;
-#endif
+
     WebFileChooserCompletionImpl* chooserCompletion =
         new WebFileChooserCompletionImpl(fileChooser);
 
@@ -718,6 +702,11 @@ void ChromeClientImpl::enterFullScreenForElement(Element* element)
 void ChromeClientImpl::exitFullScreenForElement(Element* element)
 {
     m_webView->exitFullScreenForElement(element);
+}
+
+void ChromeClientImpl::clearCompositedSelectionBounds()
+{
+    m_webView->clearCompositedSelectionBounds();
 }
 
 bool ChromeClientImpl::hasOpenedPopup() const
@@ -828,6 +817,12 @@ void ChromeClientImpl::didUpdateTextOfFocusedElementByNonUserInput()
         m_webView->client()->didUpdateTextOfFocusedElementByNonUserInput();
 }
 
+void ChromeClientImpl::showImeIfNeeded()
+{
+    if (m_webView->client())
+        m_webView->client()->showImeIfNeeded();
+}
+
 void ChromeClientImpl::handleKeyboardEventOnTextField(HTMLInputElement& inputElement, KeyboardEvent& event)
 {
     if (!m_webView->autofillClient())
@@ -840,7 +835,12 @@ void ChromeClientImpl::handleKeyboardEventOnTextField(HTMLInputElement& inputEle
 void ChromeClientImpl::forwardInputEvent(
     WebCore::Frame* frame, WebCore::Event* event)
 {
-    WebLocalFrameImpl* webFrame = WebLocalFrameImpl::fromFrame(toLocalFrameTemporary(frame));
+    // FIXME: Input event forwarding to out-of-process frames is broken until
+    // WebRemoteFrameImpl has a WebFrameClient.
+    if (frame->isRemoteFrame())
+        return;
+
+    WebLocalFrameImpl* webFrame = WebLocalFrameImpl::fromFrame(toLocalFrame(frame));
 
     // This is only called when we have out-of-process iframes, which
     // need to forward input events across processes.
@@ -880,11 +880,6 @@ void ChromeClientImpl::openTextDataListChooser(HTMLInputElement& input)
 {
     if (m_webView->autofillClient())
         m_webView->autofillClient()->openTextDataListChooser(WebInputElement(&input));
-}
-
-bool ChromeClientImpl::usesGpuRasterization()
-{
-    return m_webView->layerTreeView()->usesGpuRasterization();
 }
 
 } // namespace blink

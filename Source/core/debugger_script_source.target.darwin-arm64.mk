@@ -20,9 +20,9 @@ $(gyp_shared_intermediate_dir)/blink/core/DebuggerScriptSource.h: gyp_var_prefix
 $(gyp_shared_intermediate_dir)/blink/core/DebuggerScriptSource.h: gyp_intermediate_dir := $(abspath $(gyp_intermediate_dir))
 $(gyp_shared_intermediate_dir)/blink/core/DebuggerScriptSource.h: gyp_shared_intermediate_dir := $(abspath $(gyp_shared_intermediate_dir))
 $(gyp_shared_intermediate_dir)/blink/core/DebuggerScriptSource.h: export PATH := $(subst $(ANDROID_BUILD_PATHS),,$(PATH))
-$(gyp_shared_intermediate_dir)/blink/core/DebuggerScriptSource.h: $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/xxd.py $(LOCAL_PATH)/third_party/WebKit/Source/bindings/v8/DebuggerScript.js $(GYP_TARGET_DEPENDENCIES)
-	@echo "Gyp action: Generating $(gyp_shared_intermediate_dir)/blink/core/DebuggerScriptSource.h from ../bindings/v8/DebuggerScript.js ($@)"
-	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/core; mkdir -p $(gyp_shared_intermediate_dir)/blink/core; python ../build/scripts/xxd.py DebuggerScriptSource_js ../bindings/v8/DebuggerScript.js "$(gyp_shared_intermediate_dir)/blink/core/DebuggerScriptSource.h"
+$(gyp_shared_intermediate_dir)/blink/core/DebuggerScriptSource.h: $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/xxd.py $(LOCAL_PATH)/third_party/WebKit/Source/bindings/core/v8/DebuggerScript.js $(GYP_TARGET_DEPENDENCIES)
+	@echo "Gyp action: Generating $(gyp_shared_intermediate_dir)/blink/core/DebuggerScriptSource.h from ../bindings/core/v8/DebuggerScript.js ($@)"
+	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/core; mkdir -p $(gyp_shared_intermediate_dir)/blink/core; python ../build/scripts/xxd.py DebuggerScriptSource_js ../bindings/core/v8/DebuggerScript.js "$(gyp_shared_intermediate_dir)/blink/core/DebuggerScriptSource.h"
 
 
 

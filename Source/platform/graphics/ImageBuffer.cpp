@@ -123,6 +123,12 @@ void ImageBuffer::notifySurfaceInvalid()
         m_client->notifySurfaceInvalid();
 }
 
+void ImageBuffer::didPresent()
+{
+    if (m_client)
+        m_client->didPresent();
+}
+
 static SkBitmap deepSkBitmapCopy(const SkBitmap& bitmap)
 {
     SkBitmap tmp;
@@ -281,7 +287,7 @@ void ImageBuffer::transformColorSpace(ColorSpace srcColorSpace, ColorSpace dstCo
     if (bitmap.isNull())
         return;
 
-    ASSERT(bitmap.colorType() == kPMColor_SkColorType);
+    ASSERT(bitmap.colorType() == kN32_SkColorType);
     IntSize size = m_surface->size();
     SkAutoLockPixels bitmapLock(bitmap);
     for (int y = 0; y < size.height(); ++y) {
@@ -307,9 +313,11 @@ PassRefPtr<SkColorFilter> ImageBuffer::createColorSpaceFilter(ColorSpace srcColo
     return adoptRef(SkTableColorFilter::CreateARGB(0, lut, lut, lut));
 }
 
-template <Multiply multiplied>
-PassRefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, GraphicsContext* context, const IntSize& size)
+PassRefPtr<Uint8ClampedArray> ImageBuffer::getImageData(Multiply multiplied, const IntRect& rect) const
 {
+    if (!isSurfaceValid())
+        return Uint8ClampedArray::create(rect.width() * rect.height() * 4);
+
     float area = 4.0f * rect.width() * rect.height();
     if (area > static_cast<float>(std::numeric_limits<int>::max()))
         return nullptr;
@@ -318,29 +326,16 @@ PassRefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, GraphicsContext*
 
     if (rect.x() < 0
         || rect.y() < 0
-        || rect.maxX() > size.width()
-        || rect.maxY() > size.height())
+        || rect.maxX() > m_surface->size().width()
+        || rect.maxY() > m_surface->size().height())
         result->zeroFill();
 
     SkAlphaType alphaType = (multiplied == Premultiplied) ? kPremul_SkAlphaType : kUnpremul_SkAlphaType;
     SkImageInfo info = SkImageInfo::Make(rect.width(), rect.height(), kRGBA_8888_SkColorType, alphaType);
 
-    context->readPixels(info, result->data(), 4 * rect.width(), rect.x(), rect.y());
+    m_surface->willReadback();
+    context()->readPixels(info, result->data(), 4 * rect.width(), rect.x(), rect.y());
     return result.release();
-}
-
-PassRefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect) const
-{
-    if (!isSurfaceValid())
-        return Uint8ClampedArray::create(rect.width() * rect.height() * 4);
-    return getImageData<Unmultiplied>(rect, context(), m_surface->size());
-}
-
-PassRefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect) const
-{
-    if (!isSurfaceValid())
-        return Uint8ClampedArray::create(rect.width() * rect.height() * 4);
-    return getImageData<Premultiplied>(rect, context(), m_surface->size());
 }
 
 void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint)
@@ -367,7 +362,7 @@ void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, c
 
     const size_t srcBytesPerRow = 4 * sourceSize.width();
     const void* srcAddr = source->data() + originY * srcBytesPerRow + originX * 4;
-    const SkAlphaType alphaType = (multiplied == Premultiplied) ? kPremul_SkAlphaType : kUnpremul_SkAlphaType;
+    SkAlphaType alphaType = (multiplied == Premultiplied) ? kPremul_SkAlphaType : kUnpremul_SkAlphaType;
     SkImageInfo info = SkImageInfo::Make(sourceRect.width(), sourceRect.height(), kRGBA_8888_SkColorType, alphaType);
 
     context()->writePixels(info, srcAddr, srcBytesPerRow, destX, destY);

@@ -31,13 +31,14 @@
 #include "config.h"
 #include "modules/crypto/CryptoResultImpl.h"
 
-#include "bindings/v8/ScriptPromiseResolverWithContext.h"
-#include "bindings/v8/ScriptState.h"
+#include "bindings/core/v8/Dictionary.h"
+#include "bindings/core/v8/ScriptPromiseResolver.h"
+#include "bindings/core/v8/ScriptState.h"
 #include "core/dom/ContextLifecycleObserver.h"
 #include "core/dom/DOMError.h"
 #include "core/dom/DOMException.h"
 #include "core/dom/ExecutionContext.h"
-#include "modules/crypto/Key.h"
+#include "modules/crypto/CryptoKey.h"
 #include "modules/crypto/NormalizeAlgorithm.h"
 #include "public/platform/Platform.h"
 #include "public/platform/WebArrayBuffer.h"
@@ -46,9 +47,9 @@
 
 namespace WebCore {
 
-class CryptoResultImpl::WeakResolver : public ScriptPromiseResolverWithContext {
+class CryptoResultImpl::WeakResolver : public ScriptPromiseResolver {
 public:
-    static WeakPtr<ScriptPromiseResolverWithContext> create(ScriptState* scriptState, CryptoResultImpl* result)
+    static WeakPtr<ScriptPromiseResolver> create(ScriptState* scriptState, CryptoResultImpl* result)
     {
         RefPtr<WeakResolver> p = adoptRef(new WeakResolver(scriptState, result));
         p->suspendIfNeeded();
@@ -63,10 +64,10 @@ public:
 
 private:
     WeakResolver(ScriptState* scriptState, CryptoResultImpl* result)
-        : ScriptPromiseResolverWithContext(scriptState)
+        : ScriptPromiseResolver(scriptState)
         , m_weakPtrFactory(this)
         , m_result(result) { }
-    WeakPtrFactory<ScriptPromiseResolverWithContext> m_weakPtrFactory;
+    WeakPtrFactory<ScriptPromiseResolver> m_weakPtrFactory;
     RefPtr<CryptoResultImpl> m_result;
 };
 
@@ -122,7 +123,7 @@ void CryptoResultImpl::completeWithBuffer(const blink::WebArrayBuffer& buffer)
 void CryptoResultImpl::completeWithJson(const char* utf8Data, unsigned length)
 {
     if (m_resolver) {
-        ScriptPromiseResolverWithContext* resolver = m_resolver.get();
+        ScriptPromiseResolver* resolver = m_resolver.get();
         ScriptState* scriptState = resolver->scriptState();
         ScriptState::Scope scope(scriptState);
 
@@ -148,7 +149,7 @@ void CryptoResultImpl::completeWithBoolean(bool b)
 void CryptoResultImpl::completeWithKey(const blink::WebCryptoKey& key)
 {
     if (m_resolver)
-        m_resolver->resolve(Key::create(key));
+        m_resolver->resolve(CryptoKey::create(key));
 }
 
 void CryptoResultImpl::completeWithKeyPair(const blink::WebCryptoKey& publicKey, const blink::WebCryptoKey& privateKey)
@@ -157,16 +158,15 @@ void CryptoResultImpl::completeWithKeyPair(const blink::WebCryptoKey& publicKey,
         ScriptState* scriptState = m_resolver->scriptState();
         ScriptState::Scope scope(scriptState);
 
-        // FIXME: Use Dictionary instead, to limit amount of direct v8 access used from WebCore.
-        v8::Handle<v8::Object> keyPair = v8::Object::New(scriptState->isolate());
+        Dictionary keyPair = Dictionary::createEmpty(scriptState->isolate());
 
-        v8::Handle<v8::Value> publicKeyValue = toV8NoInline(Key::create(publicKey), scriptState->context()->Global(), scriptState->isolate());
-        v8::Handle<v8::Value> privateKeyValue = toV8NoInline(Key::create(privateKey), scriptState->context()->Global(), scriptState->isolate());
+        v8::Handle<v8::Value> publicKeyValue = toV8NoInline(CryptoKey::create(publicKey), scriptState->context()->Global(), scriptState->isolate());
+        v8::Handle<v8::Value> privateKeyValue = toV8NoInline(CryptoKey::create(privateKey), scriptState->context()->Global(), scriptState->isolate());
 
-        keyPair->Set(v8::String::NewFromUtf8(scriptState->isolate(), "publicKey"), publicKeyValue);
-        keyPair->Set(v8::String::NewFromUtf8(scriptState->isolate(), "privateKey"), privateKeyValue);
+        keyPair.set("publicKey", publicKeyValue);
+        keyPair.set("privateKey", privateKeyValue);
 
-        m_resolver->resolve(v8::Handle<v8::Value>(keyPair));
+        m_resolver->resolve(keyPair.v8Value());
     }
 }
 
@@ -181,14 +181,16 @@ void CryptoResultImpl::cancel()
 }
 
 CryptoResultImpl::CryptoResultImpl(ScriptState* scriptState)
-    : m_resolver(WeakResolver::create(scriptState, this))
-    , m_cancelled(0)
+    : m_cancelled(0)
 {
+    // Creating the WeakResolver may return nullptr if active dom objects have
+    // been stopped. And in the process set m_cancelled to 1.
+    m_resolver = WeakResolver::create(scriptState, this);
 }
 
 ScriptPromise CryptoResultImpl::promise()
 {
-    return m_resolver->promise();
+    return m_resolver ? m_resolver->promise() : ScriptPromise();
 }
 
 } // namespace WebCore

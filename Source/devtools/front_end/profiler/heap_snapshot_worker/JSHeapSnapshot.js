@@ -42,11 +42,12 @@ WebInspector.JSHeapSnapshot = function(profile, progress, showHiddenData)
         detachedDOMTreeNode: 2,
         pageObject: 4, // The idea is to track separately the objects owned by the page and the objects owned by debugger.
 
-        visitedMarkerMask: 0x0ffff, // bits: 0,1111,1111,1111,1111
-        visitedMarker:     0x10000  // bits: 1,0000,0000,0000,0000
+        visitedMarkerMask: 0x0ffff,
+        visitedMarker:     0x10000
     };
     this._lazyStringCache = { };
-    WebInspector.HeapSnapshot.call(this, profile, progress, showHiddenData);
+    this._showHiddenData = showHiddenData;
+    WebInspector.HeapSnapshot.call(this, profile, progress);
 }
 
 WebInspector.JSHeapSnapshot.prototype = {
@@ -85,15 +86,20 @@ WebInspector.JSHeapSnapshot.prototype = {
      */
     classNodesFilter: function()
     {
+        var mapAndFlag = this.userObjectsMapAndFlag();
+        if (!mapAndFlag)
+            return null;
+        var map = mapAndFlag.map;
+        var flag = mapAndFlag.flag;
         /**
          * @param {!WebInspector.JSHeapSnapshotNode} node
          * @return {boolean}
          */
         function filter(node)
         {
-            return node.isUserObject();
+            return !!(map[node.ordinal()] & flag);
         }
-        return this._showHiddenData ? null : filter;
+        return filter;
     },
 
     /**
@@ -102,7 +108,8 @@ WebInspector.JSHeapSnapshot.prototype = {
     containmentEdgesFilter: function()
     {
         var showHiddenData = this._showHiddenData;
-        function filter(edge) {
+        function filter(edge)
+        {
             if (edge.isInvisible())
                 return false;
             if (showHiddenData)
@@ -123,12 +130,6 @@ WebInspector.JSHeapSnapshot.prototype = {
             return containmentEdgesFilter(edge) && !edge.node().isRoot() && !edge.isWeak();
         }
         return filter;
-    },
-
-    dispose: function()
-    {
-        WebInspector.HeapSnapshot.prototype.dispose.call(this);
-        delete this._flags;
     },
 
     _calculateFlags: function()
@@ -175,7 +176,7 @@ WebInspector.JSHeapSnapshot.prototype = {
          */
         function doAction(node)
         {
-            var ordinal = node._ordinal();
+            var ordinal = node.ordinal();
             if (!visitedNodes[ordinal]) {
                 action(node);
                 visitedNodes[ordinal] = true;
@@ -258,8 +259,8 @@ WebInspector.JSHeapSnapshot.prototype = {
         var edgeToNodeOffset = this._edgeToNodeOffset;
         var edgeTypeOffset = this._edgeTypeOffset;
         var edgeFieldsCount = this._edgeFieldsCount;
-        var containmentEdges = this._containmentEdges;
-        var nodes = this._nodes;
+        var containmentEdges = this.containmentEdges;
+        var nodes = this.nodes;
         var nodeCount = this.nodeCount;
         var nodeFieldCount = this._nodeFieldCount;
         var firstEdgeIndexes = this._firstEdgeIndexes;
@@ -301,9 +302,9 @@ WebInspector.JSHeapSnapshot.prototype = {
         var edgeFieldsCount = this._edgeFieldsCount;
         var edgeWeakType = this._edgeWeakType;
         var firstEdgeIndexes = this._firstEdgeIndexes;
-        var containmentEdges = this._containmentEdges;
+        var containmentEdges = this.containmentEdges;
         var containmentEdgesLength = containmentEdges.length;
-        var nodes = this._nodes;
+        var nodes = this.nodes;
         var nodeFieldCount = this._nodeFieldCount;
         var nodesCount = this.nodeCount;
 
@@ -357,7 +358,7 @@ WebInspector.JSHeapSnapshot.prototype = {
     _calculateStatistics: function()
     {
         var nodeFieldCount = this._nodeFieldCount;
-        var nodes = this._nodes;
+        var nodes = this.nodes;
         var nodesLength = nodes.length;
         var nodeTypeOffset = this._nodeTypeOffset;
         var nodeSizeOffset = this._nodeSelfSizeOffset;;
@@ -399,10 +400,10 @@ WebInspector.JSHeapSnapshot.prototype = {
     _calculateArraySize: function(node)
     {
         var size = node.selfSize();
-        var beginEdgeIndex = node._edgeIndexesStart();
-        var endEdgeIndex = node._edgeIndexesEnd();
-        var containmentEdges = this._containmentEdges;
-        var strings = this._strings;
+        var beginEdgeIndex = node.edgeIndexesStart();
+        var endEdgeIndex = node.edgeIndexesEnd();
+        var containmentEdges = this.containmentEdges;
+        var strings = this.strings;
         var edgeToNodeOffset = this._edgeToNodeOffset;
         var edgeTypeOffset = this._edgeTypeOffset;
         var edgeNameOffset = this._edgeNameOffset;
@@ -457,19 +458,10 @@ WebInspector.JSHeapSnapshotNode.prototype = {
     },
 
     /**
-     * @return {boolean}
-     */
-    isUserObject: function()
-    {
-        var flags = this._snapshot._flagsOfNode(this);
-        return !!(flags & this._snapshot._nodeFlags.pageObject);
-    },
-
-
-    /**
      * @return {string}
      */
-    name: function() {
+    name: function()
+    {
         var snapshot = this._snapshot;
         if (this._type() === snapshot._nodeConsStringType) {
             var string = snapshot._lazyStringCache[this.nodeIndex];
@@ -491,13 +483,13 @@ WebInspector.JSHeapSnapshotNode.prototype = {
         var edgeToNodeOffset = snapshot._edgeToNodeOffset;
         var edgeTypeOffset = snapshot._edgeTypeOffset;
         var edgeNameOffset = snapshot._edgeNameOffset;
-        var strings = snapshot._strings;
-        var edges = snapshot._containmentEdges;
+        var strings = snapshot.strings;
+        var edges = snapshot.containmentEdges;
         var firstEdgeIndexes = snapshot._firstEdgeIndexes;
         var nodeFieldCount = snapshot._nodeFieldCount;
         var nodeTypeOffset = snapshot._nodeTypeOffset;
         var nodeNameOffset = snapshot._nodeNameOffset;
-        var nodes = snapshot._nodes;
+        var nodes = snapshot.nodes;
         var nodesStack = [];
         nodesStack.push(this.nodeIndex);
         var name = "";
@@ -554,7 +546,7 @@ WebInspector.JSHeapSnapshotNode.prototype = {
     classIndex: function()
     {
         var snapshot = this._snapshot;
-        var nodes = snapshot._nodes;
+        var nodes = snapshot.nodes;
         var type = nodes[this.nodeIndex + snapshot._nodeTypeOffset];;
         if (type === snapshot._nodeObjectType || type === snapshot._nodeNativeType)
             return nodes[this.nodeIndex + snapshot._nodeNameOffset];
@@ -567,7 +559,7 @@ WebInspector.JSHeapSnapshotNode.prototype = {
     id: function()
     {
         var snapshot = this._snapshot;
-        return snapshot._nodes[this.nodeIndex + snapshot._nodeIdOffset];
+        return snapshot.nodes[this.nodeIndex + snapshot._nodeIdOffset];
     },
 
     /**
@@ -741,7 +733,7 @@ WebInspector.JSHeapSnapshotEdge.prototype = {
 
     _name: function()
     {
-        return this._hasStringName() ? this._snapshot._strings[this._nameOrIndex()] : this._nameOrIndex();
+        return this._hasStringName() ? this._snapshot.strings[this._nameOrIndex()] : this._nameOrIndex();
     },
 
     _nameOrIndex: function()

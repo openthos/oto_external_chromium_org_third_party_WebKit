@@ -408,8 +408,9 @@ public:
 
 
     // SmartClip support ---------------------------------------------------
-
-    virtual WebString getSmartClipData(WebRect) = 0;
+    // TODO(changwan): remove this
+    virtual void getSmartClipData(WebRect, WebString&, WebRect& resultRect) = 0;
+    virtual void extractSmartClipData(WebRect initRect, WebString& text, WebString& html, WebRect& resultRect) = 0;
 
 
     // Popup menu ----------------------------------------------------------

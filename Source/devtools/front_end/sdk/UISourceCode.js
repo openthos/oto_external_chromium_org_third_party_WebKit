@@ -59,14 +59,12 @@ WebInspector.UISourceCode = function(project, parentPath, name, originURL, url, 
     this._sourceMappingForTarget = new Map();
 
     /**
-     * @type {!Map.<!WebInspector.Target, !WebInspector.ScriptFile>}
+     * @type {!Map.<!WebInspector.Target, !WebInspector.ResourceScriptFile>}
      */
     this._scriptFileForTarget = new Map();
 
     /** @type {!Array.<!WebInspector.Revision>} */
     this.history = [];
-    if (!this._project.isServiceProject() && this._url)
-        this._restoreRevisionHistory();
 }
 
 WebInspector.UISourceCode.Events = {
@@ -226,7 +224,7 @@ WebInspector.UISourceCode.prototype = {
 
     /**
      * @param {!WebInspector.Target} target
-     * @return {?WebInspector.ScriptFile}
+     * @return {?WebInspector.ResourceScriptFile}
      */
     scriptFileForTarget: function(target)
     {
@@ -235,7 +233,7 @@ WebInspector.UISourceCode.prototype = {
 
     /**
      * @param {!WebInspector.Target} target
-     * @param {?WebInspector.ScriptFile} scriptFile
+     * @param {?WebInspector.ResourceScriptFile} scriptFile
      */
     setScriptFileForTarget: function(target, scriptFile)
     {
@@ -372,7 +370,6 @@ WebInspector.UISourceCode.prototype = {
         if (!lastRevision || lastRevision._content !== this._content) {
             var revision = new WebInspector.Revision(this, this._content, new Date());
             this.history.push(revision);
-            revision._persist();
         }
 
         this._innerResetWorkingCopy();
@@ -409,8 +406,12 @@ WebInspector.UISourceCode.prototype = {
     /**
      * @param {boolean} forceSaveAs
      */
-    saveToFileSystem: function(forceSaveAs)
+    save: function(forceSaveAs)
     {
+        if (this.project().type() === WebInspector.projectTypes.FileSystem || this.project().type() === WebInspector.projectTypes.Snippets) {
+            this.commitWorkingCopy(function() { });
+            return;
+        }
         if (this.isDirty()) {
             this._saveURLWithFileManager(forceSaveAs, this.workingCopy());
             this.commitWorkingCopy(function() { });
@@ -439,52 +440,6 @@ WebInspector.UISourceCode.prototype = {
         this._commitContent(content, true);
     },
 
-    _restoreRevisionHistory: function()
-    {
-        if (!window.localStorage)
-            return;
-
-        var registry = WebInspector.Revision._revisionHistoryRegistry();
-        var historyItems = registry[this.url];
-        if (!historyItems)
-            return;
-
-        function filterOutStale(historyItem)
-        {
-            // FIXME: Main frame might not have been loaded yet when uiSourceCodes for snippets are created.
-            if (!WebInspector.resourceTreeModel || !WebInspector.resourceTreeModel.mainFrame)
-                return false;
-            return historyItem.loaderId === WebInspector.resourceTreeModel.mainFrame.loaderId;
-        }
-
-        historyItems = historyItems.filter(filterOutStale);
-        if (!historyItems.length)
-            return;
-
-        for (var i = 0; i < historyItems.length; ++i) {
-            var content = window.localStorage[historyItems[i].key];
-            var timestamp = new Date(historyItems[i].timestamp);
-            var revision = new WebInspector.Revision(this, content, timestamp);
-            this.history.push(revision);
-        }
-        this._content = this.history[this.history.length - 1].content;
-        this._hasCommittedChanges = true;
-        this._contentLoaded = true;
-    },
-
-    _clearRevisionHistory: function()
-    {
-        if (!window.localStorage)
-            return;
-
-        var registry = WebInspector.Revision._revisionHistoryRegistry();
-        var historyItems = registry[this.url];
-        for (var i = 0; historyItems && i < historyItems.length; ++i)
-            delete window.localStorage[historyItems[i].key];
-        delete registry[this.url];
-        window.localStorage["revision-history"] = JSON.stringify(registry);
-    },
-
     revertToOriginal: function()
     {
         /**
@@ -500,11 +455,6 @@ WebInspector.UISourceCode.prototype = {
         }
 
         this.requestOriginalContent(callback.bind(this));
-
-        WebInspector.notifications.dispatchEventToListeners(WebInspector.UserMetrics.UserAction, {
-            action: WebInspector.UserMetrics.UserActionNames.ApplyOriginalContent,
-            url: this.url
-        });
     },
 
     /**
@@ -522,17 +472,11 @@ WebInspector.UISourceCode.prototype = {
                 return;
 
             this.addRevision(content);
-            this._clearRevisionHistory();
             this.history = [];
             callback(this);
         }
 
         this.requestOriginalContent(revert.bind(this));
-
-        WebInspector.notifications.dispatchEventToListeners(WebInspector.UserMetrics.UserAction, {
-            action: WebInspector.UserMetrics.UserActionNames.RevertRevision,
-            url: this.url
-        });
     },
 
     /**
@@ -597,11 +541,6 @@ WebInspector.UISourceCode.prototype = {
 
         this._commitContent(this.workingCopy(), true);
         callback(null);
-
-        WebInspector.notifications.dispatchEventToListeners(WebInspector.UserMetrics.UserAction, {
-            action: WebInspector.UserMetrics.UserActionNames.FileSaved,
-            url: this.url
-        });
     },
 
     /**
@@ -703,6 +642,21 @@ WebInspector.UISourceCode.prototype = {
                 result.push(rawLocation);
         }
         return result;
+    },
+
+    /**
+     * @param {number} lineNumber
+     * @return {boolean}
+     */
+    uiLineHasMapping: function(lineNumber)
+    {
+        var sourceMappings = this._sourceMappingForTarget.values();
+        for (var i = 0; i < sourceMappings.length; ++i) {
+            var sourceMapping = sourceMappings[i];
+            if (!sourceMappings[i].uiLineHasMapping(this, lineNumber))
+                return false;
+        }
+        return true;
     },
 
     /**
@@ -899,52 +853,6 @@ WebInspector.Revision = function(uiSourceCode, content, timestamp)
     this._timestamp = timestamp;
 }
 
-WebInspector.Revision._revisionHistoryRegistry = function()
-{
-    if (!WebInspector.Revision._revisionHistoryRegistryObject) {
-        if (window.localStorage) {
-            var revisionHistory = window.localStorage["revision-history"];
-            try {
-                WebInspector.Revision._revisionHistoryRegistryObject = revisionHistory ? JSON.parse(revisionHistory) : {};
-            } catch (e) {
-                WebInspector.Revision._revisionHistoryRegistryObject = {};
-            }
-        } else
-            WebInspector.Revision._revisionHistoryRegistryObject = {};
-    }
-    return WebInspector.Revision._revisionHistoryRegistryObject;
-}
-
-WebInspector.Revision.filterOutStaleRevisions = function()
-{
-    if (!window.localStorage)
-        return;
-
-    var registry = WebInspector.Revision._revisionHistoryRegistry();
-    var filteredRegistry = {};
-    for (var url in registry) {
-        var historyItems = registry[url];
-        var filteredHistoryItems = [];
-        for (var i = 0; historyItems && i < historyItems.length; ++i) {
-            var historyItem = historyItems[i];
-            if (historyItem.loaderId === WebInspector.resourceTreeModel.mainFrame.loaderId) {
-                filteredHistoryItems.push(historyItem);
-                filteredRegistry[url] = filteredHistoryItems;
-            } else
-                delete window.localStorage[historyItem.key];
-        }
-    }
-    WebInspector.Revision._revisionHistoryRegistryObject = filteredRegistry;
-
-    function persist()
-    {
-        window.localStorage["revision-history"] = JSON.stringify(filteredRegistry);
-    }
-
-    // Schedule async storage.
-    setTimeout(persist, 0);
-}
-
 WebInspector.Revision.prototype = {
     /**
      * @return {!WebInspector.UISourceCode}
@@ -1017,43 +925,5 @@ WebInspector.Revision.prototype = {
     searchInContent: function(query, caseSensitive, isRegex, callback)
     {
         callback([]);
-    },
-
-    _persist: function()
-    {
-        if (this._uiSourceCode.project().type() === WebInspector.projectTypes.FileSystem)
-            return;
-
-        if (!window.localStorage)
-            return;
-
-        var url = this.contentURL();
-        if (!url || url.startsWith("inspector://"))
-            return;
-
-        var loaderId = WebInspector.resourceTreeModel.mainFrame.loaderId;
-        var timestamp = this.timestamp.getTime();
-        var key = "revision-history|" + url + "|" + loaderId + "|" + timestamp;
-
-        var registry = WebInspector.Revision._revisionHistoryRegistry();
-
-        var historyItems = registry[url];
-        if (!historyItems) {
-            historyItems = [];
-            registry[url] = historyItems;
-        }
-        historyItems.push({url: url, loaderId: loaderId, timestamp: timestamp, key: key});
-
-        /**
-         * @this {WebInspector.Revision}
-         */
-        function persist()
-        {
-            window.localStorage[key] = this._content;
-            window.localStorage["revision-history"] = JSON.stringify(registry);
-        }
-
-        // Schedule async storage.
-        setTimeout(persist.bind(this), 0);
     }
 }

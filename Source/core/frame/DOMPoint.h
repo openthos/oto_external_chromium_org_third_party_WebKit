@@ -26,14 +26,14 @@
 #ifndef DOMPoint_h
 #define DOMPoint_h
 
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "platform/heap/Handle.h"
 #include "wtf/PassRefPtr.h"
 #include "wtf/RefCounted.h"
 
 namespace WebCore {
 
-class DOMPoint FINAL : public RefCountedWillBeGarbageCollectedFinalized<DOMPoint>, public ScriptWrappable {
+class DOMPoint FINAL : public RefCountedWillBeGarbageCollected<DOMPoint>, public ScriptWrappable {
 public:
     static PassRefPtrWillBeRawPtr<DOMPoint> create()
     {

@@ -5,6 +5,8 @@
 #include "config.h"
 #include "core/rendering/compositing/CompositingReasonFinder.h"
 
+#include "core/CSSPropertyNames.h"
+#include "core/dom/Document.h"
 #include "core/frame/FrameView.h"
 #include "core/frame/Settings.h"
 #include "core/page/Page.h"
@@ -39,8 +41,6 @@ void CompositingReasonFinder::updateTriggers()
     if (settings.acceleratedCompositingForOverflowScrollEnabled() || settings.compositorDrivenAcceleratedScrollingEnabled())
         m_compositingTriggers |= OverflowScrollTrigger;
 
-    // FIXME: acceleratedCompositingForFixedPositionEnabled should be renamed acceleratedCompositingForViewportConstrainedPositionEnabled().
-    // Or the sticky and fixed position elements should be behind different flags.
     if (settings.acceleratedCompositingForFixedPositionEnabled())
         m_compositingTriggers |= ViewportConstrainedPositionedTrigger;
 }
@@ -58,9 +58,9 @@ bool CompositingReasonFinder::isMainFrame() const
 
 CompositingReasons CompositingReasonFinder::directReasons(const RenderLayer* layer) const
 {
-    CompositingReasons styleReasons = layer->styleDeterminedCompositingReasons();
-    ASSERT(styleDeterminedReasons(layer->renderer()) == styleReasons);
-    return styleReasons | nonStyleDeterminedDirectReasons(layer);
+    ASSERT(potentialCompositingReasonsFromStyle(layer->renderer()) == layer->potentialCompositingReasonsFromStyle());
+    CompositingReasons styleDeterminedDirectCompositingReasons = layer->potentialCompositingReasonsFromStyle() & CompositingReasonComboAllDirectStyleDeterminedReasons;
+    return styleDeterminedDirectCompositingReasons | nonStyleDeterminedDirectReasons(layer);
 }
 
 // This information doesn't appear to be incorporated into CompositingReasons.
@@ -77,29 +77,60 @@ bool CompositingReasonFinder::requiresCompositingForScrollableFrame() const
     return m_renderView.frameView()->isScrollable();
 }
 
-CompositingReasons CompositingReasonFinder::styleDeterminedReasons(RenderObject* renderer) const
+CompositingReasons CompositingReasonFinder::potentialCompositingReasonsFromStyle(RenderObject* renderer) const
 {
-    CompositingReasons directReasons = CompositingReasonNone;
+    CompositingReasons reasons = CompositingReasonNone;
 
     RenderStyle* style = renderer->style();
 
     if (requiresCompositingForTransform(renderer))
-        directReasons |= CompositingReason3DTransform;
+        reasons |= CompositingReason3DTransform;
 
     if (requiresCompositingForFilters(renderer))
-        directReasons |= CompositingReasonFilters;
+        reasons |= CompositingReasonFilters;
 
     if (style->backfaceVisibility() == BackfaceVisibilityHidden)
-        directReasons |= CompositingReasonBackfaceVisibilityHidden;
+        reasons |= CompositingReasonBackfaceVisibilityHidden;
 
     if (requiresCompositingForAnimation(style))
-        directReasons |= CompositingReasonActiveAnimation;
+        reasons |= CompositingReasonActiveAnimation;
 
     if (style->hasWillChangeCompositingHint() && !style->subtreeWillChangeContents())
-        directReasons |= CompositingReasonWillChangeCompositingHint;
+        reasons |= CompositingReasonWillChangeCompositingHint;
 
-    ASSERT(!(directReasons & ~CompositingReasonComboAllStyleDeterminedReasons));
-    return directReasons;
+    if (style->hasInlineTransform())
+        reasons |= CompositingReasonInlineTransform;
+
+    if (style->transformStyle3D() == TransformStyle3DPreserve3D)
+        reasons |= CompositingReasonPreserve3DWith3DDescendants;
+
+    if (style->hasPerspective())
+        reasons |= CompositingReasonPerspectiveWith3DDescendants;
+
+    // If the implementation of createsGroup changes, we need to be aware of that in this part of code.
+    ASSERT((renderer->isTransparent() || renderer->hasMask() || renderer->hasFilter() || renderer->hasBlendMode()) == renderer->createsGroup());
+
+    if (style->hasMask())
+        reasons |= CompositingReasonMaskWithCompositedDescendants;
+
+    if (style->hasFilter())
+        reasons |= CompositingReasonFilterWithCompositedDescendants;
+
+    // See RenderLayer::updateTransform for an explanation of why we check both.
+    if (renderer->hasTransform() && style->hasTransform())
+        reasons |= CompositingReasonTransformWithCompositedDescendants;
+
+    if (renderer->isTransparent())
+        reasons |= CompositingReasonOpacityWithCompositedDescendants;
+
+    if (renderer->hasBlendMode())
+        reasons |= CompositingReasonBlendingWithCompositedDescendants;
+
+    if (renderer->hasReflection())
+        reasons |= CompositingReasonReflectionWithCompositedDescendants;
+
+    ASSERT(!(reasons & ~CompositingReasonComboAllStyleDeterminedReasons));
+    return reasons;
 }
 
 bool CompositingReasonFinder::requiresCompositingForTransform(RenderObject* renderer) const
@@ -123,14 +154,15 @@ CompositingReasons CompositingReasonFinder::nonStyleDeterminedDirectReasons(cons
     RenderObject* renderer = layer->renderer();
 
     if (hasOverflowScrollTrigger()) {
-        // IsUnclippedDescendant is only actually stale during the chicken/egg code path.
-        // FIXME: Use compositingInputs().isUnclippedDescendant to ASSERT that
-        // this value isn't stale.
-        if (layer->compositingInputs().isUnclippedDescendant)
-            directReasons |= CompositingReasonOutOfFlowClipping;
+        if (const RenderLayer* scrollingAncestor = layer->ancestorScrollingLayer()) {
+            if (scrollingAncestor->needsCompositedScrolling()) {
+                if (layer->clipParent())
+                    directReasons |= CompositingReasonOutOfFlowClipping;
 
-        if (layer->scrollParent())
-            directReasons |= CompositingReasonOverflowScrollingParent;
+                if (layer->scrollParent())
+                    directReasons |= CompositingReasonOverflowScrollingParent;
+            }
+        }
 
         if (layer->needsCompositedScrolling())
             directReasons |= CompositingReasonOverflowScrollingTouch;

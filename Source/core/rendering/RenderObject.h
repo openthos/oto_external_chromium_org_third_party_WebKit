@@ -26,16 +26,17 @@
 #ifndef RenderObject_h
 #define RenderObject_h
 
+#include "core/dom/Document.h"
 #include "core/dom/DocumentLifecycle.h"
 #include "core/dom/Element.h"
-#include "core/dom/Position.h"
-#include "core/dom/StyleEngine.h"
+#include "core/editing/TextAffinity.h"
 #include "core/fetch/ImageResourceClient.h"
-#include "core/rendering/compositing/CompositingState.h"
+#include "core/rendering/HitTestRequest.h"
 #include "core/rendering/PaintPhase.h"
 #include "core/rendering/RenderObjectChildList.h"
 #include "core/rendering/ScrollAlignment.h"
 #include "core/rendering/SubtreeLayoutScope.h"
+#include "core/rendering/compositing/CompositingState.h"
 #include "core/rendering/compositing/CompositingTriggers.h"
 #include "core/rendering/style/RenderStyle.h"
 #include "core/rendering/style/StyleInheritedData.h"
@@ -53,7 +54,9 @@ class HitTestLocation;
 class HitTestResult;
 class InlineBox;
 class InlineFlowBox;
+class PaintInvalidationState;
 class Position;
+class PositionWithAffinity;
 class PseudoStyleRequest;
 class RenderBoxModelObject;
 class RenderBlock;
@@ -108,11 +111,11 @@ enum MapCoordinatesMode {
 typedef unsigned MapCoordinatesFlags;
 
 enum InvalidationReason {
+    InvalidationNone,
     InvalidationIncremental,
-    InvalidationSelfLayout,
+    InvalidationFull,
     InvalidationBorderFitLines,
-    InvalidationBorderRadius,
-    InvalidationBoundsChangeWithBackground,
+    InvalidationBorderBoxChange,
     InvalidationBoundsChange,
     InvalidationLocationChange,
     InvalidationScroll,
@@ -217,7 +220,7 @@ public:
         return locateFlowThreadContainingBlock();
     }
 
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     void setHasAXObject(bool flag) { m_hasAXObject = flag; }
     bool hasAXObject() const { return m_hasAXObject; }
 
@@ -233,8 +236,10 @@ public:
 
     void assertRendererLaidOut() const
     {
+#ifndef NDEBUG
         if (needsLayout())
             showRenderTreeForThis();
+#endif
         ASSERT_WITH_SECURITY_IMPLICATION(!needsLayout());
     }
 
@@ -245,6 +250,14 @@ public:
     }
 
 #endif
+
+    bool skipInvalidationWhenLaidOutChildren() const;
+
+    // FIXME: This could be used when changing the size of a renderer without children to skip some invalidations.
+    bool rendererHasNoBoxEffect() const
+    {
+        return !style()->hasVisualOverflowingEffect() && !style()->hasBorder() && !style()->hasBackground();
+    }
 
     // Obtains the nearest enclosing block (including this block) that contributes a first-line style to our inline
     // children.
@@ -285,13 +298,12 @@ protected:
 
     //////////////////////////////////////////
 private:
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     bool isSetNeedsLayoutForbidden() const { return m_setNeedsLayoutForbidden; }
     void setNeedsLayoutIsForbidden(bool flag) { m_setNeedsLayoutForbidden = flag; }
 #endif
 
     void addAbsoluteRectForLayer(LayoutRect& result);
-    void setLayerNeedsFullPaintInvalidationForPositionedMovementLayout();
     bool requiresAnonymousTableWrappers(const RenderObject*) const;
 
     // Gets pseudoStyle from Shadow host(in case of input elements)
@@ -497,9 +509,7 @@ public:
     bool isFloating() const { return m_bitfields.floating(); }
 
     bool isOutOfFlowPositioned() const { return m_bitfields.isOutOfFlowPositioned(); } // absolute or fixed positioning
-    bool isInFlowPositioned() const { return m_bitfields.isRelPositioned() || m_bitfields.isStickyPositioned(); } // relative or sticky positioning
     bool isRelPositioned() const { return m_bitfields.isRelPositioned(); } // relative positioning
-    bool isStickyPositioned() const { return m_bitfields.isStickyPositioned(); }
     bool isPositioned() const { return m_bitfields.isPositioned(); }
 
     bool isText() const  { return m_bitfields.isText(); }
@@ -511,14 +521,17 @@ public:
 
     bool hasLayer() const { return m_bitfields.hasLayer(); }
 
-    enum BoxDecorationState {
-        NoBoxDecorations,
-        HasBoxDecorationsAndBackgroundObscurationStatusInvalid,
-        HasBoxDecorationsAndBackgroundIsKnownToBeObscured,
-        HasBoxDecorationsAndBackgroundMayBeVisible,
+    // "Box decoration background" includes all box decorations and backgrounds
+    // that are painted as the background of the object. It includes borders,
+    // box-shadows, background-color and background-image, etc.
+    enum BoxDecorationBackgroundState {
+        NoBoxDecorationBackground,
+        HasBoxDecorationBackgroundObscurationStatusInvalid,
+        HasBoxDecorationBackgroundKnownToBeObscured,
+        HasBoxDecorationBackgroundMayBeVisible,
     };
-    bool hasBoxDecorations() const { return m_bitfields.boxDecorationState() != NoBoxDecorations; }
-    bool backgroundIsKnownToBeObscured();
+    bool hasBoxDecorationBackground() const { return m_bitfields.boxDecorationBackgroundState() != NoBoxDecorationBackground; }
+    bool boxDecorationBackgroundIsKnownToBeObscured();
     bool canRenderBorderImage() const;
     bool mustInvalidateBackgroundOrBorderPaintOnWidthChange() const;
     bool mustInvalidateBackgroundOrBorderPaintOnHeightChange() const;
@@ -526,6 +539,8 @@ public:
     bool mustInvalidateFillLayersPaintOnHeightChange(const FillLayer&) const;
     bool hasBackground() const { return style()->hasBackground(); }
     bool hasEntirelyFixedBackground() const;
+
+    bool needsLayoutBecauseOfChildren() const { return needsLayout() && !selfNeedsLayout() && !needsPositionedMovementLayout() && !needsSimplifiedNormalFlowLayout(); }
 
     bool needsLayout() const
     {
@@ -604,7 +619,7 @@ public:
     LocalFrame* frame() const { return document().frame(); }
 
     bool hasOutlineAnnotation() const;
-    bool hasOutline() const { return style()->hasOutline() || hasOutlineAnnotation(); }
+    bool hasOutline() const { return outlineStyle()->hasOutline() || hasOutlineAnnotation(); }
 
     // Returns the object containing this one. Can be different from parent for positioned elements.
     // If paintInvalidationContainer and paintInvalidationContainerSkipped are not null, on return *paintInvalidationContainerSkipped
@@ -646,7 +661,7 @@ public:
     void setFloating(bool isFloating) { m_bitfields.setFloating(isFloating); }
     void setInline(bool isInline) { m_bitfields.setIsInline(isInline); }
 
-    void setHasBoxDecorations(bool);
+    void setHasBoxDecorationBackground(bool);
     void invalidateBackgroundObscurationStatus();
     virtual bool computeBackgroundIsKnownToBeObscured() { return false; }
 
@@ -661,7 +676,7 @@ public:
 
     void scheduleRelayout();
 
-    void updateFillImages(const FillLayer*, const FillLayer*);
+    void updateFillImages(const FillLayer* oldLayers, const FillLayer& newLayers);
     void updateImage(StyleImage*, StyleImage*);
     void updateShapeImage(const ShapeValue*, const ShapeValue*);
 
@@ -712,7 +727,6 @@ public:
 
     // returns the containing block level element for this element.
     RenderBlock* containingBlock() const;
-    RenderObject* clippingContainer() const;
 
     bool canContainFixedPositionObjects() const
     {
@@ -734,7 +748,7 @@ public:
 
     // Convert a local quad into the coordinate system of container, taking transforms into account.
     FloatQuad localToContainerQuad(const FloatQuad&, const RenderLayerModelObject* paintInvalidatinoContainer, MapCoordinatesFlags = 0, bool* wasFixed = 0) const;
-    FloatPoint localToContainerPoint(const FloatPoint&, const RenderLayerModelObject* paintInvalidationContainer, MapCoordinatesFlags = 0, bool* wasFixed = 0) const;
+    FloatPoint localToContainerPoint(const FloatPoint&, const RenderLayerModelObject* paintInvalidationContainer, MapCoordinatesFlags = 0, bool* wasFixed = 0, const PaintInvalidationState* = 0) const;
 
     // Return the offset from the container() renderer (excluding transforms). In multi-column layout,
     // different offsets apply at different points, so return the offset that applies to the given point.
@@ -745,7 +759,7 @@ public:
     virtual void absoluteRects(Vector<IntRect>&, const LayoutPoint&) const { }
 
     // Computes the position of the given render object in the space of |repaintContainer|.
-    LayoutPoint positionFromPaintInvalidationContainer(const RenderLayerModelObject* paintInvalidationContainer) const;
+    LayoutPoint positionFromPaintInvalidationContainer(const RenderLayerModelObject* paintInvalidationContainer, const PaintInvalidationState* = 0) const;
 
     IntRect absoluteBoundingBoxRect() const;
     // FIXME: This function should go away eventually
@@ -765,8 +779,10 @@ public:
     virtual LayoutUnit maxPreferredLogicalWidth() const { return 0; }
 
     RenderStyle* style() const { return m_style.get(); }
-    RenderStyle* firstLineStyle() const { return document().styleEngine()->usesFirstLineRules() ? cachedFirstLineStyle() : style(); }
-    RenderStyle* style(bool firstLine) const { return firstLine ? firstLineStyle() : style(); }
+
+    /* The two following methods are inlined in RenderObjectInlines.h */
+    RenderStyle* firstLineStyle() const;
+    RenderStyle* style(bool firstLine) const;
 
     inline Color resolveColor(const RenderStyle* styleToUse, int colorProperty) const
     {
@@ -783,8 +799,7 @@ public:
     PassRefPtr<RenderStyle> uncachedFirstLineStyle(RenderStyle*) const;
 
     // Anonymous blocks that are part of of a continuation chain will return their inline continuation's outline style instead.
-    // This is typically only relevant when invalidating paints.
-    virtual RenderStyle* outlineStyleForPaintInvalidation() const { return style(); }
+    virtual RenderStyle* outlineStyle() const { return style(); }
 
     virtual CursorDirective getCursor(const LayoutPoint&, Cursor&) const;
 
@@ -800,7 +815,6 @@ public:
     // if painting is root-relative. This is the container that should be passed to the 'forPaintInvalidation'
     // methods.
     const RenderLayerModelObject* containerForPaintInvalidation() const;
-    const RenderLayerModelObject* enclosingCompositedContainer() const;
     const RenderLayerModelObject* adjustCompositedContainerForSpecialAncestors(const RenderLayerModelObject* paintInvalidationContainer) const;
     bool isPaintInvalidationContainer() const;
 
@@ -810,17 +824,17 @@ public:
     }
 
     // Returns the paint invalidation rect for this RenderObject in the coordinate space of the paint backing (typically a GraphicsLayer) for |paintInvalidationContainer|.
-    LayoutRect computePaintInvalidationRect(const RenderLayerModelObject* paintInvalidationContainer) const;
+    LayoutRect computePaintInvalidationRect(const RenderLayerModelObject* paintInvalidationContainer, const PaintInvalidationState* = 0) const;
 
     // Returns the rect bounds needed to invalidate the paint of this object, in the coordinate space of the rendering backing of |paintInvalidationContainer|
-    LayoutRect boundsRectForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer) const;
+    LayoutRect boundsRectForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer, const PaintInvalidationState* = 0) const;
 
     // Actually do the paint invalidate of rect r for this object which has been computed in the coordinate space
     // of the GraphicsLayer backing of |paintInvalidationContainer|. Note that this coordinaten space is not the same
     // as the local coordinate space of |paintInvalidationContainer| in the presence of layer squashing.
     // If |paintInvalidationContainer| is 0, invalidate paints via the view.
     // FIXME: |paintInvalidationContainer| should never be 0. See crbug.com/363699.
-    void invalidatePaintUsingContainer(const RenderLayerModelObject* paintInvalidationContainer, const IntRect&, InvalidationReason) const;
+    void invalidatePaintUsingContainer(const RenderLayerModelObject* paintInvalidationContainer, const LayoutRect&, InvalidationReason) const;
 
     // Invalidate the paint of the entire object. Called when, e.g., the color of a border changes, or when a border
     // style changes.
@@ -829,19 +843,16 @@ public:
     // Invalidate the paint of a specific subrectangle within a given object. The rect |r| is in the object's coordinate space.
     void invalidatePaintRectangle(const LayoutRect&) const;
 
-    // Invalidate the paint only if our old bounds and new bounds are different. The caller may pass in newBounds if they are known.
-    bool invalidatePaintAfterLayoutIfNeeded(const RenderLayerModelObject* paintInvalidationContainer, bool wasSelfLayout,
-        const LayoutRect& oldBounds, const LayoutPoint& oldPositionFromPaintInvalidationContainer,
-        const LayoutRect* newBoundsPtr = 0, const LayoutPoint* newPositionFromPaintInvalidationContainer = 0);
+    bool invalidatePaintIfNeeded(const RenderLayerModelObject& paintInvalidationContainer,
+        const LayoutRect& oldBounds, const LayoutPoint& oldPositionFromPaintInvalidationContainer, const PaintInvalidationState&);
 
     // Walk the tree after layout issuing paint invalidations for renderers that have changed or moved, updating bounds that have changed, and clearing paint invalidation state.
-    virtual void invalidateTreeAfterLayout(const RenderLayerModelObject&);
+    virtual void invalidateTreeIfNeeded(const PaintInvalidationState&);
 
     virtual void invalidatePaintForOverflow();
     void invalidatePaintForOverflowIfNeeded();
 
     bool checkForPaintInvalidation() const;
-    bool checkForPaintInvalidationDuringLayout() const;
 
     // Returns the rect that should have paint invalidated whenever this object changes. The rect is in the view's
     // coordinate space. This method deals with outlines and overflow.
@@ -850,13 +861,13 @@ public:
         return clippedOverflowRectForPaintInvalidation(0);
     }
     IntRect pixelSnappedAbsoluteClippedOverflowRect() const;
-    virtual LayoutRect clippedOverflowRectForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer) const;
-    virtual LayoutRect rectWithOutlineForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer, LayoutUnit outlineWidth) const;
+    virtual LayoutRect clippedOverflowRectForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer, const PaintInvalidationState* = 0) const;
+    virtual LayoutRect rectWithOutlineForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer, LayoutUnit outlineWidth, const PaintInvalidationState* = 0) const;
 
     // Given a rect in the object's coordinate space, compute a rect suitable for invalidating paints of
     // that rect in the coordinate space of paintInvalidationContainer.
-    virtual void mapRectToPaintInvalidationBacking(const RenderLayerModelObject* paintInvalidationContainer, LayoutRect&, bool fixed = false) const;
-    virtual void computeFloatRectForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer, FloatRect& paintInvalidationRect, bool fixed = false) const;
+    virtual void mapRectToPaintInvalidationBacking(const RenderLayerModelObject* paintInvalidationContainer, LayoutRect&, bool fixed = false, const PaintInvalidationState* = 0) const;
+    virtual void computeFloatRectForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer, FloatRect& paintInvalidationRect, bool fixed = false, const PaintInvalidationState* = 0) const;
 
     // Return the offset to the column in which the specified point (in flow-thread coordinates)
     // lives. This is used to convert a flow-thread point to a visual point.
@@ -866,7 +877,7 @@ public:
 
     bool isFloatingOrOutOfFlowPositioned() const { return (isFloating() || isOutOfFlowPositioned()); }
 
-    bool isTransparent() const { return style()->opacity() < 1.0f; }
+    bool isTransparent() const { return style()->hasOpacity(); }
     float opacity() const { return style()->opacity(); }
 
     bool hasReflection() const { return m_bitfields.hasReflection(); }
@@ -956,7 +967,7 @@ public:
 
     // Map points and quads through elements, potentially via 3d transforms. You should never need to call these directly; use
     // localToAbsolute/absoluteToLocal methods instead.
-    virtual void mapLocalToContainer(const RenderLayerModelObject* paintInvalidationContainer, TransformState&, MapCoordinatesFlags = ApplyContainerFlip, bool* wasFixed = 0) const;
+    virtual void mapLocalToContainer(const RenderLayerModelObject* paintInvalidationContainer, TransformState&, MapCoordinatesFlags = ApplyContainerFlip, bool* wasFixed = 0, const PaintInvalidationState* = 0) const;
     virtual void mapAbsoluteToLocalPoint(MapCoordinatesFlags, TransformState&) const;
 
     // Pushes state onto RenderGeometryMap about how to map coordinates from this renderer to its container, or ancestorToStopAt (whichever is encountered first).
@@ -986,8 +997,8 @@ public:
     const LayoutPoint& previousPositionFromPaintInvalidationContainer() const { return m_previousPositionFromPaintInvalidationContainer; }
     void setPreviousPositionFromPaintInvalidationContainer(const LayoutPoint& location) { m_previousPositionFromPaintInvalidationContainer = location; }
 
-    bool shouldDoFullPaintInvalidationAfterLayout() const { return m_bitfields.shouldDoFullPaintInvalidationAfterLayout(); }
-    void setShouldDoFullPaintInvalidationAfterLayout(bool b) { m_bitfields.setShouldDoFullPaintInvalidationAfterLayout(b); }
+    bool shouldDoFullPaintInvalidation() const { return m_bitfields.shouldDoFullPaintInvalidation(); }
+    void setShouldDoFullPaintInvalidation(bool b) { m_bitfields.setShouldDoFullPaintInvalidation(b); }
     bool shouldInvalidateOverflowForPaint() const { return m_bitfields.shouldInvalidateOverflowForPaint(); }
 
     bool shouldDoFullPaintInvalidationIfSelfPaintingLayer() const { return m_bitfields.shouldDoFullPaintInvalidationIfSelfPaintingLayer(); }
@@ -1013,7 +1024,10 @@ public:
             parent()->setMayNeedPaintInvalidation(b);
     }
 
-    bool shouldCheckForPaintInvalidationAfterLayout()
+    bool neededLayoutBecauseOfChildren() const { return m_bitfields.neededLayoutBecauseOfChildren(); }
+    void setNeededLayoutBecauseOfChildren(bool b) { m_bitfields.setNeededLayoutBecauseOfChildren(b); }
+
+    bool shouldCheckForPaintInvalidation()
     {
         return layoutDidGetCalled() || mayNeedPaintInvalidation();
     }
@@ -1075,7 +1089,15 @@ protected:
     // of this renderer within the current layer that should be used for each result.
     virtual void computeSelfHitTestRects(Vector<LayoutRect>&, const LayoutPoint& layerOffset) const { };
 
+    virtual InvalidationReason getPaintInvalidationReason(const RenderLayerModelObject& paintInvalidationContainer,
+        const LayoutRect& oldBounds, const LayoutPoint& oldPositionFromPaintInvalidationContainer,
+        const LayoutRect& newBounds, const LayoutPoint& newPositionFromPaintInvalidationContainer);
+    void incrementallyInvalidatePaint(const RenderLayerModelObject& paintInvalidationContainer, const LayoutRect& oldBounds, const LayoutRect& newBounds);
+    void fullyInvalidatePaint(const RenderLayerModelObject& paintInvalidationContainer, InvalidationReason, const LayoutRect& oldBounds, const LayoutRect& newBounds);
+
 private:
+    const RenderLayerModelObject* enclosingCompositedContainer() const;
+
     RenderBlock* containerForFixedPosition(const RenderLayerModelObject* paintInvalidationContainer = 0, bool* paintInvalidationContainerSkipped = 0) const;
 
     RenderFlowThread* locateFlowThreadContainingBlock() const;
@@ -1085,13 +1107,13 @@ private:
     bool hasImmediateNonWhitespaceTextChildOrPropertiesDependentOnColor() const;
 
     RenderStyle* cachedFirstLineStyle() const;
-    StyleDifference adjustStyleDifference(StyleDifference, unsigned contextSensitiveProperties) const;
+    StyleDifference adjustStyleDifference(StyleDifference) const;
 
     Color selectionColor(int colorProperty) const;
 
     void removeShapeImageClient(ShapeValue*);
 
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     void checkBlockPositionedObjectsNeedLayout();
 #endif
     const char* invalidationReasonToString(InvalidationReason) const;
@@ -1106,7 +1128,7 @@ private:
     RenderObject* m_previous;
     RenderObject* m_next;
 
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     unsigned m_hasAXObject             : 1;
     unsigned m_setNeedsLayoutForbidden : 1;
 #endif
@@ -1123,23 +1145,19 @@ private:
             IsStaticallyPositioned = 0,
             IsRelativelyPositioned = 1,
             IsOutOfFlowPositioned = 2,
-            IsStickyPositioned = 3
         };
 
     public:
         RenderObjectBitfields(Node* node)
             : m_selfNeedsLayout(false)
-            // FIXME: shouldDoFullPaintInvalidationAfterLayout is needed because we reset
-            // the layout bits beforeissing paint invalidations when doing invalidateTreeAfterLayout.
-            // Holding the layout bits until after paint invalidation would remove the need
-            // for this flag.
-            , m_shouldDoFullPaintInvalidationAfterLayout(false)
+            , m_shouldDoFullPaintInvalidation(false)
             , m_shouldInvalidateOverflowForPaint(false)
             , m_shouldDoFullPaintInvalidationIfSelfPaintingLayer(false)
             // FIXME: We should remove mayNeedPaintInvalidation once we are able to
             // use the other layout flags to detect the same cases. crbug.com/370118
             , m_mayNeedPaintInvalidation(false)
             , m_onlyNeededPositionedMovementLayout(false)
+            , m_neededLayoutBecauseOfChildren(false)
             , m_needsPositionedMovementLayout(false)
             , m_normalChildNeedsLayout(false)
             , m_posChildNeedsLayout(false)
@@ -1168,18 +1186,19 @@ private:
             , m_positionedState(IsStaticallyPositioned)
             , m_selectionState(SelectionNone)
             , m_flowThreadState(NotInsideFlowThread)
-            , m_boxDecorationState(NoBoxDecorations)
+            , m_boxDecorationBackgroundState(NoBoxDecorationBackground)
             , m_hasPendingResourceUpdate(false)
         {
         }
 
         // 32 bits have been used in the first word, and 6 in the second.
         ADD_BOOLEAN_BITFIELD(selfNeedsLayout, SelfNeedsLayout);
-        ADD_BOOLEAN_BITFIELD(shouldDoFullPaintInvalidationAfterLayout, ShouldDoFullPaintInvalidationAfterLayout);
+        ADD_BOOLEAN_BITFIELD(shouldDoFullPaintInvalidation, ShouldDoFullPaintInvalidation);
         ADD_BOOLEAN_BITFIELD(shouldInvalidateOverflowForPaint, ShouldInvalidateOverflowForPaint);
         ADD_BOOLEAN_BITFIELD(shouldDoFullPaintInvalidationIfSelfPaintingLayer, ShouldDoFullPaintInvalidationIfSelfPaintingLayer);
         ADD_BOOLEAN_BITFIELD(mayNeedPaintInvalidation, MayNeedPaintInvalidation);
         ADD_BOOLEAN_BITFIELD(onlyNeededPositionedMovementLayout, OnlyNeededPositionedMovementLayout);
+        ADD_BOOLEAN_BITFIELD(neededLayoutBecauseOfChildren, NeededLayoutBecauseOfChildren);
         ADD_BOOLEAN_BITFIELD(needsPositionedMovementLayout, NeedsPositionedMovementLayout);
         ADD_BOOLEAN_BITFIELD(normalChildNeedsLayout, NormalChildNeedsLayout);
         ADD_BOOLEAN_BITFIELD(posChildNeedsLayout, PosChildNeedsLayout);
@@ -1216,7 +1235,7 @@ private:
         unsigned m_positionedState : 2; // PositionedState
         unsigned m_selectionState : 3; // SelectionState
         unsigned m_flowThreadState : 2; // FlowThreadState
-        unsigned m_boxDecorationState : 2; // BoxDecorationState
+        unsigned m_boxDecorationBackgroundState : 2; // BoxDecorationBackgroundState
 
     public:
 
@@ -1224,7 +1243,6 @@ private:
 
         bool isOutOfFlowPositioned() const { return m_positionedState == IsOutOfFlowPositioned; }
         bool isRelPositioned() const { return m_positionedState == IsRelativelyPositioned; }
-        bool isStickyPositioned() const { return m_positionedState == IsStickyPositioned; }
         bool isPositioned() const { return m_positionedState != IsStaticallyPositioned; }
 
         void setPositionedState(int positionState)
@@ -1240,8 +1258,8 @@ private:
         ALWAYS_INLINE FlowThreadState flowThreadState() const { return static_cast<FlowThreadState>(m_flowThreadState); }
         ALWAYS_INLINE void setFlowThreadState(FlowThreadState flowThreadState) { m_flowThreadState = flowThreadState; }
 
-        ALWAYS_INLINE BoxDecorationState boxDecorationState() const { return static_cast<BoxDecorationState>(m_boxDecorationState); }
-        ALWAYS_INLINE void setBoxDecorationState(BoxDecorationState boxDecorationState) { m_boxDecorationState = boxDecorationState; }
+        ALWAYS_INLINE BoxDecorationBackgroundState boxDecorationBackgroundState() const { return static_cast<BoxDecorationBackgroundState>(m_boxDecorationBackgroundState); }
+        ALWAYS_INLINE void setBoxDecorationBackgroundState(BoxDecorationBackgroundState s) { m_boxDecorationBackgroundState = s; }
     };
 
 #undef ADD_BOOLEAN_BITFIELD
@@ -1316,7 +1334,7 @@ inline bool RenderObject::isBeforeOrAfterContent() const
     return isBeforeContent() || isAfterContent();
 }
 
-// If repaintAfterLayout is enabled, setNeedsLayout() won't cause full paint invalidations as
+// setNeedsLayout() won't cause full paint invalidations as
 // setNeedsLayoutAndFullPaintInvalidation() does. Otherwise the two methods are identical.
 inline void RenderObject::setNeedsLayout(MarkingBehavior markParents, SubtreeLayoutScope* layouter)
 {
@@ -1332,13 +1350,13 @@ inline void RenderObject::setNeedsLayout(MarkingBehavior markParents, SubtreeLay
 inline void RenderObject::setNeedsLayoutAndFullPaintInvalidation(MarkingBehavior markParents, SubtreeLayoutScope* layouter)
 {
     setNeedsLayout(markParents, layouter);
-    setShouldDoFullPaintInvalidationAfterLayout(true);
+    setShouldDoFullPaintInvalidation(true);
 }
 
 inline void RenderObject::clearNeedsLayout()
 {
-    if (needsPositionedMovementLayoutOnly())
-        setOnlyNeededPositionedMovementLayout(true);
+    setOnlyNeededPositionedMovementLayout(needsPositionedMovementLayoutOnly());
+    setNeededLayoutBecauseOfChildren(needsLayoutBecauseOfChildren());
     setLayoutDidGetCalled(true);
     setSelfNeedsLayout(false);
     setEverHadLayout(true);
@@ -1347,7 +1365,7 @@ inline void RenderObject::clearNeedsLayout()
     setNormalChildNeedsLayout(false);
     setNeedsPositionedMovementLayout(false);
     setAncestorLineBoxDirty(false);
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     checkBlockPositionedObjectsNeedLayout();
 #endif
 }
@@ -1367,11 +1385,8 @@ inline void RenderObject::setNeedsPositionedMovementLayout()
     bool alreadyNeededLayout = needsPositionedMovementLayout();
     setNeedsPositionedMovementLayout(true);
     ASSERT(!isSetNeedsLayoutForbidden());
-    if (!alreadyNeededLayout) {
+    if (!alreadyNeededLayout)
         markContainingBlocksForLayout();
-        if (hasLayer())
-            setLayerNeedsFullPaintInvalidationForPositionedMovementLayout();
-    }
 }
 
 inline bool RenderObject::preservesNewline() const
@@ -1402,31 +1417,31 @@ inline void RenderObject::setSelectionStateIfNeeded(SelectionState state)
     setSelectionState(state);
 }
 
-inline void RenderObject::setHasBoxDecorations(bool b)
+inline void RenderObject::setHasBoxDecorationBackground(bool b)
 {
     if (!b) {
-        m_bitfields.setBoxDecorationState(NoBoxDecorations);
+        m_bitfields.setBoxDecorationBackgroundState(NoBoxDecorationBackground);
         return;
     }
-    if (hasBoxDecorations())
+    if (hasBoxDecorationBackground())
         return;
-    m_bitfields.setBoxDecorationState(HasBoxDecorationsAndBackgroundObscurationStatusInvalid);
+    m_bitfields.setBoxDecorationBackgroundState(HasBoxDecorationBackgroundObscurationStatusInvalid);
 }
 
 inline void RenderObject::invalidateBackgroundObscurationStatus()
 {
-    if (!hasBoxDecorations())
+    if (!hasBoxDecorationBackground())
         return;
-    m_bitfields.setBoxDecorationState(HasBoxDecorationsAndBackgroundObscurationStatusInvalid);
+    m_bitfields.setBoxDecorationBackgroundState(HasBoxDecorationBackgroundObscurationStatusInvalid);
 }
 
-inline bool RenderObject::backgroundIsKnownToBeObscured()
+inline bool RenderObject::boxDecorationBackgroundIsKnownToBeObscured()
 {
-    if (m_bitfields.boxDecorationState() == HasBoxDecorationsAndBackgroundObscurationStatusInvalid) {
-        BoxDecorationState boxDecorationState = computeBackgroundIsKnownToBeObscured() ? HasBoxDecorationsAndBackgroundIsKnownToBeObscured : HasBoxDecorationsAndBackgroundMayBeVisible;
-        m_bitfields.setBoxDecorationState(boxDecorationState);
+    if (m_bitfields.boxDecorationBackgroundState() == HasBoxDecorationBackgroundObscurationStatusInvalid) {
+        BoxDecorationBackgroundState state = computeBackgroundIsKnownToBeObscured() ? HasBoxDecorationBackgroundKnownToBeObscured : HasBoxDecorationBackgroundMayBeVisible;
+        m_bitfields.setBoxDecorationBackgroundState(state);
     }
-    return m_bitfields.boxDecorationState() == HasBoxDecorationsAndBackgroundIsKnownToBeObscured;
+    return m_bitfields.boxDecorationBackgroundState() == HasBoxDecorationBackgroundKnownToBeObscured;
 }
 
 inline void makeMatrixRenderable(TransformationMatrix& matrix, bool has3DRendering)

@@ -63,8 +63,6 @@ namespace WebCore {
 
         virtual void cancel() OVERRIDE;
 
-        bool done() const { return m_workerClientWrapper->done(); }
-
     private:
         // Creates a loader on the main thread and bridges communication between
         // the main thread and the worker context's thread where WorkerThreadableLoader runs.
@@ -83,7 +81,7 @@ namespace WebCore {
         //    The ThreadableLoaderClientWrapper has the underlying client cleared, so no more calls
         //    go through it.  All tasks posted from the worker object's thread to the worker context's
         //    thread do "ThreadableLoaderClientWrapper::ref" (automatically inside of the cross thread copy
-        //    done in createCallbackTask), so the ThreadableLoaderClientWrapper instance is there until all
+        //    done in createCrossThreadTask), so the ThreadableLoaderClientWrapper instance is there until all
         //    tasks are executed.
         class MainThreadBridge FINAL : public ThreadableLoaderClient {
         public:

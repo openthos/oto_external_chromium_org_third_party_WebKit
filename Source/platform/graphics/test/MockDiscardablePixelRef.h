@@ -60,8 +60,6 @@ public:
         }
     };
 
-    SK_DECLARE_UNFLATTENABLE_OBJECT()
-
 protected:
     virtual bool onNewLockPixels(LockRec* rec)
     {

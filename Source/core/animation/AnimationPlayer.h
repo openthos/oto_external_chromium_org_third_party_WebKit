@@ -103,7 +103,6 @@ public:
 
     const AnimationNode* source() const { return m_content.get(); }
     AnimationNode* source() { return m_content.get(); }
-    AnimationNode* source(bool& isNull) { isNull = !m_content; return m_content.get(); }
     void setSource(AnimationNode*);
 
     double timeLag() { return timeLagInternal() * 1000; }
@@ -129,6 +128,10 @@ public:
         friend class AnimationPlayer;
         bool operator<(const SortInfo& other) const;
         double startTime() const { return m_startTime; }
+        bool hasLowerSequenceNumber(const SortInfo& other) const
+        {
+            return m_sequenceNumber < other.m_sequenceNumber;
+        }
     private:
         SortInfo(unsigned sequenceNumber, double startTime)
             : m_sequenceNumber(sequenceNumber)

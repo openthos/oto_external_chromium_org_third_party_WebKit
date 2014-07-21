@@ -26,7 +26,7 @@
 #include "config.h"
 #include "core/editing/VisibleSelection.h"
 
-#include "bindings/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionState.h"
 #include "core/dom/Document.h"
 #include "core/dom/Element.h"
 #include "core/dom/Range.h"
@@ -716,7 +716,7 @@ bool VisibleSelection::isContentEditable() const
     return isEditablePosition(start());
 }
 
-bool VisibleSelection::rendererIsEditable() const
+bool VisibleSelection::hasEditableStyle() const
 {
     return isEditablePosition(start(), ContentIsEditable, DoNotUpdateStyle);
 }

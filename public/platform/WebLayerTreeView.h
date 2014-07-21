@@ -42,6 +42,7 @@ class WebLayer;
 struct WebPoint;
 struct WebRect;
 struct WebRenderingStats;
+struct WebSelectionBound;
 
 class WebLayerTreeView {
 public:
@@ -125,6 +126,13 @@ public:
         const WebLayer* outerViewportScrollLayer) { }
     virtual void clearViewportLayers() { }
 
+    // Used to update the active selection bounds.
+    // If the (empty) selection is an insertion point, |start| and |end| will be identical with type |Caret|.
+    // If the (non-empty) selection has mixed RTL/LTR text, |start| and |end| may share the same type,
+    // |SelectionLeft| or |SelectionRight|.
+    virtual void registerSelection(const WebSelectionBound& start, const WebSelectionBound& end) { }
+    virtual void clearSelection() { }
+
     // Debugging / dangerous ---------------------------------------------
 
     // Toggles the FPS counter in the HUD layer
@@ -141,9 +149,6 @@ public:
 
     // Toggles scroll bottleneck rects on the HUD layer
     virtual void setShowScrollBottleneckRects(bool) { }
-
-    // FIXME: make pure virtual once the cc-side patch is in
-    virtual bool usesGpuRasterization() { return false; };
 };
 
 } // namespace blink

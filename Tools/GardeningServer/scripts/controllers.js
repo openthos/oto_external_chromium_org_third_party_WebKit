@@ -27,84 +27,6 @@ var controllers = controllers || {};
 
 (function(){
 
-var kCheckoutUnavailableMessage = 'Failed! Garden-o-matic needs a local server to modify your working copy. Please run "webkit-patch garden-o-matic" start the local server.';
-
-// FIXME: Where should this function go?
-function rebaselineWithStatusUpdates(failureInfoList, resultsByTest)
-{
-    var statusView = new ui.StatusArea('Rebaseline');
-    var id = statusView.newId();
-
-    var failuresToRebaseline = [];
-    var testNamesLogged = [];
-    failureInfoList.forEach(function(failureInfo) {
-        if (isAnyReftest(failureInfo.testName, resultsByTest)) {
-            if (testNamesLogged.indexOf(failureInfo.testName) == -1) {
-                statusView.addMessage(id, failureInfo.testName + ' is a ref test, skipping');
-                testNamesLogged.push(failureInfo.testName);
-            }
-        } else {
-            failuresToRebaseline.push(failureInfo);
-            if (testNamesLogged.indexOf(failureInfo.testName) == -1) {
-                statusView.addMessage(id, 'Rebaselining ' + failureInfo.testName + '...');
-                testNamesLogged.push(failureInfo.testName);
-            }
-        }
-    });
-
-    if (failuresToRebaseline.length) {
-        // FIXME: checkout.rebaseline() accepts only 3 arguments, we pass 5.
-        checkout.rebaseline(failuresToRebaseline, function(response) {
-            try {
-                var json = JSON.parse(response);
-                if (!json.result_code) {
-                    statusView.addFinalMessage(id, 'Rebaseline done! Please commit locally and land with "git cl dcommit".');
-                } else {
-                    statusView.addMessage(id, 'Rebaseline failed (code=' + json.result_code + ')!');
-                    statusView.addFinalMessage(id, json.output);
-                }
-            } catch (e) {
-                statusView.addFinalMessage(id, 'Invalid response received: "' + response + '"');
-            }
-        }, function(failureInfo) {
-            statusView.addMessage(id, failureInfo.testName + ' on ' + ui.displayNameForBuilder(failureInfo.builderName));
-        }, function() {
-            statusView.addFinalMessage(id, kCheckoutUnavailableMessage);
-        }, function(failureInfo) {
-            statusView.addMessage(id, 'Skipping rebaseline for ' + failureInfo.testName + ' on ' + ui.displayNameForBuilder(failureInfo.builderName) + ' because we only rebaseline from release bots.');
-        });
-    } else {
-        statusView.addFinalMessage(id, 'No non-reftests left to rebaseline!')
-    }
-}
-
-// FIXME: This is duplicated from ui/results.js :(.
-function isAnyReftest(testName, resultsByTest)
-{
-    return Object.keys(resultsByTest[testName]).map(function(builder) {
-        return resultsByTest[testName][builder];
-    }).some(function(resultNode) {
-        return resultNode.reftest_type && resultNode.reftest_type.length;
-    });
-}
-
-// FIXME: Where should this function go?
-function updateExpectationsWithStatusUpdates(failureInfoList)
-{
-    var statusView = new ui.StatusArea('Expectations Update');
-    var id = statusView.newId();
-
-    var testNames = base.uniquifyArray(failureInfoList.map(function(failureInfo) { return failureInfo.testName; }));
-    var testName = testNames.length == 1 ? testNames[0] : testNames.length + ' tests';
-    statusView.addMessage(id, 'Updating expectations of ' + testName + '...');
-
-    checkout.updateExpectations(failureInfoList, function() {
-        statusView.addFinalMessage(id, 'Expectations update done! Please commit them locally and land with "git cl dcommit".');
-    }, function() {
-        statusView.addFinalMessage(id, kCheckoutUnavailableMessage);
-    });
-}
-
 controllers.ResultsDetails = base.extends(Object, {
     init: function(view, resultsByTest)
     {
@@ -116,8 +38,6 @@ controllers.ResultsDetails = base.extends(Object, {
 
         $(this._view).bind('next', this.onNext.bind(this));
         $(this._view).bind('previous', this.onPrevious.bind(this));
-        $(this._view).bind('rebaseline', this.onRebaseline.bind(this));
-        $(this._view).bind('expectfailure', this.onUpdateExpectations.bind(this));
     },
     onNext: function()
     {
@@ -134,51 +54,6 @@ controllers.ResultsDetails = base.extends(Object, {
             return results.failureInfoForTestAndBuilder(this._resultsByTest, testName, builderName);
         }.bind(this));
     },
-    onRebaseline: function()
-    {
-        rebaselineWithStatusUpdates(this._failureInfoList(), this._resultsByTest);
-        this._view.nextTest();
-    },
-    onUpdateExpectations: function()
-    {
-        updateExpectationsWithStatusUpdates(this._failureInfoList());
-    }
-});
-
-controllers.ExpectedFailures = base.extends(Object, {
-    init: function(model, view, delegate)
-    {
-        this._model = model;
-        this._view = view;
-        this._delegate = delegate;
-    },
-    update: function()
-    {
-        var expectedFailures = results.expectedFailuresByTest(this._model.resultsByBuilder);
-        var failingTestsList = Object.keys(expectedFailures);
-
-        $(this._view).empty();
-        base.forEachDirectory(failingTestsList, function(label, testsFailingInDirectory) {
-            var listItem = new ui.failures.ListItem(label, testsFailingInDirectory);
-            this._view.appendChild(listItem);
-            $(listItem).bind('examine', function() {
-                this.onExamine(testsFailingInDirectory);
-            }.bind(this));
-        }.bind(this));
-    },
-    onExamine: function(failingTestsList)
-    {
-        var resultsView = new ui.results.View({
-            fetchResultsURLs: results.fetchResultsURLs
-        });
-        var failuresByTest = base.filterDictionary(
-            results.expectedFailuresByTest(this._model.resultsByBuilder),
-            function(key) {
-                return failingTestsList.indexOf(key) != -1;
-            });
-        var controller = new controllers.ResultsDetails(resultsView, failuresByTest);
-        this._delegate.showResults(resultsView);
-    }
 });
 
 var FailureStreamController = base.extends(Object, {
@@ -202,12 +77,6 @@ var FailureStreamController = base.extends(Object, {
             this._view.add(failure);
             $(failure).bind('examine', function() {
                 this.onExamine(failure);
-            }.bind(this));
-            $(failure).bind('rebaseline', function() {
-                this.onRebaseline(failure);
-            }.bind(this));
-            $(failure).bind('expectfailure', function() {
-                this.onUpdateExpectations(failure);
             }.bind(this));
         }
         failure.addFailureAnalysis(failureAnalysis);
@@ -242,21 +111,6 @@ var FailureStreamController = base.extends(Object, {
     {
         return base.flattenArray(failures.testNameList().map(model.unexpectedFailureInfoForTestName));
     },
-    onRebaseline: function(failures)
-    {
-        var testNameList = failures.testNameList();
-        var failuresByTest = base.filterDictionary(
-            this._resultsFilter(this._model.resultsByBuilder),
-            function(key) {
-                return testNameList.indexOf(key) != -1;
-            });
-
-        rebaselineWithStatusUpdates(this._toFailureInfoList(failures), failuresByTest);
-    },
-    onUpdateExpectations: function(failures)
-    {
-        updateExpectationsWithStatusUpdates(this._toFailureInfoList(failures));
-    }
 });
 
 controllers.UnexpectedFailures = base.extends(FailureStreamController, {
@@ -278,9 +132,6 @@ controllers.UnexpectedFailures = base.extends(FailureStreamController, {
             $(suspiciousCommit).bind('rollout', function() {
                 this.onRollout(commitData.revision, failure.testNameList());
             }.bind(this));
-            $(failure).bind('blame', function() {
-                this.onBlame(failure, commitData);
-            }.bind(this));
         }, this);
 
         return failure;
@@ -294,22 +145,6 @@ controllers.UnexpectedFailures = base.extends(FailureStreamController, {
     {
         return this._testFailures.length();
     },
-    onBlame: function(failure, commitData)
-    {
-        failure.pinToCommitData(commitData);
-        $('.action', failure).each(function() {
-            // FIXME: This isn't the right way of finding and disabling this action.
-            if (this.textContent == 'Blame')
-                this.disabled = true;
-        });
-    },
-    onRollout: function(revision, testNameList)
-    {
-        checkout.rollout(revision, ui.rolloutReasonForTestNameList(testNameList)).then($.noop, function() {
-            // FIXME: We should have a better error UI.
-            alert(kCheckoutUnavailableMessage);
-        });
-    }
 });
 
 controllers.FailingBuilders = base.extends(Object, {

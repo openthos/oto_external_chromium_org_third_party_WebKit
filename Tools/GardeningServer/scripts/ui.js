@@ -29,7 +29,7 @@ var ui = ui || {};
 
 ui.displayURLForBuilder = function(builderName)
 {
-    return config.waterfallURL + '?' + $.param({
+    return config.waterfallURL + '?' + base.queryParam({
         'builder': builderName
     });
 }
@@ -38,12 +38,7 @@ ui.kUseNewWindowForLinksSetting = 'gardenomatic.use-new-window-for-links';
 
 ui.displayNameForBuilder = function(builderName)
 {
-    return builderName.replace(/Webkit /, '');
-}
-
-ui.urlForTest = function(testName)
-{
-    return 'http://trac.webkit.org/browser/trunk/LayoutTests/' + testName;
+    return builderName.replace(/Webkit /i, '');
 }
 
 ui.urlForCrbug = function(bugID)
@@ -60,13 +55,6 @@ ui.urlForFlakinessDashboard = function(opt_testNameList)
 ui.urlForEmbeddedFlakinessDashboard = function(opt_testNameList)
 {
     return ui.urlForFlakinessDashboard(opt_testNameList) + '&showChrome=false';
-}
-
-ui.rolloutReasonForTestNameList = function(testNameList)
-{
-    return 'Broke:\n' + testNameList.map(function(testName) {
-        return '* ' + testName;
-    }).join('\n');
 }
 
 ui.setTargetForLink = function(anchor)
@@ -87,8 +75,8 @@ ui.setUseNewWindowForLinks = function(enabled)
     else
         delete localStorage[ui.kUseNewWindowForLinksSetting];
 
-    $('a').each(function() {
-        ui.setTargetForLink(this);
+    [].forEach.call(document.querySelectorAll('a'), function(link) {
+        ui.setTargetForLink(link);
     });
 }
 ui.setUseNewWindowForLinks(!!localStorage[ui.kUseNewWindowForLinksSetting]);
@@ -109,22 +97,19 @@ ui.onebar = base.extends('div', {
         this.innerHTML =
             '<ul>' +
                 '<li><a href="#unexpected">Unexpected Failures</a></li>' +
-                '<li><a href="#expected">Expected Failures</a></li>' +
                 '<li><a href="#results">Results</a></li>' +
             '</ul>' +
             '<div id="link-handling"><input type="checkbox" id="new-window-for-links"><label for="new-window-for-links">Open links in new window</label></div>' +
             '<div id="unexpected"></div>' +
-            '<div id="expected"></div>' +
             '<div id="results"></div>';
         this._tabNames = [
             'unexpected',
-            'expected',
             'results',
         ]
 
         this._tabIndexToSavedScrollOffset = {};
         this._tabs = $(this).tabs({
-            disabled: [2],
+            disabled: [this._tabNames.indexOf('results')],
             show: function(event, ui) { this._restoreScrollOffset(ui.index); },
             select: function(event, ui) {
                 this._saveScrollOffset();
@@ -162,8 +147,9 @@ ui.onebar = base.extends('div', {
     },
     _setupLinkSettingHandler: function()
     {
-        $('#new-window-for-links').attr('checked', ui.useNewWindowForLinks);
-        $('#new-window-for-links').change(function(event) {
+        if (ui.useNewWindowForLinks)
+            document.getElementById('new-window-for-links').setAttribute('checked', true);
+        document.getElementById('new-window-for-links').addEventListener('change', function(event) {
             ui.setUseNewWindowForLinks(this.checked);
         });
     },
@@ -189,10 +175,6 @@ ui.onebar = base.extends('div', {
     unexpected: function()
     {
         return this.tabNamed('unexpected');
-    },
-    expected: function()
-    {
-        return this.tabNamed('expected');
     },
     results: function()
     {
@@ -228,99 +210,6 @@ ui.TreeStatus = base.extends('div',  {
         this.addStatus('blink');
         this.addStatus('chromium');
     },
-});
-
-ui.StatusArea = base.extends('div',  {
-    init: function()
-    {
-        // This is a Singleton.
-        if (ui.StatusArea._instance)
-            return ui.StatusArea._instance;
-        ui.StatusArea._instance = this;
-
-        var kMinimumStatusAreaHeightPx = 60;
-        var dragger = document.createElement('div');
-        var initialY;
-        var initialHeight;
-        dragger.className = 'dragger';
-        $(dragger).mousedown(function(e) {
-            initialY = e.pageY;
-            initialHeight = $(this).height();
-            $(document.body).addClass('status-resizing');
-        }.bind(this));
-        $(document.body).mouseup(function(e) {
-            initialY = 0;
-            initialHeight = 0;
-            $(document.body).removeClass('status-resizing');
-        });
-        $(document.body).mousemove(function(e) {
-            if (initialY) {
-                var newHeight = initialHeight + initialY - e.pageY;
-                if (newHeight >= kMinimumStatusAreaHeightPx)
-                    $(this).height(newHeight);
-                e.preventDefault();
-            }
-        }.bind(this));
-        this.appendChild(dragger);
-
-        this.contents = document.createElement('div');
-        this.contents.className = 'contents';
-        this.appendChild(this.contents);
-
-        this.className = 'status';
-        document.body.appendChild(this);
-        this._currentId = 0;
-        this._unfinishedIds = {};
-
-        this.appendChild(new ui.actions.List([new ui.actions.Close()]));
-        $(this).bind('close', this.close.bind(this));
-
-        var processing = document.createElement('progress');
-        processing.className = 'process-text';
-        processing.textContent = 'Processing...';
-        this.appendChild(processing);
-    },
-    close: function()
-    {
-        this.style.visibility = 'hidden';
-        Array.prototype.forEach.call(this.querySelectorAll('.status-content'), function(node) {
-            node.parentNode.removeChild(node);
-        });
-    },
-    addMessage: function(id, message)
-    {
-        this.style.visibility = 'visible';
-        $(this).addClass('processing');
-
-        var element = document.createElement('div');
-        $(element).addClass('message').text(message);
-
-        var content = this.querySelector('#' + id);
-        if (!content) {
-            content = document.createElement('div');
-            content.id = id;
-            content.className = 'status-content';
-            this.contents.appendChild(content);
-        }
-
-        content.appendChild(element);
-        if (element.offsetTop < this.scrollTop || element.offsetTop + element.offsetHeight > this.scrollTop + this.offsetHeight)
-            this.scrollTop = element.offsetTop;
-    },
-    // FIXME: It's unclear whether this code could live here or in a controller.
-    addFinalMessage: function(id, message)
-    {
-        this.addMessage(id, message);
-
-        delete this._unfinishedIds[id];
-        if (!Object.keys(this._unfinishedIds).length)
-            $(this).removeClass('processing');
-    },
-    newId: function() {
-        var id = 'status-content-' + ++this._currentId;
-        this._unfinishedIds[id] = 1;
-        return id;
-    }
 });
 
 ui.revisionDetails = base.extends('span', {
@@ -390,31 +279,29 @@ ui.revisionDetails = base.extends('span', {
         theSpan.appendChild(revisionsNode);
 
         // This adds a pop-up when we hover over the summary if the details aren't being shown.
-        var revisionsPopUp = $('<span id="revisionPopUp">').appendTo(summaryLinkNode);
-        revisionsPopUp.append($(revisionsTableNode).clone());
-        $(summaryLinkNode).mouseover(function(ev) {
+        var revisionsPopUp = document.createElement('span')
+        revisionsPopUp.id = 'revisionPopUp';
+        summaryLinkNode.appendChild(revisionsPopUp);
+        revisionsPopUp.appendChild(revisionsTableNode.cloneNode(true));
+
+        summaryLinkNode.addEventListener('mouseover', function(event) {
             if (!revisionsNode.open) {
-                var tPosX = $(summaryNode).position().left;
-                var tPosY = $(summaryNode).position().top + 16;
-                $(revisionsPopUp).css({'position': 'absolute', 'top': tPosY, 'left': tPosX});
-                $(revisionsPopUp).addClass('active');
+                revisionsPopUp.style.position = 'absolute';
+                revisionsPopUp.style.left = summaryNode.offsetLeft + 'px';
+                revisionsPopUp.style.top = (summaryNode.offsetTop + summaryNode.offsetHeight) + 'px';
+                revisionsPopUp.classList.add('active');
             }
         });
-        $(summaryLinkNode).mouseout(function(ev) {
+
+        summaryLinkNode.addEventListener('mouseout', function(event) {
             if (!revisionsNode.open) {
-                $(revisionsPopUp).removeClass("active");
+                revisionsPopUp.classList.remove("active");
             }
         });
 
         var totRevision = model.latestRevision();
         theSpan.appendChild(document.createTextNode(', trunk is at '));
         theSpan.appendChild(ui.createLinkNode(trac.changesetURL(totRevision), totRevision));
-
-        Promise.all([checkout.lastBlinkRollRevision(), rollbot.fetchCurrentRoll()]).then(function(results) {
-            theSpan.lastRolledRevision = results[0];
-            theSpan.roll = results[1];
-            theSpan.updateUI(totRevision);
-        });
     }
 });
 

@@ -25,6 +25,7 @@
 #include "core/html/HTMLAppletElement.h"
 
 #include "core/HTMLNames.h"
+#include "core/dom/ElementTraversal.h"
 #include "core/dom/shadow/ShadowRoot.h"
 #include "core/html/HTMLParamElement.h"
 #include "core/loader/FrameLoader.h"
@@ -111,7 +112,6 @@ RenderWidget* HTMLAppletElement::existingRenderWidget() const
 
 void HTMLAppletElement::updateWidgetInternal()
 {
-    ASSERT(!m_isDelayingLoadEvent);
     setNeedsWidgetUpdate(false);
     // FIXME: This should ASSERT isFinishedParsingChildren() instead.
     if (!isFinishedParsingChildren())

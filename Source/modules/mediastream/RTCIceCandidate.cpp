@@ -29,37 +29,36 @@
  */
 
 #include "config.h"
-
 #include "modules/mediastream/RTCIceCandidate.h"
 
-#include "bindings/v8/Dictionary.h"
-#include "bindings/v8/ExceptionMessages.h"
-#include "bindings/v8/ExceptionState.h"
+#include "bindings/core/v8/Dictionary.h"
+#include "bindings/core/v8/ExceptionMessages.h"
+#include "bindings/core/v8/ExceptionState.h"
 #include "core/dom/ExceptionCode.h"
 
 namespace WebCore {
 
-PassRefPtrWillBeRawPtr<RTCIceCandidate> RTCIceCandidate::create(const Dictionary& dictionary, ExceptionState& exceptionState)
+RTCIceCandidate* RTCIceCandidate::create(const Dictionary& dictionary, ExceptionState& exceptionState)
 {
     String candidate;
-    bool ok = dictionary.get("candidate", candidate);
+    bool ok = DictionaryHelper::get(dictionary, "candidate", candidate);
     if (!ok || !candidate.length()) {
         exceptionState.throwDOMException(TypeMismatchError, ExceptionMessages::incorrectPropertyType("candidate", "is not a string, or is empty."));
         return nullptr;
     }
 
     String sdpMid;
-    dictionary.get("sdpMid", sdpMid);
+    DictionaryHelper::get(dictionary, "sdpMid", sdpMid);
 
     unsigned short sdpMLineIndex = 0;
-    dictionary.get("sdpMLineIndex", sdpMLineIndex);
+    DictionaryHelper::get(dictionary, "sdpMLineIndex", sdpMLineIndex);
 
-    return adoptRefWillBeNoop(new RTCIceCandidate(blink::WebRTCICECandidate(candidate, sdpMid, sdpMLineIndex)));
+    return new RTCIceCandidate(blink::WebRTCICECandidate(candidate, sdpMid, sdpMLineIndex));
 }
 
-PassRefPtrWillBeRawPtr<RTCIceCandidate> RTCIceCandidate::create(blink::WebRTCICECandidate webCandidate)
+RTCIceCandidate* RTCIceCandidate::create(blink::WebRTCICECandidate webCandidate)
 {
-    return adoptRefWillBeNoop(new RTCIceCandidate(webCandidate));
+    return new RTCIceCandidate(webCandidate);
 }
 
 RTCIceCandidate::RTCIceCandidate(blink::WebRTCICECandidate webCandidate)

@@ -25,7 +25,6 @@
 #ifndef AudioNode_h
 #define AudioNode_h
 
-#include "bindings/v8/ScriptWrappable.h"
 #include "modules/EventTargetModules.h"
 #include "platform/audio/AudioBus.h"
 #include "wtf/Forward.h"
@@ -51,7 +50,7 @@ class ExceptionState;
 // Most processing nodes such as filters will have one input and one output, although multiple inputs and outputs are possible.
 
 // AudioNode has its own ref-counting mechanism that use RefTypes so we cannot use RefCountedGarbageCollected.
-class AudioNode : public NoBaseWillBeGarbageCollectedFinalized<AudioNode>, public ScriptWrappable, public EventTargetWithInlineData {
+class AudioNode : public NoBaseWillBeGarbageCollectedFinalized<AudioNode>, public EventTargetWithInlineData {
     WILL_BE_USING_GARBAGE_COLLECTED_MIXIN(AudioNode);
 public:
     enum { ProcessingSizeInFrames = 128 };
@@ -94,17 +93,22 @@ public:
     String nodeTypeName() const;
     void setNodeType(NodeType);
 
-    // We handle our own ref-counting because of the threading issues and subtle nature of
-    // how AudioNodes can continue processing (playing one-shot sound) after there are no more
-    // JavaScript references to the object.
-    enum RefType { RefTypeNormal, RefTypeConnection };
-
     // Can be called from main thread or context's audio thread.
-    void ref(RefType refType = RefTypeNormal);
-    void deref(RefType refType = RefTypeNormal);
+    void ref();
+    void deref();
+
+    // This object has been connected to another object. This might have
+    // existing connections from others.
+    // This function must be called after acquiring a connection reference.
+    void makeConnection();
+    // This object will be disconnected from another object. This might have
+    // remaining connections from others.
+    // This function must be called before releasing a connection reference.
+    void breakConnection();
 
     // Can be called from main thread or context's audio thread.  It must be called while the context's graph lock is held.
-    void finishDeref(RefType refType);
+    void finishDeref();
+    void breakConnectionWithLock();
 
     // The AudioNodeInput(s) (if any) will already have their input data available when process() is called.
     // Subclasses will take this input data and put the results in the AudioBus(s) of its AudioNodeOutput(s) (if any).
@@ -189,8 +193,8 @@ public:
 
 protected:
     // Inputs and outputs must be created before the AudioNode is initialized.
-    void addInput(PassOwnPtr<AudioNodeInput>);
-    void addOutput(PassOwnPtr<AudioNodeOutput>);
+    void addInput();
+    void addOutput(PassOwnPtrWillBeRawPtr<AudioNodeOutput>);
 
     // Called by processIfNecessary() to cause all parts of the rendering graph connected to us to process.
     // Each rendering quantum, the audio data for each of the AudioNode's inputs will be available after this method is called.
@@ -205,8 +209,8 @@ private:
     NodeType m_nodeType;
     RefPtrWillBeMember<AudioContext> m_context;
     float m_sampleRate;
-    Vector<OwnPtr<AudioNodeInput> > m_inputs;
-    Vector<OwnPtr<AudioNodeOutput> > m_outputs;
+    WillBeHeapVector<OwnPtrWillBeMember<AudioNodeInput> > m_inputs;
+    WillBeHeapVector<OwnPtrWillBeMember<AudioNodeOutput> > m_outputs;
 
 #if ENABLE(OILPAN)
     // AudioNodes are in the oilpan heap but they are still reference counted at

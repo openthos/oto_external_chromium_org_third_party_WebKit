@@ -31,7 +31,7 @@
 #ifndef SVGTransformList_h
 #define SVGTransformList_h
 
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "core/svg/SVGTransform.h"
 #include "core/svg/properties/SVGListPropertyHelper.h"
 
@@ -58,8 +58,6 @@ public:
 
     // SVGPropertyBase:
     virtual PassRefPtr<SVGPropertyBase> cloneForAnimation(const String&) const OVERRIDE;
-    PassRefPtr<SVGTransformList> clone();
-
     virtual String valueAsString() const OVERRIDE;
     void setValueAsString(const String&, ExceptionState&);
     bool parse(const UChar*& ptr, const UChar* end);

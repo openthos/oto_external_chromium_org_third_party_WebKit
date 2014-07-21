@@ -23,6 +23,7 @@
 
 #include "core/css/CSSStyleDeclaration.h"
 #include "core/rendering/style/RenderStyleConstants.h"
+#include "platform/fonts/FixedPitchFontType.h"
 #include "wtf/HashMap.h"
 #include "wtf/RefPtr.h"
 #include "wtf/text/AtomicString.h"
@@ -38,7 +39,6 @@ class MutableStylePropertySet;
 class Node;
 class RenderObject;
 class RenderStyle;
-class SVGPaint;
 class ShadowData;
 class ShadowList;
 class StyleColor;
@@ -67,7 +67,7 @@ public:
 
     PassRefPtrWillBeRawPtr<CSSValue> getPropertyCSSValue(CSSPropertyID, EUpdateLayout = UpdateLayout) const;
     PassRefPtrWillBeRawPtr<CSSValue> getFontSizeCSSValuePreferringKeyword() const;
-    bool useFixedFontDefaultSize() const;
+    FixedPitchFontType fixedPitchFontType() const;
     PassRefPtrWillBeRawPtr<CSSValue> getSVGPropertyCSSValue(CSSPropertyID, EUpdateLayout) const;
 
     PassRefPtrWillBeRawPtr<MutableStylePropertySet> copyPropertiesInSet(const Vector<CSSPropertyID>&) const;
@@ -107,7 +107,6 @@ private:
     PassRefPtrWillBeRawPtr<CSSValue> valueForShadowData(const ShadowData&, const RenderStyle&, bool useSpread) const;
     PassRefPtrWillBeRawPtr<CSSValue> valueForShadowList(const ShadowList*, const RenderStyle&, bool useSpread) const;
     PassRefPtrWillBeRawPtr<CSSPrimitiveValue> currentColorOrValidColor(const RenderStyle&, const StyleColor&) const;
-    PassRefPtrWillBeRawPtr<SVGPaint> adjustSVGPaintForCurrentColor(PassRefPtrWillBeRawPtr<SVGPaint>, RenderStyle&) const;
 
     PassRefPtrWillBeRawPtr<CSSValue> valueForFilter(const RenderObject*, const RenderStyle&) const;
 

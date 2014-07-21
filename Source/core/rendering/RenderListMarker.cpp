@@ -25,7 +25,6 @@
 #include "config.h"
 #include "core/rendering/RenderListMarker.h"
 
-#include "core/dom/Document.h"
 #include "core/fetch/ImageResource.h"
 #include "core/rendering/GraphicsContextAnnotator.h"
 #include "core/rendering/RenderLayer.h"
@@ -36,7 +35,6 @@
 #include "wtf/text/StringBuilder.h"
 #include "wtf/unicode/CharacterNames.h"
 
-using namespace std;
 using namespace WTF;
 using namespace Unicode;
 

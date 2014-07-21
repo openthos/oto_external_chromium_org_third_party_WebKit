@@ -50,20 +50,15 @@ class WebDevToolsAgent {
 public:
     virtual ~WebDevToolsAgent() {}
 
-    // FIXME: remove once migrated to the one with host_id.
-    virtual void attach() = 0;
-    virtual void reattach(const WebString& savedState) = 0;
-
     virtual void attach(const WebString& hostId) = 0;
     virtual void reattach(const WebString& hostId, const WebString& savedState) = 0;
     virtual void detach() = 0;
 
-    virtual void didNavigate() = 0;
+    virtual void continueProgram() = 0;
 
     virtual void dispatchOnInspectorBackend(const WebString& message) = 0;
 
     virtual void inspectElementAt(const WebPoint&) = 0;
-    virtual void setProcessId(long) = 0;
     virtual void setLayerTreeId(int) = 0;
 
     virtual void didBeginFrame(int frameId = 0) = 0;

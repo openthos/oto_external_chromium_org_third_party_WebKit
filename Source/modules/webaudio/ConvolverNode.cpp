@@ -28,7 +28,7 @@
 
 #include "modules/webaudio/ConvolverNode.h"
 
-#include "bindings/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionState.h"
 #include "core/dom/ExceptionCode.h"
 #include "platform/audio/Reverb.h"
 #include "modules/webaudio/AudioBuffer.h"
@@ -52,8 +52,8 @@ ConvolverNode::ConvolverNode(AudioContext* context, float sampleRate)
     , m_normalize(true)
 {
     ScriptWrappable::init(this);
-    addInput(adoptPtr(new AudioNodeInput(this)));
-    addOutput(adoptPtr(new AudioNodeOutput(this, 2)));
+    addInput();
+    addOutput(AudioNodeOutput::create(this, 2));
 
     // Node-specific default mixing rules.
     m_channelCount = 2;

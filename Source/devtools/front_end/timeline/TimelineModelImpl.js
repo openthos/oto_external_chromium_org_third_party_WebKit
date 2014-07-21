@@ -174,7 +174,6 @@ WebInspector.TimelineModelImpl.prototype = {
         for (var i = 0; payload.children && i < payload.children.length; ++i)
             this._innerAddRecord.call(this, payload.children[i], record);
 
-        record._calculateAggregatedStats();
         if (parentRecord)
             parentRecord._selfTime -= record.endTime() - record.startTime();
         return record;
@@ -291,7 +290,7 @@ WebInspector.TimelineModelImpl.InterRecordBindings.prototype = {
 /**
  * @constructor
  * @implements {WebInspector.TimelineModel.Record}
- * @param {!WebInspector.TimelineModelImpl} model
+ * @param {!WebInspector.TimelineModel} model
  * @param {!TimelineAgent.TimelineEvent} timelineEvent
  * @param {?WebInspector.TimelineModel.Record} parentRecord
  */
@@ -299,8 +298,8 @@ WebInspector.TimelineModel.RecordImpl = function(model, timelineEvent, parentRec
 {
     this._model = model;
     var bindings = this._model._bindings;
-    this._aggregatedStats = {};
     this._record = timelineEvent;
+    this._thread = this._record.thread || WebInspector.TimelineModel.MainThreadName;
     this._children = [];
     if (parentRecord) {
         this.parent = parentRecord;
@@ -416,14 +415,6 @@ WebInspector.TimelineModel.RecordImpl.prototype = {
     },
 
     /**
-     * @return {!WebInspector.TimelineCategory}
-     */
-    category: function()
-    {
-        return WebInspector.TimelineUIUtils.recordStyle(this).category;
-    },
-
-    /**
      * @return {number}
      */
     startTime: function()
@@ -432,11 +423,11 @@ WebInspector.TimelineModel.RecordImpl.prototype = {
     },
 
     /**
-     * @return {string|undefined}
+     * @return {string}
      */
     thread: function()
     {
-        return this._record.thread;
+        return this._thread;
     },
 
     /**
@@ -511,26 +502,6 @@ WebInspector.TimelineModel.RecordImpl.prototype = {
         this._userObjects.put(key, value);
     },
 
-    _calculateAggregatedStats: function()
-    {
-        this._aggregatedStats = {};
-
-        for (var index = this._children.length; index; --index) {
-            var child = this._children[index - 1];
-            for (var category in child._aggregatedStats)
-                this._aggregatedStats[category] = (this._aggregatedStats[category] || 0) + child._aggregatedStats[category];
-        }
-        this._aggregatedStats[this.category().name] = (this._aggregatedStats[this.category().name] || 0) + this._selfTime;
-    },
-
-    /**
-     * @return {!Object.<string, number>}
-     */
-    aggregatedStats: function()
-    {
-        return this._aggregatedStats;
-    },
-
     /**
      * @param {string} message
      */
@@ -547,7 +518,7 @@ WebInspector.TimelineModel.RecordImpl.prototype = {
     warnings: function()
     {
         return this._warnings;
-   }
+    }
 }
 
 /**
@@ -594,7 +565,7 @@ WebInspector.TimelineModelLoader.prototype = {
         try {
             items = /** @type {!Array.<!TimelineAgent.TimelineEvent>} */ (JSON.parse(json));
         } catch (e) {
-            WebInspector.messageSink.addErrorMessage("Malformed timeline data.", true);
+            WebInspector.console.error("Malformed timeline data.");
             this._model.reset();
             this._reader.cancel();
             this._progress.done();
@@ -670,15 +641,15 @@ WebInspector.TimelineModelLoadFromFileDelegate.prototype = {
         this._model.reset();
         switch (event.target.error.code) {
         case FileError.NOT_FOUND_ERR:
-            WebInspector.messageSink.addErrorMessage(WebInspector.UIString("File \"%s\" not found.", reader.fileName()), true);
+            WebInspector.console.error(WebInspector.UIString("File \"%s\" not found.", reader.fileName()));
             break;
         case FileError.NOT_READABLE_ERR:
-            WebInspector.messageSink.addErrorMessage(WebInspector.UIString("File \"%s\" is not readable", reader.fileName()), true);
+            WebInspector.console.error(WebInspector.UIString("File \"%s\" is not readable", reader.fileName()));
             break;
         case FileError.ABORT_ERR:
             break;
         default:
-            WebInspector.messageSink.addErrorMessage(WebInspector.UIString("An error occurred while reading the file \"%s\"", reader.fileName()), true);
+            WebInspector.console.error(WebInspector.UIString("An error occurred while reading the file \"%s\"", reader.fileName()));
         }
     }
 }

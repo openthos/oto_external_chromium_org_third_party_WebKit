@@ -36,6 +36,9 @@ public:
     virtual PassRefPtr<LightSource> lightSource(Filter*) const = 0;
     static SVGFELightElement* findLightElement(const SVGElement&);
 
+    FloatPoint3D position() const;
+    FloatPoint3D pointsAt() const;
+
     SVGAnimatedNumber* azimuth() { return m_azimuth.get(); }
     const SVGAnimatedNumber* azimuth() const { return m_azimuth.get(); }
     SVGAnimatedNumber* elevation() { return m_elevation.get(); }
@@ -64,7 +67,7 @@ private:
     bool isSupportedAttribute(const QualifiedName&);
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE FINAL;
     virtual void svgAttributeChanged(const QualifiedName&) OVERRIDE FINAL;
-    virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0) OVERRIDE FINAL;
+    virtual void childrenChanged(const ChildrenChange&) OVERRIDE FINAL;
 
     virtual bool rendererIsNeeded(const RenderStyle&) OVERRIDE { return false; }
 

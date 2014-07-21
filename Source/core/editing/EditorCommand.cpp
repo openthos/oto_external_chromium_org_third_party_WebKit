@@ -28,8 +28,8 @@
 #include "config.h"
 #include "core/editing/Editor.h"
 
-#include "bindings/v8/ExceptionState.h"
-#include "bindings/v8/ExceptionStatePlaceholder.h"
+#include "bindings/core/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionStatePlaceholder.h"
 #include "core/CSSPropertyNames.h"
 #include "core/CSSValueKeywords.h"
 #include "core/HTMLNames.h"
@@ -39,12 +39,14 @@
 #include "core/dom/DocumentFragment.h"
 #include "core/editing/CreateLinkCommand.h"
 #include "core/editing/FormatBlockCommand.h"
+#include "core/editing/FrameSelection.h"
 #include "core/editing/IndentOutdentCommand.h"
 #include "core/editing/InsertListCommand.h"
 #include "core/editing/ReplaceSelectionCommand.h"
 #include "core/editing/SpellChecker.h"
 #include "core/editing/TypingCommand.h"
 #include "core/editing/UnlinkCommand.h"
+#include "core/editing/htmlediting.h"
 #include "core/editing/markup.h"
 #include "core/events/Event.h"
 #include "core/frame/FrameHost.h"
@@ -223,6 +225,21 @@ static bool expandSelectionToGranularity(LocalFrame& frame, TextGranularity gran
     return true;
 }
 
+static TriState selectionListState(const FrameSelection& selection, const QualifiedName& tagName)
+{
+    if (selection.isCaret()) {
+        if (enclosingNodeWithTag(selection.selection().start(), tagName))
+            return TrueTriState;
+    } else if (selection.isRange()) {
+        Node* startNode = enclosingNodeWithTag(selection.selection().start(), tagName);
+        Node* endNode = enclosingNodeWithTag(selection.selection().end(), tagName);
+        if (startNode && endNode && startNode == endNode)
+            return TrueTriState;
+    }
+
+    return FalseTriState;
+}
+
 static TriState stateStyle(LocalFrame& frame, CSSPropertyID propertyID, const char* desiredValue)
 {
     if (frame.editor().behavior().shouldToggleStyleBasedOnStartOfSelection())
@@ -257,7 +274,7 @@ static unsigned verticalScrollDistance(LocalFrame& frame)
     RenderStyle* style = renderer->style();
     if (!style)
         return 0;
-    if (!(style->overflowY() == OSCROLL || style->overflowY() == OAUTO || focusedElement->rendererIsEditable()))
+    if (!(style->overflowY() == OSCROLL || style->overflowY() == OAUTO || focusedElement->hasEditableStyle()))
         return 0;
     int height = std::min<int>(toRenderBox(renderer)->clientHeight(), frame.view()->visibleHeight());
     return static_cast<unsigned>(max(max<int>(height * ScrollableArea::minFractionToStepWhenPaging(), height - ScrollableArea::maxOverlapBetweenPages()), 1));
@@ -1302,7 +1319,7 @@ static TriState stateItalic(LocalFrame& frame, Event*)
 
 static TriState stateOrderedList(LocalFrame& frame, Event*)
 {
-    return frame.editor().selectionOrderedListState();
+    return selectionListState(frame.selection(), olTag);
 }
 
 static TriState stateStrikethrough(LocalFrame& frame, Event*)
@@ -1347,7 +1364,7 @@ static TriState stateUnderline(LocalFrame& frame, Event*)
 
 static TriState stateUnorderedList(LocalFrame& frame, Event*)
 {
-    return frame.editor().selectionUnorderedListState();
+    return selectionListState(frame.selection(), ulTag);
 }
 
 static TriState stateJustifyCenter(LocalFrame& frame, Event*)
@@ -1626,14 +1643,14 @@ static const CommandMap& createCommandMap()
     // Unbookmark (not supported)
 
     CommandMap& commandMap = *new CommandMap;
-#if ASSERT_ENABLED
+#if ENABLE(ASSERT)
     HashSet<int> idSet;
 #endif
     for (size_t i = 0; i < WTF_ARRAY_LENGTH(commands); ++i) {
         const CommandEntry& command = commands[i];
         ASSERT(!commandMap.get(command.name));
         commandMap.set(command.name, &command.command);
-#if ASSERT_ENABLED
+#if ENABLE(ASSERT)
         ASSERT(!idSet.contains(command.command.idForUserMetrics));
         idSet.add(command.command.idForUserMetrics);
 #endif
@@ -1656,6 +1673,48 @@ Editor::Command Editor::command(const String& commandName)
 Editor::Command Editor::command(const String& commandName, EditorCommandSource source)
 {
     return Command(internalCommand(commandName), source, &m_frame);
+}
+
+bool Editor::executeCommand(const String& commandName)
+{
+    // Specially handling commands that Editor::execCommand does not directly
+    // support.
+    if (commandName == "DeleteToEndOfParagraph") {
+        if (!deleteWithDirection(DirectionForward, ParagraphBoundary, true, false))
+            deleteWithDirection(DirectionForward, CharacterGranularity, true, false);
+        return true;
+    }
+    if (commandName == "DeleteBackward")
+        return command(AtomicString("BackwardDelete")).execute();
+    if (commandName == "DeleteForward")
+        return command(AtomicString("ForwardDelete")).execute();
+    if (commandName == "AdvanceToNextMisspelling") {
+        // Wee need to pass false here or else the currently selected word will never be skipped.
+        spellChecker().advanceToNextMisspelling(false);
+        return true;
+    }
+    if (commandName == "ToggleSpellPanel") {
+        spellChecker().showSpellingGuessPanel();
+        return true;
+    }
+    return command(commandName).execute();
+}
+
+bool Editor::executeCommand(const String& commandName, const String& value)
+{
+    // moveToBeginningOfDocument and moveToEndfDocument are only handled by WebKit for editable nodes.
+    if (!canEdit() && commandName == "moveToBeginningOfDocument")
+        return m_frame.eventHandler().bubblingScroll(ScrollUp, ScrollByDocument);
+
+    if (!canEdit() && commandName == "moveToEndOfDocument")
+        return m_frame.eventHandler().bubblingScroll(ScrollDown, ScrollByDocument);
+
+    if (commandName == "showGuessPanel") {
+        spellChecker().showSpellingGuessPanel();
+        return true;
+    }
+
+    return command(commandName).execute(value);
 }
 
 Editor::Command::Command()

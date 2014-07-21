@@ -53,8 +53,9 @@ MediaElementAudioSourceNode::MediaElementAudioSourceNode(AudioContext* context, 
     , m_sourceSampleRate(0)
 {
     ScriptWrappable::init(this);
-    // Default to stereo. This could change depending on what the media element .src is set to.
-    addOutput(adoptPtr(new AudioNodeOutput(this, 2)));
+    // Default to stereo. This could change depending on what the media element
+    // .src is set to.
+    addOutput(AudioNodeOutput::create(this, 2));
 
     setNodeType(NodeTypeMediaElementAudioSource);
 
@@ -140,14 +141,14 @@ void MediaElementAudioSourceNode::process(size_t numberOfFrames)
 
 void MediaElementAudioSourceNode::lock()
 {
-    ref();
+    m_keepAliveWhileLocking = this;
     m_processLock.lock();
 }
 
 void MediaElementAudioSourceNode::unlock()
 {
     m_processLock.unlock();
-    deref();
+    m_keepAliveWhileLocking.clear();
 }
 
 void MediaElementAudioSourceNode::trace(Visitor* visitor)

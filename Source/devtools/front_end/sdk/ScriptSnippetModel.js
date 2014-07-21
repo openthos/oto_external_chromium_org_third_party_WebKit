@@ -239,7 +239,7 @@ WebInspector.ScriptSnippetModel.prototype = {
         mapping._setEvaluationIndex(evaluationIndex, uiSourceCode);
         var evaluationUrl = mapping._evaluationSourceURL(uiSourceCode);
         var expression = uiSourceCode.workingCopy();
-        target.consoleModel.show();
+        WebInspector.console.show();
         target.debuggerAgent().compileScript(expression, evaluationUrl, executionContext.id, compileCallback.bind(this, target));
 
         /**
@@ -545,6 +545,16 @@ WebInspector.SnippetScriptMapping.prototype = {
     isIdentity: function()
     {
         return false;
+    },
+
+    /**
+     * @param {!WebInspector.UISourceCode} uiSourceCode
+     * @param {number} lineNumber
+     * @return {boolean}
+     */
+    uiLineHasMapping: function(uiSourceCode, lineNumber)
+    {
+        return true;
     }
 }
 

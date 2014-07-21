@@ -26,12 +26,10 @@
 #ifndef RTCDTMFSender_h
 #define RTCDTMFSender_h
 
-#include "bindings/v8/ScriptWrappable.h"
 #include "core/dom/ActiveDOMObject.h"
 #include "modules/EventTargetModules.h"
 #include "platform/Timer.h"
 #include "public/platform/WebRTCDTMFSenderHandlerClient.h"
-#include "wtf/RefCounted.h"
 
 namespace blink {
 class WebRTCDTMFSenderHandler;
@@ -43,11 +41,15 @@ namespace WebCore {
 class ExceptionState;
 class MediaStreamTrack;
 
-class RTCDTMFSender FINAL : public RefCountedWillBeRefCountedGarbageCollected<RTCDTMFSender>, public ScriptWrappable, public EventTargetWithInlineData, public blink::WebRTCDTMFSenderHandlerClient, public ActiveDOMObject {
-    REFCOUNTED_EVENT_TARGET(RTCDTMFSender);
+class RTCDTMFSender FINAL
+    : public RefCountedGarbageCollectedWillBeGarbageCollectedFinalized<RTCDTMFSender>
+    , public EventTargetWithInlineData
+    , public blink::WebRTCDTMFSenderHandlerClient
+    , public ActiveDOMObject {
+    DEFINE_EVENT_TARGET_REFCOUNTING_WILL_BE_REMOVED(RefCountedGarbageCollectedWillBeGarbageCollectedFinalized<RTCDTMFSender>);
     WILL_BE_USING_GARBAGE_COLLECTED_MIXIN(RTCDTMFSender);
 public:
-    static PassRefPtrWillBeRawPtr<RTCDTMFSender> create(ExecutionContext*, blink::WebRTCPeerConnectionHandler*, PassRefPtrWillBeRawPtr<MediaStreamTrack>, ExceptionState&);
+    static RTCDTMFSender* create(ExecutionContext*, blink::WebRTCPeerConnectionHandler*, MediaStreamTrack*, ExceptionState&);
     virtual ~RTCDTMFSender();
 
     bool canInsertDTMF() const;
@@ -72,7 +74,7 @@ public:
     virtual void trace(Visitor*) OVERRIDE;
 
 private:
-    RTCDTMFSender(ExecutionContext*, PassRefPtrWillBeRawPtr<MediaStreamTrack>, PassOwnPtr<blink::WebRTCDTMFSenderHandler>);
+    RTCDTMFSender(ExecutionContext*, MediaStreamTrack*, PassOwnPtr<blink::WebRTCDTMFSenderHandler>);
 
     void scheduleDispatchEvent(PassRefPtrWillBeRawPtr<Event>);
     void scheduledEventTimerFired(Timer<RTCDTMFSender>*);
@@ -80,7 +82,7 @@ private:
     // blink::WebRTCDTMFSenderHandlerClient
     virtual void didPlayTone(const blink::WebString&) OVERRIDE;
 
-    RefPtrWillBeMember<MediaStreamTrack> m_track;
+    Member<MediaStreamTrack> m_track;
     long m_duration;
     long m_interToneGap;
 

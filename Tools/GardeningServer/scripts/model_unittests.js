@@ -95,28 +95,6 @@ var kExampleCommitDataXML =
    "</entry>\n" +
    "</feed>\n";
 
-test("rebaselineQueue", 3, function() {
-    var queue = model.takeRebaselineQueue();
-    deepEqual(queue, []);
-    model.queueForRebaseline('failureInfo1');
-    model.queueForRebaseline('failureInfo2');
-    var queue = model.takeRebaselineQueue();
-    deepEqual(queue, ['failureInfo1', 'failureInfo2']);
-    var queue = model.takeRebaselineQueue();
-    deepEqual(queue, []);
-});
-
-test("rebaselineQueue", 3, function() {
-    var queue = model.takeExpectationUpdateQueue();
-    deepEqual(queue, []);
-    model.queueForExpectationUpdate('failureInfo1');
-    model.queueForExpectationUpdate('failureInfo2');
-    var queue = model.takeExpectationUpdateQueue();
-    deepEqual(queue, ['failureInfo1', 'failureInfo2']);
-    var queue = model.takeExpectationUpdateQueue();
-    deepEqual(queue, []);
-});
-
 asyncTest("updateRecentCommits", 2, function() {
     var simulator = new NetworkSimulator();
 
@@ -131,7 +109,7 @@ asyncTest("updateRecentCommits", 2, function() {
         model.updateRecentCommits().then(function() {
             var recentCommits = model.state.recentCommits;
             delete model.state.recentCommits;
-            $.each(recentCommits, function(index, commitData) {
+            recentCommits.forEach(function(commitData) {
                 delete commitData.message;
             });
             deepEqual(recentCommits, [{

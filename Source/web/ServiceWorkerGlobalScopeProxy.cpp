@@ -31,7 +31,8 @@
 #include "config.h"
 #include "web/ServiceWorkerGlobalScopeProxy.h"
 
-#include "bindings/v8/WorkerScriptController.h"
+#include "bindings/core/v8/WorkerScriptController.h"
+#include "core/dom/CrossThreadTask.h"
 #include "core/dom/ExecutionContext.h"
 #include "core/dom/MessagePort.h"
 #include "core/events/MessageEvent.h"
@@ -42,6 +43,7 @@
 #include "modules/serviceworkers/InstallPhaseEvent.h"
 #include "modules/serviceworkers/WaitUntilObserver.h"
 #include "platform/NotImplemented.h"
+#include "public/platform/WebServiceWorkerRequest.h"
 #include "public/web/WebSerializedScriptValue.h"
 #include "public/web/WebServiceWorkerContextClient.h"
 #include "web/WebEmbeddedWorkerImpl.h"
@@ -83,8 +85,10 @@ void ServiceWorkerGlobalScopeProxy::dispatchFetchEvent(int eventID, const WebSer
 {
     ASSERT(m_workerGlobalScope);
     RefPtr<RespondWithObserver> observer = RespondWithObserver::create(m_workerGlobalScope, eventID);
-    RefPtr<Request> request = Request::create(webRequest);
-    m_workerGlobalScope->dispatchEvent(FetchEvent::create(observer, request));
+    RefPtrWillBeRawPtr<Request> request = Request::create(webRequest);
+    RefPtrWillBeRawPtr<FetchEvent> fetchEvent(FetchEvent::create(observer, request));
+    fetchEvent->setIsReload(webRequest.isReload());
+    m_workerGlobalScope->dispatchEvent(fetchEvent.release());
     observer->didDispatchEvent();
 }
 
@@ -92,7 +96,7 @@ void ServiceWorkerGlobalScopeProxy::dispatchMessageEvent(const WebString& messag
 {
     ASSERT(m_workerGlobalScope);
 
-    OwnPtr<MessagePortArray> ports = MessagePort::toMessagePortArray(m_workerGlobalScope, webChannels);
+    OwnPtrWillBeRawPtr<MessagePortArray> ports = MessagePort::toMessagePortArray(m_workerGlobalScope, webChannels);
     WebSerializedScriptValue value = WebSerializedScriptValue::fromString(message);
     m_workerGlobalScope->dispatchEvent(MessageEvent::create(ports.release(), value));
 }
@@ -139,7 +143,7 @@ void ServiceWorkerGlobalScopeProxy::workerGlobalScopeStarted(WorkerGlobalScope* 
 
 void ServiceWorkerGlobalScopeProxy::workerGlobalScopeClosed()
 {
-    m_executionContext.postTask(bind(&WebEmbeddedWorkerImpl::terminateWorkerContext, &m_embeddedWorker));
+    m_executionContext.postTask(createCrossThreadTask(&WebEmbeddedWorkerImpl::terminateWorkerContext, &m_embeddedWorker));
 }
 
 void ServiceWorkerGlobalScopeProxy::willDestroyWorkerGlobalScope()

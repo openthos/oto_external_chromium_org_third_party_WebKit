@@ -67,6 +67,7 @@
     [RaisesException] unsigned short compareTreeScopePosition(Node treeScope1, Node treeScope2);
     [RaisesException] unsigned long updateStyleAndReturnAffectedElementCount();
     [RaisesException] unsigned long needsLayoutCount();
+    [RaisesException] unsigned long hitTestCount(Document document);
 
     // CSS Animation and Transition testing.
     unsigned long numberOfActiveAnimations();
@@ -145,7 +146,7 @@
 
     [RaisesException] NodeList nodesFromRect(Document document, long x, long y,
         unsigned long topPadding, unsigned long rightPadding, unsigned long bottomPadding, unsigned long leftPadding,
-        boolean ignoreClipping, boolean allowShadowContent, boolean allowChildFrameContent);
+        boolean ignoreClipping, boolean allowChildFrameContent);
 
     void emitInspectorDidBeginFrame(optional long frameId);
     void emitInspectorDidCancelFrame();
@@ -182,13 +183,8 @@
     [RaisesException] DOMString mainThreadScrollingReasons(Document document);
     [RaisesException] ClientRectList nonFastScrollableRects(Document document);
 
-    [RaisesException] DOMString repaintRectsAsText(Document document);
-    [RaisesException] ClientRectList repaintRects(Element element);
-
     [RaisesException] void garbageCollectDocumentResources(Document document);
     void evictAllResources();
-
-    void allowRoundingHacks();
 
     unsigned long numberOfLiveNodes();
     unsigned long numberOfLiveDocuments();
@@ -209,11 +205,6 @@
 
     [RaisesException] void setIsCursorVisible(Document document, boolean isVisible);
 
-    void webkitWillEnterFullScreenForElement(Document document, Element element);
-    void webkitDidEnterFullScreenForElement(Document document, Element element);
-    void webkitWillExitFullScreenForElement(Document document, Element element);
-    void webkitDidExitFullScreenForElement(Document document, Element element);
-
     void mediaPlayerRequestFullscreen(HTMLMediaElement mediaElement);
 
     void registerURLSchemeAsBypassingContentSecurityPolicy(DOMString scheme);
@@ -221,6 +212,11 @@
 
     MallocStatistics mallocStatistics();
     TypeConversions typeConversions();
+
+    // This is enabled only in Debug builds.
+    // This is because we want to avoid putting the byte stream of testing private scripts
+    // into the binary of Release builds.
+    PrivateScriptTest privateScriptTest();
 
     DOMString[] getReferencedFilePaths();
 
@@ -266,7 +262,6 @@
 
     [RaisesException] void setShouldRevealPassword(Element element, boolean reveal);
 
-    [CallWith=ScriptState] Promise createPromise();
     [CallWith=ScriptState] Promise createResolvedPromise(any value);
     [CallWith=ScriptState] Promise createRejectedPromise(any reason);
     [CallWith=ExecutionContext] Promise addOneToPromise(Promise promise);
@@ -283,4 +278,9 @@
     // before calling setNetworkConnectionInfo.
     void setNetworkStateNotifierTestOnly(boolean testOnly);
     [RaisesException] void setNetworkConnectionInfo(DOMString type);
+
+    // This function is for testing HitRegions on Canvas2D.
+    unsigned long countHitRegions(CanvasRenderingContext2D context);
+
+    DOMString serializeNavigationMarkup(Document document);
 };

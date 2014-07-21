@@ -31,13 +31,15 @@
 #ifndef StorageQuotaClient_h
 #define StorageQuotaClient_h
 
-#include "core/page/Page.h"
+#include "platform/Supplementable.h"
+#include "platform/heap/Handle.h"
 #include "public/platform/WebStorageQuotaType.h"
 #include "wtf/Forward.h"
 
 namespace WebCore {
 
 class ExecutionContext;
+class Page;
 class ScriptPromise;
 class ScriptState;
 class StorageErrorCallback;

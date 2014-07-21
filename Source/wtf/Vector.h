@@ -34,7 +34,7 @@
 
 namespace WTF {
 
-#if defined(MEMORY_TOOL_REPLACES_ALLOCATOR)
+#if defined(MEMORY_SANITIZER_INITIAL_SIZE)
 static const size_t kInitialVectorSize = 1;
 #else
 #ifndef WTF_VECTOR_INITIAL_SIZE
@@ -1187,7 +1187,7 @@ static const size_t kInitialVectorSize = WTF_VECTOR_INITIAL_SIZE;
     template<typename T, size_t inlineCapacity, typename Allocator>
     void Vector<T, inlineCapacity, Allocator>::trace(typename Allocator::Visitor* visitor)
     {
-        COMPILE_ASSERT(Allocator::isGarbageCollected, Garbage_collector_must_be_enabled);
+        ASSERT(Allocator::isGarbageCollected); // Garbage collector must be enabled.
         const T* bufferBegin = buffer();
         const T* bufferEnd = buffer() + size();
         if (ShouldBeTraced<VectorTraits<T> >::value) {
@@ -1197,6 +1197,13 @@ static const size_t kInitialVectorSize = WTF_VECTOR_INITIAL_SIZE;
         if (this->hasOutOfLineBuffer())
             Allocator::markNoTracing(visitor, buffer());
     }
+
+#if !ENABLE(OILPAN)
+    template<typename T, size_t N>
+    struct NeedsTracing<Vector<T, N> > {
+        static const bool value = false;
+    };
+#endif
 
 } // namespace WTF
 

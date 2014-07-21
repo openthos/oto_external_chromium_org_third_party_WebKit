@@ -43,7 +43,7 @@ namespace WebCore {
 
 static bool useMockTheme()
 {
-    return isRunningLayoutTest();
+    return LayoutTestSupport::isRunningLayoutTest();
 }
 
 unsigned RenderThemeChromiumDefault::m_activeSelectionBackgroundColor =
@@ -127,13 +127,18 @@ Color RenderThemeChromiumDefault::systemColor(CSSValueID cssValueId) const
 
 String RenderThemeChromiumDefault::extraDefaultStyleSheet()
 {
+    // FIXME: We should not have OS() branches here.
+    // We should have something like RenderThemeWin, RenderThemeLinux, or
+    // should concatenate UA stylesheets on build time.
 #if !OS(WIN)
-    return RenderTheme::extraDefaultStyleSheet() +
-        RenderThemeChromiumSkia::extraDefaultStyleSheet() +
-        String(themeChromiumLinuxUserAgentStyleSheet, sizeof(themeChromiumLinuxUserAgentStyleSheet));
+    return RenderThemeChromiumSkia::extraDefaultStyleSheet() +
+#if !OS(ANDROID)
+        String(themeInputMultipleFieldsCss, sizeof(themeInputMultipleFieldsCss)) +
+#endif
+        String(themeChromiumLinuxCss, sizeof(themeChromiumLinuxCss));
 #else
-    return RenderTheme::extraDefaultStyleSheet() +
-        RenderThemeChromiumSkia::extraDefaultStyleSheet();
+    return RenderThemeChromiumSkia::extraDefaultStyleSheet() +
+        String(themeInputMultipleFieldsCss, sizeof(themeInputMultipleFieldsCss));
 #endif
 }
 

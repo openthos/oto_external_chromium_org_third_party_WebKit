@@ -172,6 +172,8 @@ public:
     void getSelectionGapInfo(SelectionState, bool& leftGap, bool& rightGap);
     RenderBlock* blockBeforeWithinSelectionRoot(LayoutSize& offset) const;
 
+    virtual void setSelectionState(SelectionState) OVERRIDE;
+
     LayoutRect logicalRectToPhysicalRect(const LayoutPoint& physicalPosition, const LayoutRect& logicalRect);
 
     // Helper methods for computing line counts and heights for line counts.
@@ -210,9 +212,6 @@ public:
     // These two functions take the ColumnInfo* to avoid repeated lookups of the info in the global HashMap.
     unsigned columnCount(ColumnInfo*) const;
     LayoutRect columnRectAt(ColumnInfo*, unsigned) const;
-
-    LayoutUnit paginationStrut() const { return m_rareData ? m_rareData->m_paginationStrut : LayoutUnit(); }
-    void setPaginationStrut(LayoutUnit);
 
     bool shouldBreakAtLineToAvoidWidow() const { return m_rareData && m_rareData->m_lineBreakToAvoidWidow >= 0; }
     void clearShouldBreakAtLineToAvoidWidow() const;
@@ -254,8 +253,10 @@ public:
     LayoutUnit startOffsetForContent() const { return style()->isLeftToRightDirection() ? logicalLeftOffsetForContent() : logicalWidth() - logicalRightOffsetForContent(); }
     LayoutUnit endOffsetForContent() const { return !style()->isLeftToRightDirection() ? logicalLeftOffsetForContent() : logicalWidth() - logicalRightOffsetForContent(); }
 
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     void checkPositionedObjectsNeedLayout();
+#endif
+#ifndef NDEBUG
     void showLineTreeAndMark(const InlineBox* = 0, const char* = 0, const InlineBox* = 0, const char* = 0, const RenderObject* = 0) const;
 #endif
 
@@ -326,7 +327,6 @@ protected:
 
     void setDesiredColumnCountAndWidth(int, LayoutUnit);
 
-    bool avoidsOrIgnoresFloats() { return isFloatingOrOutOfFlowPositioned() || avoidsFloats(); }
 public:
     virtual void computeOverflow(LayoutUnit oldClientAfterEdge, bool = false);
 protected:
@@ -345,7 +345,7 @@ protected:
 
     virtual bool isInlineBlockOrInlineTable() const OVERRIDE FINAL { return isInline() && isReplaced(); }
 
-    virtual void invalidateTreeAfterLayout(const RenderLayerModelObject&) OVERRIDE;
+    virtual void invalidateTreeIfNeeded(const PaintInvalidationState&) OVERRIDE;
 
 private:
     virtual RenderObjectChildList* virtualChildren() OVERRIDE FINAL { return children(); }
@@ -368,8 +368,6 @@ private:
 
     void addChildIgnoringAnonymousColumnBlocks(RenderObject* newChild, RenderObject* beforeChild = 0);
 
-    void removeAnonymousWrappersIfRequired();
-
     virtual bool isSelfCollapsingBlock() const OVERRIDE;
 
     void insertIntoTrackedRendererMaps(RenderBox* descendant, TrackedDescendantsMap*&, TrackedContainerMap*&);
@@ -390,6 +388,8 @@ private:
 
     bool hasCaret() const;
 
+    virtual bool avoidsFloats() const OVERRIDE;
+
     bool hitTestColumns(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction);
     bool hitTestContents(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction);
     // FIXME-BLOCKFLOW: Remove virtualizaion when all callers have moved to RenderBlockFlow
@@ -403,8 +403,8 @@ private:
     // children.
     virtual RenderBlock* firstLineBlock() const OVERRIDE;
 
-    virtual LayoutRect rectWithOutlineForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer, LayoutUnit outlineWidth) const OVERRIDE FINAL;
-    virtual RenderStyle* outlineStyleForPaintInvalidation() const OVERRIDE FINAL;
+    virtual LayoutRect rectWithOutlineForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer, LayoutUnit outlineWidth, const PaintInvalidationState* = 0) const OVERRIDE FINAL;
+    virtual RenderStyle* outlineStyle() const OVERRIDE FINAL;
 
     virtual RenderObject* hoverAncestor() const OVERRIDE FINAL;
     virtual void updateDragState(bool dragOn) OVERRIDE FINAL;
@@ -469,6 +469,8 @@ protected:
     enum PageBoundaryRule { ExcludePageBoundary, IncludePageBoundary };
     LayoutUnit nextPageLogicalTop(LayoutUnit logicalOffset, PageBoundaryRule = ExcludePageBoundary) const;
 
+    bool createsBlockFormattingContext() const;
+
 public:
     LayoutUnit pageLogicalTopForOffset(LayoutUnit offset) const;
     LayoutUnit pageLogicalHeightForOffset(LayoutUnit offset) const;
@@ -484,7 +486,6 @@ protected:
     void updateMinimumPageHeight(LayoutUnit offset, LayoutUnit minHeight);
 
     LayoutUnit adjustForUnsplittableChild(RenderBox* child, LayoutUnit logicalOffset, bool includeMargins = false); // If the child is unsplittable and can't fit on the current page, return the top of the next page/column.
-    void adjustLinePositionForPagination(RootInlineBox*, LayoutUnit& deltaOffset, RenderFlowThread*); // Computes a deltaOffset value that put a line at the top of the next page if it doesn't fit on the current page.
 
     // Adjust from painting offsets to the local coords of this renderer
     void offsetForContents(LayoutPoint&) const;
@@ -505,14 +506,12 @@ public:
         WTF_MAKE_NONCOPYABLE(RenderBlockRareData); WTF_MAKE_FAST_ALLOCATED;
     public:
         RenderBlockRareData()
-            : m_paginationStrut(0)
-            , m_pageLogicalOffset(0)
+            : m_pageLogicalOffset(0)
             , m_lineBreakToAvoidWidow(-1)
             , m_didBreakAtLineToAvoidWidow(false)
         {
         }
 
-        LayoutUnit m_paginationStrut;
         LayoutUnit m_pageLogicalOffset;
 
         int m_lineBreakToAvoidWidow : 31;
@@ -525,13 +524,13 @@ protected:
     RenderObjectChildList m_children;
     RenderLineBoxList m_lineBoxes;   // All of the root line boxes created for this block flow.  For example, <div>Hello<br>world.</div> will have two total lines for the <div>.
 
-    // WARNING: Don't add any bits here until we are comfortable that removing m_lineHeight has not regressed performance. See http://crrev.com/260073005 for more information.
     unsigned m_hasMarginBeforeQuirk : 1; // Note these quirk values can't be put in RenderBlockRareData since they are set too frequently.
     unsigned m_hasMarginAfterQuirk : 1;
     unsigned m_beingDestroyed : 1;
     unsigned m_hasMarkupTruncation : 1;
     unsigned m_hasBorderOrPaddingLogicalWidthChanged : 1;
     mutable unsigned m_hasOnlySelfCollapsingChildren : 1;
+    mutable unsigned m_descendantsWithFloatsMarkedForLayout : 1;
 
     // RenderRubyBase objects need to be able to split and merge, moving their children around
     // (calling moveChildTo, moveAllChildrenTo, and makeChildrenNonInline).

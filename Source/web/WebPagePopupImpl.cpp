@@ -97,11 +97,6 @@ private:
         m_popup->widgetClient()->didInvalidateRect(paintRect);
     }
 
-    virtual void scroll(const IntSize& scrollDelta, const IntRect& scrollRect, const IntRect& clipRect) OVERRIDE
-    {
-        m_popup->widgetClient()->didScrollRect(scrollDelta.width(), scrollDelta.height(), intersection(scrollRect, clipRect));
-    }
-
     virtual void invalidateContentsForSlowScroll(const IntRect& updateRect) OVERRIDE
     {
         invalidateContentsAndRootView(updateRect);
@@ -194,7 +189,7 @@ bool WebPagePopupImpl::initialize(WebViewImpl* webView, PagePopupClient* popupCl
 
     resize(m_popupClient->contentSize());
 
-    if (!initializePage())
+    if (!m_widgetClient || !initializePage())
         return false;
     m_widgetClient->show(WebNavigationPolicy());
     setFocus(true);
@@ -266,7 +261,7 @@ void WebPagePopupImpl::setIsAcceleratedCompositingActive(bool enter)
     } else if (m_layerTreeView) {
         m_isAcceleratedCompositingActive = true;
     } else {
-        TRACE_EVENT0("webkit", "WebPagePopupImpl::setIsAcceleratedCompositingActive(true)");
+        TRACE_EVENT0("blink", "WebPagePopupImpl::setIsAcceleratedCompositingActive(true)");
 
         m_widgetClient->initializeLayerTreeView();
         m_layerTreeView = m_widgetClient->layerTreeView();

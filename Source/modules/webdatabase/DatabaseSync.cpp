@@ -31,7 +31,7 @@
 #include "config.h"
 #include "modules/webdatabase/DatabaseSync.h"
 
-#include "bindings/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionState.h"
 #include "core/dom/ExceptionCode.h"
 #include "core/dom/ExecutionContext.h"
 #include "platform/Logging.h"
@@ -64,8 +64,10 @@ DatabaseSync::DatabaseSync(DatabaseContext* databaseContext,
 
 DatabaseSync::~DatabaseSync()
 {
+#if !ENABLE(OILPAN)
     if (executionContext())
         ASSERT(executionContext()->isContextThread());
+#endif
 }
 
 void DatabaseSync::trace(Visitor* visitor)

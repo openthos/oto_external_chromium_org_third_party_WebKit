@@ -26,8 +26,8 @@
 #include "config.h"
 #include "core/html/canvas/WebGLRenderingContextBase.h"
 
-#include "bindings/v8/ExceptionMessages.h"
-#include "bindings/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionMessages.h"
+#include "bindings/core/v8/ExceptionState.h"
 #include "core/dom/ExceptionCode.h"
 #include "core/fetch/ImageResource.h"
 #include "core/frame/LocalFrame.h"
@@ -111,6 +111,12 @@ void WebGLRenderingContextBase::forciblyLoseOldestContext(const String& reason)
         return;
 
     WebGLRenderingContextBase* candidate = activeContexts()[candidateID];
+
+    // This context could belong to a dead page and the last JavaScript reference has already
+    // been lost. Garbage collection might be triggered in the middle of this function, for
+    // example, printWarningToConsole() causes an upcall to JavaScript.
+    // Must make sure that the context is not deleted until the call stack unwinds.
+    RefPtrWillBeRawPtr<WebGLRenderingContextBase> protect(candidate);
 
     activeContexts().remove(candidateID);
 
@@ -2021,12 +2027,12 @@ PassRefPtr<WebGLActiveInfo> WebGLRenderingContextBase::getActiveUniform(WebGLPro
     return WebGLActiveInfo::create(info.name, info.type, info.size);
 }
 
-bool WebGLRenderingContextBase::getAttachedShaders(WebGLProgram* program, Vector<RefPtr<WebGLShader> >& shaderObjects)
+Nullable<Vector<RefPtr<WebGLShader> > > WebGLRenderingContextBase::getAttachedShaders(WebGLProgram* program)
 {
-    shaderObjects.clear();
     if (isContextLost() || !validateWebGLObject("getAttachedShaders", program))
-        return false;
+        return Nullable<Vector<RefPtr<WebGLShader> > >();
 
+    Vector<RefPtr<WebGLShader> > shaderObjects;
     const GLenum shaderType[] = {
         GL_VERTEX_SHADER,
         GL_FRAGMENT_SHADER
@@ -2036,7 +2042,7 @@ bool WebGLRenderingContextBase::getAttachedShaders(WebGLProgram* program, Vector
         if (shader)
             shaderObjects.append(shader);
     }
-    return true;
+    return shaderObjects;
 }
 
 GLint WebGLRenderingContextBase::getAttribLocation(WebGLProgram* program, const String& name)
@@ -2594,11 +2600,12 @@ String WebGLRenderingContextBase::getShaderSource(WebGLShader* shader)
     return ensureNotNull(shader->source());
 }
 
-Vector<String> WebGLRenderingContextBase::getSupportedExtensions()
+Nullable<Vector<String> > WebGLRenderingContextBase::getSupportedExtensions()
 {
-    Vector<String> result;
     if (isContextLost())
-        return result;
+        return Nullable<Vector<String> >();
+
+    Vector<String> result;
 
     for (size_t i = 0; i < m_extensions.size(); ++i) {
         ExtensionTracker* tracker = m_extensions[i];
@@ -4183,10 +4190,6 @@ void WebGLRenderingContextBase::forceLostContext(WebGLRenderingContextBase::Lost
 
 void WebGLRenderingContextBase::loseContextImpl(WebGLRenderingContextBase::LostContextMode mode)
 {
-#ifndef NDEBUG
-    printWarningToConsole("loseContextImpl(): begin");
-#endif
-
     if (isContextLost())
         return;
 
@@ -4206,10 +4209,6 @@ void WebGLRenderingContextBase::loseContextImpl(WebGLRenderingContextBase::LostC
 
     detachAndRemoveAllObjects();
 
-#ifndef NDEBUG
-    printWarningToConsole("loseContextImpl(): after detachAndRemoveAllObjects()");
-#endif
-
     // Lose all the extensions.
     for (size_t i = 0; i < m_extensions.size(); ++i) {
         ExtensionTracker* tracker = m_extensions[i];
@@ -4224,10 +4223,6 @@ void WebGLRenderingContextBase::loseContextImpl(WebGLRenderingContextBase::LostC
     if (mode != RealLostContext)
         destroyContext();
 
-#ifndef NDEBUG
-    printWarningToConsole("loseContextImpl(): after destroyContext()");
-#endif
-
     ConsoleDisplayPreference display = (mode == RealLostContext) ? DisplayInConsole: DontDisplayInConsole;
     synthesizeGLError(GC3D_CONTEXT_LOST_WEBGL, "loseContext", "context lost", display);
 
@@ -4238,10 +4233,6 @@ void WebGLRenderingContextBase::loseContextImpl(WebGLRenderingContextBase::LostC
     // Always defer the dispatch of the context lost event, to implement
     // the spec behavior of queueing a task.
     m_dispatchContextLostEventTimer.startOneShot(0, FROM_HERE);
-
-#ifndef NDEBUG
-    printWarningToConsole("loseContextImpl(): end");
-#endif
 }
 
 void WebGLRenderingContextBase::forceRestoreContext()
@@ -4416,10 +4407,10 @@ void WebGLRenderingContextBase::handleTextureCompleteness(const char* functionNa
         if ((m_textureUnits[ii].m_texture2DBinding.get() && m_textureUnits[ii].m_texture2DBinding->needToUseBlackTexture(flag))
             || (m_textureUnits[ii].m_textureCubeMapBinding.get() && m_textureUnits[ii].m_textureCubeMapBinding->needToUseBlackTexture(flag))) {
             if (ii != m_activeTextureUnit) {
-                webContext()->activeTexture(ii);
+                webContext()->activeTexture(GL_TEXTURE0 + ii);
                 resetActiveUnit = true;
             } else if (resetActiveUnit) {
-                webContext()->activeTexture(ii);
+                webContext()->activeTexture(GL_TEXTURE0 + ii);
                 resetActiveUnit = false;
             }
             WebGLTexture* tex2D;
@@ -4442,7 +4433,7 @@ void WebGLRenderingContextBase::handleTextureCompleteness(const char* functionNa
         }
     }
     if (resetActiveUnit)
-        webContext()->activeTexture(m_activeTextureUnit);
+        webContext()->activeTexture(GL_TEXTURE0 + m_activeTextureUnit);
 }
 
 void WebGLRenderingContextBase::createFallbackBlackTextures1x1()
@@ -5461,9 +5452,6 @@ void WebGLRenderingContextBase::dispatchContextLostEvent(Timer<WebGLRenderingCon
 
 void WebGLRenderingContextBase::maybeRestoreContext(Timer<WebGLRenderingContextBase>*)
 {
-#ifndef NDEBUG
-    printWarningToConsole("maybeRestoreContext(): begin");
-#endif
     ASSERT(isContextLost());
 
     // The rendering context is not restored unless the default behavior of the
@@ -5489,11 +5477,8 @@ void WebGLRenderingContextBase::maybeRestoreContext(Timer<WebGLRenderingContextB
         m_drawingBuffer->beginDestruction();
         m_drawingBuffer.clear();
     }
-#ifndef NDEBUG
-    printWarningToConsole("maybeRestoreContext(): destroyed old DrawingBuffer");
-#endif
 
-    blink::WebGraphicsContext3D::Attributes attributes = m_requestedAttributes->attributes(canvas()->document().topDocument().url().string(), settings);
+    blink::WebGraphicsContext3D::Attributes attributes = m_requestedAttributes->attributes(canvas()->document().topDocument().url().string(), settings, version());
     OwnPtr<blink::WebGraphicsContext3D> context = adoptPtr(blink::Platform::current()->createOffscreenGraphicsContext3D(attributes, 0));
     RefPtr<DrawingBuffer> drawingBuffer;
     // Even if a non-null WebGraphicsContext3D is created, until it's made current, it isn't known whether the context is still lost.
@@ -5511,9 +5496,6 @@ void WebGLRenderingContextBase::maybeRestoreContext(Timer<WebGLRenderingContextB
         }
         return;
     }
-#ifndef NDEBUG
-    printWarningToConsole("maybeRestoreContext(): created new DrawingBuffer");
-#endif
 
     m_drawingBuffer = drawingBuffer.release();
     m_drawingBuffer->bind();
@@ -5523,13 +5505,7 @@ void WebGLRenderingContextBase::maybeRestoreContext(Timer<WebGLRenderingContextB
     setupFlags();
     initializeNewContext();
     markContextChanged(CanvasContextChanged);
-#ifndef NDEBUG
-    printWarningToConsole("maybeRestoreContext(): before dispatchEvent");
-#endif
     canvas()->dispatchEvent(WebGLContextEvent::create(EventTypeNames::webglcontextrestored, false, true, ""));
-#ifndef NDEBUG
-    printWarningToConsole("maybeRestoreContext(): end");
-#endif
 }
 
 String WebGLRenderingContextBase::ensureNotNull(const String& text) const

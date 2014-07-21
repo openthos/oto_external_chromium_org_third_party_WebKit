@@ -31,7 +31,7 @@
 #include "config.h"
 #include "public/web/WebNode.h"
 
-#include "bindings/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionState.h"
 #include "core/dom/Document.h"
 #include "core/dom/Element.h"
 #include "core/dom/Node.h"
@@ -194,10 +194,10 @@ void WebNode::simulateClick()
     m_private->dispatchSimulatedClick(0);
 }
 
-WebElementCollection WebNode::getElementsByTagName(const WebString& tag) const
+WebElementCollection WebNode::getElementsByHTMLTagName(const WebString& tag) const
 {
     if (m_private->isContainerNode())
-        return WebElementCollection(toContainerNode(m_private.get())->getElementsByTagName(tag));
+        return WebElementCollection(toContainerNode(m_private.get())->getElementsByTagNameNS(HTMLNames::xhtmlNamespaceURI, tag));
     return WebElementCollection();
 }
 

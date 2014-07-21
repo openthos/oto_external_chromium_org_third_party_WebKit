@@ -42,12 +42,14 @@ public:
     virtual void registerEventFactory();
     virtual void initEventNames();
     virtual void initEventTargetNames();
+    virtual void initBindings() { }
+
+    // FIXME: Why is this function static?
+    static void shutdown();
 
 private:
     bool m_isInited;
 };
-
-void shutdown();
 
 } // namespace WebCore
 

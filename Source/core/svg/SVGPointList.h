@@ -31,7 +31,7 @@
 #ifndef SVGPointList_h
 #define SVGPointList_h
 
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "core/svg/SVGPoint.h"
 #include "core/svg/properties/SVGListPropertyHelper.h"
 
@@ -50,12 +50,9 @@ public:
 
     virtual ~SVGPointList();
 
-    PassRefPtr<SVGPointList> clone();
-
     void setValueAsString(const String&, ExceptionState&);
 
     // SVGPropertyBase:
-    virtual PassRefPtr<SVGPropertyBase> cloneForAnimation(const String&) const OVERRIDE;
     virtual String valueAsString() const OVERRIDE;
 
     virtual void add(PassRefPtrWillBeRawPtr<SVGPropertyBase>, SVGElement*) OVERRIDE;
@@ -66,8 +63,6 @@ public:
 
 private:
     SVGPointList();
-
-    bool adjustFromToListValues(PassRefPtr<SVGPointList> fromList, PassRefPtr<SVGPointList> toList, float percentage, bool isToAnimation, bool resizeAnimatedListIfNeeded);
 
     template <typename CharType>
     bool parse(const CharType*& ptr, const CharType* end);

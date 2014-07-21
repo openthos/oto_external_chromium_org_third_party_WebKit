@@ -30,10 +30,14 @@
 #include "config.h"
 #include "core/inspector/InspectorFrontendHost.h"
 
-#include "bindings/v8/ScriptFunctionCall.h"
-#include "bindings/v8/ScriptState.h"
+#include "bindings/core/v8/ScriptFunctionCall.h"
+#include "bindings/core/v8/ScriptState.h"
 #include "core/clipboard/Pasteboard.h"
+#include "core/dom/ExecutionContext.h"
+#include "core/events/Event.h"
+#include "core/events/EventTarget.h"
 #include "core/fetch/ResourceFetcher.h"
+#include "core/frame/LocalDOMWindow.h"
 #include "core/frame/LocalFrame.h"
 #include "core/html/parser/TextResourceDecoder.h"
 #include "core/inspector/InspectorController.h"
@@ -106,6 +110,7 @@ private:
             m_frontendHost->m_menuProvider = 0;
         }
         m_items.clear();
+        m_frontendHost = 0;
     }
 
     InspectorFrontendHost* m_frontendHost;
@@ -156,17 +161,25 @@ void InspectorFrontendHost::copyText(const String& text)
 
 static String escapeUnicodeNonCharacters(const String& str)
 {
+    const UChar nonChar = 0xD800;
+
+    unsigned i = 0;
+    while (i < str.length() && str[i] < nonChar)
+        ++i;
+    if (i == str.length())
+        return str;
+
     StringBuilder dst;
-    for (unsigned i = 0; i < str.length(); ++i) {
+    dst.append(str, 0, i);
+    for (; i < str.length(); ++i) {
         UChar c = str[i];
-        if (c >= 0xD800) {
+        if (c >= nonChar) {
             unsigned symbol = static_cast<unsigned>(c);
             String symbolCode = String::format("\\u%04X", symbol);
             dst.append(symbolCode);
         } else {
             dst.append(c);
         }
-
     }
     return dst.toString();
 }
@@ -183,6 +196,18 @@ void InspectorFrontendHost::sendMessageToEmbedder(const String& message)
         m_client->sendMessageToEmbedder(escapeUnicodeNonCharacters(message));
 }
 
+void InspectorFrontendHost::showContextMenu(Page* page, float x, float y, const Vector<ContextMenuItem>& items)
+{
+    ASSERT(m_frontendPage);
+    ScriptState* frontendScriptState = ScriptState::forMainWorld(m_frontendPage->deprecatedLocalMainFrame());
+    ScriptValue frontendApiObject = frontendScriptState->getFromGlobalObject("InspectorFrontendAPI");
+    ASSERT(frontendApiObject.isObject());
+
+    RefPtr<FrontendMenuProvider> menuProvider = FrontendMenuProvider::create(this, frontendApiObject, items);
+    m_menuProvider = menuProvider.get();
+    page->inspectorController().showContextMenu(x, y, menuProvider);
+}
+
 void InspectorFrontendHost::showContextMenu(Event* event, const Vector<ContextMenuItem>& items)
 {
     if (!event)
@@ -192,8 +217,16 @@ void InspectorFrontendHost::showContextMenu(Event* event, const Vector<ContextMe
     ScriptState* frontendScriptState = ScriptState::forMainWorld(m_frontendPage->deprecatedLocalMainFrame());
     ScriptValue frontendApiObject = frontendScriptState->getFromGlobalObject("InspectorFrontendAPI");
     ASSERT(frontendApiObject.isObject());
+
+    Page* targetPage = m_frontendPage;
+    if (event->target() && event->target()->executionContext() && event->target()->executionContext()->executingWindow()) {
+        LocalDOMWindow* window = event->target()->executionContext()->executingWindow();
+        if (window->document() && window->document()->page())
+            targetPage = window->document()->page();
+    }
+
     RefPtr<FrontendMenuProvider> menuProvider = FrontendMenuProvider::create(this, frontendApiObject, items);
-    m_frontendPage->contextMenuController().showContextMenu(event, menuProvider);
+    targetPage->contextMenuController().showContextMenu(event, menuProvider);
     m_menuProvider = menuProvider.get();
 }
 
@@ -210,6 +243,11 @@ String InspectorFrontendHost::getSelectionForegroundColor()
 bool InspectorFrontendHost::isUnderTest()
 {
     return m_client && m_client->isUnderTest();
+}
+
+bool InspectorFrontendHost::isHostedMode()
+{
+    return false;
 }
 
 } // namespace WebCore

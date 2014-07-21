@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2013 Apple Inc. All rights reserved.
  * Copyright (C) 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  * Copyright (C) 2011 Motorola Mobility. All rights reserved.
  *
@@ -25,8 +25,8 @@
 #include "config.h"
 #include "core/html/HTMLElement.h"
 
-#include "bindings/v8/ExceptionState.h"
-#include "bindings/v8/ScriptEventListener.h"
+#include "bindings/core/v8/ExceptionState.h"
+#include "bindings/core/v8/ScriptEventListener.h"
 #include "core/CSSPropertyNames.h"
 #include "core/CSSValueKeywords.h"
 #include "core/HTMLNames.h"
@@ -35,6 +35,7 @@
 #include "core/css/CSSValuePool.h"
 #include "core/css/StylePropertySet.h"
 #include "core/dom/DocumentFragment.h"
+#include "core/dom/ElementTraversal.h"
 #include "core/dom/ExceptionCode.h"
 #include "core/dom/NodeTraversal.h"
 #include "core/dom/Text.h"
@@ -649,10 +650,10 @@ static void setHasDirAutoFlagRecursively(Node* firstNode, bool flag, Node* lastN
     }
 }
 
-void HTMLElement::childrenChanged(bool changedByParser, Node* beforeChange, Node* afterChange, int childCountDelta)
+void HTMLElement::childrenChanged(const ChildrenChange& change)
 {
-    Element::childrenChanged(changedByParser, beforeChange, afterChange, childCountDelta);
-    adjustDirectionalityIfNeededAfterChildrenChanged(beforeChange, childCountDelta);
+    Element::childrenChanged(change);
+    adjustDirectionalityIfNeededAfterChildrenChanged(change);
 }
 
 bool HTMLElement::hasDirectionAuto() const
@@ -756,22 +757,12 @@ void HTMLElement::calculateAndAdjustDirectionality()
         setNeedsStyleRecalc(SubtreeStyleChange);
 }
 
-void HTMLElement::adjustDirectionalityIfNeededAfterChildrenChanged(Node* beforeChange, int childCountDelta)
+void HTMLElement::adjustDirectionalityIfNeededAfterChildrenChanged(const ChildrenChange& change)
 {
-    if (document().renderView() && childCountDelta < 0) {
-        Node* node = beforeChange ? NodeTraversal::nextSkippingChildren(*beforeChange) : 0;
-        for (int counter = 0; node && counter < childCountDelta; counter++, node = NodeTraversal::nextSkippingChildren(*node)) {
-            if (elementAffectsDirectionality(node))
-                continue;
-
-            setHasDirAutoFlagRecursively(node, false);
-        }
-    }
-
     if (!selfOrAncestorHasDirAutoAttribute())
         return;
 
-    Node* oldMarkedNode = beforeChange ? NodeTraversal::nextSkippingChildren(*beforeChange) : 0;
+    Node* oldMarkedNode = change.siblingBeforeChange ? NodeTraversal::nextSkippingChildren(*change.siblingBeforeChange) : 0;
     while (oldMarkedNode && elementAffectsDirectionality(oldMarkedNode))
         oldMarkedNode = NodeTraversal::nextSkippingChildren(*oldMarkedNode, this);
     if (oldMarkedNode)
@@ -929,7 +920,7 @@ bool HTMLElement::matchesReadWritePseudoClass() const
         // All other values should be treated as "inherit".
     }
 
-    return parentElement() && parentElement()->rendererIsEditable();
+    return parentElement() && parentElement()->hasEditableStyle();
 }
 
 void HTMLElement::handleKeypressEvent(KeyboardEvent* event)

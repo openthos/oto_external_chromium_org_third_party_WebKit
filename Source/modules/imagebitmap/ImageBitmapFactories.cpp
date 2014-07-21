@@ -31,18 +31,17 @@
 #include "config.h"
 #include "modules/imagebitmap/ImageBitmapFactories.h"
 
-#include "bindings/v8/ExceptionState.h"
-#include "bindings/v8/ScriptPromiseResolver.h"
-#include "bindings/v8/ScriptPromiseResolverWithContext.h"
+#include "bindings/core/v8/ExceptionState.h"
+#include "bindings/core/v8/ScriptPromiseResolver.h"
 #include "core/dom/ExecutionContext.h"
 #include "core/fileapi/Blob.h"
+#include "core/frame/ImageBitmap.h"
+#include "core/frame/LocalDOMWindow.h"
 #include "core/html/HTMLCanvasElement.h"
 #include "core/html/HTMLImageElement.h"
 #include "core/html/HTMLVideoElement.h"
 #include "core/html/ImageData.h"
 #include "core/html/canvas/CanvasRenderingContext2D.h"
-#include "core/frame/LocalDOMWindow.h"
-#include "core/frame/ImageBitmap.h"
 #include "core/workers/WorkerGlobalScope.h"
 #include "platform/SharedBuffer.h"
 #include "platform/graphics/BitmapImage.h"
@@ -128,8 +127,7 @@ ScriptPromise ImageBitmapFactories::createImageBitmap(ScriptState* scriptState, 
         exceptionState.throwDOMException(InvalidStateError, "The provided element has not retrieved data.");
         return ScriptPromise();
     }
-    // FIXME: Remove the below null check once we fix the bug 382721
-    if (video->readyState() <= HTMLMediaElement::HAVE_METADATA || !video->webMediaPlayer()) {
+    if (video->readyState() <= HTMLMediaElement::HAVE_METADATA) {
         exceptionState.throwDOMException(InvalidStateError, "The provided element's player has no current data.");
         return ScriptPromise();
     }
@@ -274,7 +272,7 @@ void ImageBitmapFactories::didFinishLoading(ImageBitmapLoader* loader)
 ImageBitmapFactories::ImageBitmapLoader::ImageBitmapLoader(ImageBitmapFactories& factory, const IntRect& cropRect, ScriptState* scriptState)
     : m_loader(FileReaderLoader::ReadAsArrayBuffer, this)
     , m_factory(&factory)
-    , m_resolver(ScriptPromiseResolverWithContext::create(scriptState))
+    , m_resolver(ScriptPromiseResolver::create(scriptState))
     , m_cropRect(cropRect)
 {
 }

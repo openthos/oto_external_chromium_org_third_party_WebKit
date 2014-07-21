@@ -26,7 +26,7 @@
 #include "config.h"
 #include "modules/speech/SpeechSynthesis.h"
 
-#include "bindings/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionState.h"
 #include "core/dom/ExecutionContext.h"
 #include "modules/speech/SpeechSynthesisEvent.h"
 #include "platform/speech/PlatformSpeechSynthesisVoice.h"
@@ -168,7 +168,7 @@ void SpeechSynthesis::handleSpeakingCompleted(SpeechSynthesisUtterance* utteranc
     fireEvent(errorOccurred ? EventTypeNames::error : EventTypeNames::end, utterance, 0, String());
 
     // Start the next utterance if we just finished one and one was pending.
-    if (didJustFinishCurrentUtterance && !m_utteranceQueue.isEmpty())
+    if (didJustFinishCurrentUtterance && !m_utteranceQueue.isEmpty() && !utterance->startTime())
         startSpeakingImmediately();
 }
 
@@ -230,7 +230,7 @@ SpeechSynthesisUtterance* SpeechSynthesis::currentSpeechUtterance() const
 
 const AtomicString& SpeechSynthesis::interfaceName() const
 {
-    return EventTargetNames::SpeechSynthesisUtterance;
+    return EventTargetNames::SpeechSynthesis;
 }
 
 void SpeechSynthesis::trace(Visitor* visitor)

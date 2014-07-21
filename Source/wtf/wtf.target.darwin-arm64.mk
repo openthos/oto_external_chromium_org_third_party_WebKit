@@ -52,6 +52,7 @@ GYP_COPIED_SOURCE_ORIGIN_DIRS := \
 	$(LOCAL_PATH)/third_party/WebKit/Source/wtf/dtoa
 
 LOCAL_SRC_FILES := \
+	third_party/WebKit/Source/wtf/AddressSpaceRandomization.cpp \
 	third_party/WebKit/Source/wtf/ArrayBuffer.cpp \
 	third_party/WebKit/Source/wtf/ArrayBufferBuilder.cpp \
 	third_party/WebKit/Source/wtf/ArrayBufferContents.cpp \
@@ -130,7 +131,6 @@ MY_CFLAGS_Debug := \
 	-Wno-unused-but-set-variable \
 	-Os \
 	-g \
-	-fomit-frame-pointer \
 	-fdata-sections \
 	-ffunction-sections \
 	-funwind-tables
@@ -151,6 +151,7 @@ MY_DEFS_Debug := \
 	'-DSYSTEM_NATIVELY_SIGNALS_MEMORY_PRESSURE' \
 	'-DENABLE_EGLIMAGE=1' \
 	'-DCLD_VERSION=1' \
+	'-DCLD_DATA_FROM_STATIC' \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
@@ -163,7 +164,8 @@ MY_DEFS_Debug := \
 	'-DENABLE_CUSTOM_SCHEME_HANDLER=0' \
 	'-DENABLE_SVG_FONTS=1' \
 	'-DWTF_USE_CONCATENATED_IMPULSE_RESPONSES=1' \
-	'-DENABLE_MEDIA_CAPTURE=1' \
+	'-DWTF_USE_WEBAUDIO_OPENMAX_DL_FFT=1' \
+	'-DENABLE_WEB_AUDIO=1' \
 	'-DENABLE_OPENTYPE_VERTICAL=1' \
 	'-DU_USING_ICU_NAMESPACE=0' \
 	'-DUSE_OPENSSL=1' \
@@ -202,6 +204,9 @@ LOCAL_CPPFLAGS_Debug := \
 	-fvisibility-inlines-hidden \
 	-Wsign-compare \
 	-Wno-c++0x-compat \
+	-std=gnu++11 \
+	-Wno-narrowing \
+	-Wno-literal-suffix \
 	-Wno-non-virtual-dtor \
 	-Wno-sign-promo
 
@@ -234,7 +239,6 @@ MY_CFLAGS_Release := \
 	-fno-ident \
 	-fdata-sections \
 	-ffunction-sections \
-	-fomit-frame-pointer \
 	-funwind-tables
 
 MY_DEFS_Release := \
@@ -253,6 +257,7 @@ MY_DEFS_Release := \
 	'-DSYSTEM_NATIVELY_SIGNALS_MEMORY_PRESSURE' \
 	'-DENABLE_EGLIMAGE=1' \
 	'-DCLD_VERSION=1' \
+	'-DCLD_DATA_FROM_STATIC' \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
@@ -265,7 +270,8 @@ MY_DEFS_Release := \
 	'-DENABLE_CUSTOM_SCHEME_HANDLER=0' \
 	'-DENABLE_SVG_FONTS=1' \
 	'-DWTF_USE_CONCATENATED_IMPULSE_RESPONSES=1' \
-	'-DENABLE_MEDIA_CAPTURE=1' \
+	'-DWTF_USE_WEBAUDIO_OPENMAX_DL_FFT=1' \
+	'-DENABLE_WEB_AUDIO=1' \
 	'-DENABLE_OPENTYPE_VERTICAL=1' \
 	'-DU_USING_ICU_NAMESPACE=0' \
 	'-DUSE_OPENSSL=1' \
@@ -305,6 +311,9 @@ LOCAL_CPPFLAGS_Release := \
 	-fvisibility-inlines-hidden \
 	-Wsign-compare \
 	-Wno-c++0x-compat \
+	-std=gnu++11 \
+	-Wno-narrowing \
+	-Wno-literal-suffix \
 	-Wno-non-virtual-dtor \
 	-Wno-sign-promo
 

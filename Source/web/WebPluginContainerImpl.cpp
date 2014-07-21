@@ -31,23 +31,10 @@
 #include "config.h"
 #include "web/WebPluginContainerImpl.h"
 
-#include "core/page/Chrome.h"
-#include "core/page/EventHandler.h"
-#include "platform/exported/WrappedResourceResponse.h"
-#include "public/web/WebElement.h"
-#include "public/web/WebInputEvent.h"
-#include "public/web/WebPlugin.h"
-#include "public/web/WebViewClient.h"
-#include "web/ChromeClientImpl.h"
-#include "web/ScrollbarGroup.h"
-#include "web/WebDataSourceImpl.h"
-#include "web/WebInputEventConversion.h"
-#include "web/WebViewImpl.h"
-
-#include "bindings/v8/ScriptController.h"
+#include "bindings/core/v8/ScriptController.h"
 #include "core/HTMLNames.h"
-#include "core/clipboard/Clipboard.h"
 #include "core/clipboard/DataObject.h"
+#include "core/clipboard/DataTransfer.h"
 #include "core/events/GestureEvent.h"
 #include "core/events/KeyboardEvent.h"
 #include "core/events/MouseEvent.h"
@@ -59,6 +46,8 @@
 #include "core/html/HTMLPlugInElement.h"
 #include "core/loader/FormState.h"
 #include "core/loader/FrameLoadRequest.h"
+#include "core/page/Chrome.h"
+#include "core/page/EventHandler.h"
 #include "core/page/FocusController.h"
 #include "core/page/Page.h"
 #include "core/page/scrolling/ScrollingCoordinator.h"
@@ -66,10 +55,12 @@
 #include "core/rendering/HitTestResult.h"
 #include "core/rendering/RenderBox.h"
 #include "core/rendering/RenderLayer.h"
+#include "core/rendering/RenderPart.h"
 #include "platform/HostWindow.h"
 #include "platform/KeyboardCodes.h"
 #include "platform/PlatformGestureEvent.h"
 #include "platform/UserGestureIndicator.h"
+#include "platform/exported/WrappedResourceResponse.h"
 #include "platform/graphics/GraphicsContext.h"
 #include "platform/graphics/GraphicsLayer.h"
 #include "platform/scroll/ScrollAnimator.h"
@@ -87,7 +78,17 @@
 #include "public/platform/WebURLError.h"
 #include "public/platform/WebURLRequest.h"
 #include "public/platform/WebVector.h"
+#include "public/web/WebElement.h"
+#include "public/web/WebInputEvent.h"
+#include "public/web/WebPlugin.h"
 #include "public/web/WebPrintParams.h"
+#include "public/web/WebViewClient.h"
+#include "web/ChromeClientImpl.h"
+#include "web/ScrollbarGroup.h"
+#include "web/WebDataSourceImpl.h"
+#include "web/WebInputEventConversion.h"
+#include "web/WebViewImpl.h"
+
 
 using namespace WebCore;
 
@@ -303,6 +304,11 @@ void WebPluginContainerImpl::setWebLayer(WebLayer* layer)
     if (!needsCompositingUpdate)
         return;
 
+#if ENABLE(OILPAN)
+    if (!m_element)
+        return;
+#endif
+
     m_element->setNeedsCompositingUpdate();
     // Being composited or not affects the self painting layer bit
     // on the RenderLayer.
@@ -384,17 +390,15 @@ void WebPluginContainerImpl::invalidateRect(const WebRect& rect)
     invalidateRect(static_cast<IntRect>(rect));
 }
 
-void WebPluginContainerImpl::scrollRect(int dx, int dy, const WebRect& rect)
+void WebPluginContainerImpl::scrollRect(const WebRect& rect)
 {
     Widget* parentWidget = parent();
     if (parentWidget->isFrameView()) {
         FrameView* parentFrameView = toFrameView(parentWidget);
         if (!parentFrameView->isOverlapped()) {
-            IntRect damageRect = convertToContainingWindow(static_cast<IntRect>(rect));
-            IntSize scrollDelta(dx, dy);
-            // scroll() only uses the second rectangle, clipRect, and ignores the first
-            // rectangle.
-            parent()->hostWindow()->scroll(scrollDelta, damageRect, damageRect);
+            // FIXME: parameter is unused. Remove once popups scroll like everything else.
+            static const IntRect dummy;
+            parent()->hostWindow()->scroll(dummy);
             return;
         }
     }
@@ -426,10 +430,10 @@ void WebPluginContainerImpl::allowScriptObjects()
 
 void WebPluginContainerImpl::clearScriptObjects()
 {
-    LocalFrame* frame = m_element->document().frame();
-    if (!frame)
+    if (!frame())
         return;
-    frame->script().cleanupScriptObjectsForPlugin(this);
+
+    frame()->script().cleanupScriptObjectsForPlugin(this);
 }
 
 NPObject* WebPluginContainerImpl::scriptableObjectForElement()
@@ -498,7 +502,7 @@ bool WebPluginContainerImpl::isRectTopmost(const WebRect& rect)
     LayoutPoint center = documentRect.center();
     // Make the rect we're checking (the point surrounded by padding rects) contained inside the requested rect. (Note that -1/2 is 0.)
     LayoutSize padding((documentRect.width() - 1) / 2, (documentRect.height() - 1) / 2);
-    HitTestResult result = frame->eventHandler().hitTestResultAtPoint(center, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::ConfusingAndOftenMisusedDisallowShadowContent, padding);
+    HitTestResult result = frame->eventHandler().hitTestResultAtPoint(center, HitTestRequest::ReadOnly | HitTestRequest::Active, padding);
     const HitTestResult::NodeSet& nodes = result.rectBasedTestResult();
     if (nodes.size() != 1)
         return false;
@@ -653,7 +657,8 @@ bool WebPluginContainerImpl::paintCustomOverhangArea(GraphicsContext* context, c
 // Private methods -------------------------------------------------------------
 
 WebPluginContainerImpl::WebPluginContainerImpl(WebCore::HTMLPlugInElement* element, WebPlugin* webPlugin)
-    : m_element(element)
+    : WebCore::FrameDestructionObserver(element->document().frame())
+    , m_element(element)
     , m_webPlugin(webPlugin)
     , m_webLayer(0)
     , m_touchEventRequestType(TouchEventRequestTypeNone)
@@ -663,8 +668,21 @@ WebPluginContainerImpl::WebPluginContainerImpl(WebCore::HTMLPlugInElement* eleme
 
 WebPluginContainerImpl::~WebPluginContainerImpl()
 {
+#if ENABLE(OILPAN)
+    // The element (and its document) are heap allocated and may
+    // have been finalized by now; unsafe to unregister the touch
+    // event handler at this stage.
+    //
+    // This is acceptable, as the widget will unregister itself if it
+    // is cleanly detached. If an explicit detach doesn't happen, this
+    // container is assumed to have died with the plugin element (and
+    // its document), hence no unregistration step is needed.
+    //
+    m_element = 0;
+#else
     if (m_touchEventRequestType != TouchEventRequestTypeNone)
         m_element->document().didRemoveTouchEventHandler(m_element);
+#endif
 
     for (size_t i = 0; i < m_pluginLoadObservers.size(); ++i)
         m_pluginLoadObservers[i]->clearPluginContainer();
@@ -672,6 +690,16 @@ WebPluginContainerImpl::~WebPluginContainerImpl()
     if (m_webLayer)
         GraphicsLayer::unregisterContentsLayer(m_webLayer);
 }
+
+#if ENABLE(OILPAN)
+void WebPluginContainerImpl::detach()
+{
+    if (m_touchEventRequestType != TouchEventRequestTypeNone)
+        m_element->document().didRemoveTouchEventHandler(m_element);
+
+    setWebLayer(0);
+}
+#endif
 
 void WebPluginContainerImpl::handleMouseEvent(MouseEvent* event)
 {
@@ -736,9 +764,9 @@ void WebPluginContainerImpl::handleDragEvent(MouseEvent* event)
     if (dragStatus == WebDragStatusUnknown)
         return;
 
-    Clipboard* clipboard = event->dataTransfer();
-    WebDragData dragData(clipboard->dataObject());
-    WebDragOperationsMask dragOperationMask = static_cast<WebDragOperationsMask>(clipboard->sourceOperation());
+    DataTransfer* dataTransfer = event->dataTransfer();
+    WebDragData dragData(dataTransfer->dataObject());
+    WebDragOperationsMask dragOperationMask = static_cast<WebDragOperationsMask>(dataTransfer->sourceOperation());
     WebPoint dragScreenLocation(event->screenX(), event->screenY());
     WebPoint dragLocation(event->absoluteLocation().x() - location().x(), event->absoluteLocation().y() - location().y());
 

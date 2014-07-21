@@ -6,11 +6,11 @@
 
 /**
  * @constructor
- * @extends {WebInspector.TargetAwareObject}
+ * @extends {WebInspector.SDKObject}
  */
 WebInspector.TracingModel = function(target)
 {
-    WebInspector.TargetAwareObject.call(this, target);
+    WebInspector.SDKObject.call(this, target);
     this.reset();
     this._active = false;
     InspectorBackend.registerTracingDispatcher(new WebInspector.TracingDispatcher(this));
@@ -89,6 +89,7 @@ WebInspector.TracingModel.prototype = {
      */
     start: function(categoryFilter, options, callback)
     {
+        this.target().profilingLock.acquire();
         this.reset();
         var bufferUsageReportingIntervalMs = 500;
         /**
@@ -117,6 +118,7 @@ WebInspector.TracingModel.prototype = {
         }
         this._pendingStopCallback = callback;
         TracingAgent.end();
+        this.target().profilingLock.release();
     },
 
     /**
@@ -242,7 +244,7 @@ WebInspector.TracingModel.prototype = {
         return WebInspector.TracingModel.NamedObject._sort(Object.values(this._processById));
     },
 
-    __proto__: WebInspector.TargetAwareObject.prototype
+    __proto__: WebInspector.SDKObject.prototype
 }
 
 /**
@@ -465,6 +467,16 @@ WebInspector.TracingModel.Thread = function(process, id)
 }
 
 WebInspector.TracingModel.Thread.prototype = {
+
+    /**
+     * @return {?WebInspector.Target}
+     */
+    target: function()
+    {
+        //FIXME: correctly specify target
+        return WebInspector.targetManager.targets()[0];
+    },
+
     /**
      * @param {!WebInspector.TracingModel.EventPayload} payload
      * @return {?WebInspector.TracingModel.Event} event

@@ -40,6 +40,15 @@
 
 namespace WebCore {
 
+namespace {
+
+bool compareAnimationPlayers(const RefPtrWillBeMember<WebCore::AnimationPlayer>& left, const RefPtrWillBeMember<WebCore::AnimationPlayer>& right)
+{
+    return left->sortInfo().hasLowerSequenceNumber(right->sortInfo());
+}
+
+}
+
 // This value represents 1 frame at 30Hz plus a little bit of wiggle room.
 // TODO: Plumb a nominal framerate through and derive this value from that.
 const double AnimationTimeline::s_minimumDelay = 0.04;
@@ -83,9 +92,20 @@ AnimationPlayer* AnimationTimeline::play(AnimationNode* child)
     if (!m_document)
         return 0;
     AnimationPlayer* player = createAnimationPlayer(child);
-    player->setStartTimeInternal(effectiveTime());
     m_document->compositorPendingAnimations().add(player);
     return player;
+}
+
+WillBeHeapVector<RefPtrWillBeMember<AnimationPlayer> > AnimationTimeline::getAnimationPlayers()
+{
+    WillBeHeapVector<RefPtrWillBeMember<AnimationPlayer> > animationPlayers;
+    for (WillBeHeapHashSet<RawPtrWillBeWeakMember<AnimationPlayer> >::iterator it = m_players.begin(); it != m_players.end(); ++it) {
+        if ((*it)->source() && (*it)->source()->isCurrent()) {
+            animationPlayers.append(*it);
+        }
+    }
+    std::sort(animationPlayers.begin(), animationPlayers.end(), compareAnimationPlayers);
+    return animationPlayers;
 }
 
 void AnimationTimeline::wake()
@@ -95,12 +115,14 @@ void AnimationTimeline::wake()
 
 void AnimationTimeline::serviceAnimations(TimingUpdateReason reason)
 {
-    TRACE_EVENT0("webkit", "AnimationTimeline::serviceAnimations");
+    TRACE_EVENT0("blink", "AnimationTimeline::serviceAnimations");
 
     m_timing->cancelWake();
 
     double timeToNextEffect = std::numeric_limits<double>::infinity();
+
     WillBeHeapVector<RawPtrWillBeMember<AnimationPlayer> > players;
+    players.reserveInitialCapacity(m_playersNeedingUpdate.size());
     for (WillBeHeapHashSet<RefPtrWillBeMember<AnimationPlayer> >::iterator it = m_playersNeedingUpdate.begin(); it != m_playersNeedingUpdate.end(); ++it)
         players.append(it->get());
 
@@ -224,10 +246,12 @@ void AnimationTimeline::detachFromDocument()
 
 void AnimationTimeline::trace(Visitor* visitor)
 {
+#if ENABLE(OILPAN)
     visitor->trace(m_document);
     visitor->trace(m_timing);
     visitor->trace(m_playersNeedingUpdate);
     visitor->trace(m_players);
+#endif
 }
 
 } // namespace

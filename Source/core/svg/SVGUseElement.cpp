@@ -26,7 +26,7 @@
 
 #include "core/svg/SVGUseElement.h"
 
-#include "bindings/v8/ExceptionStatePlaceholder.h"
+#include "bindings/core/v8/ExceptionStatePlaceholder.h"
 #include "core/XLinkNames.h"
 #include "core/dom/Document.h"
 #include "core/dom/ElementTraversal.h"
@@ -115,7 +115,7 @@ void SVGUseElement::parseAttribute(const QualifiedName& name, const AtomicString
     reportAttributeParsingError(parseError, name, value);
 }
 
-#if ASSERT_ENABLED
+#if ENABLE(ASSERT)
 static inline bool isWellFormedDocument(Document* document)
 {
     if (document->isXMLDocument())
@@ -309,7 +309,7 @@ void SVGUseElement::clearResourceReferences()
     m_needsShadowTreeRecreation = false;
     document().unscheduleUseShadowTreeUpdate(*this);
 
-    document().accessSVGExtensions().removeAllTargetReferencesForElement(this);
+    removeAllOutgoingReferences();
 }
 
 void SVGUseElement::buildPendingResource()
@@ -476,8 +476,8 @@ bool SVGUseElement::buildShadowTree(SVGElement* target, SVGElement* targetInstan
     if (isSVGUseElement(*target)) {
         // We only need to track first degree <use> dependencies. Indirect references are handled
         // as the invalidation bubbles up the dependency chain.
-        if (!foundUse) {
-            document().accessSVGExtensions().addElementReferencingTarget(this, target);
+        if (!foundUse && !isStructurallyExternal()) {
+            addReferenceTo(target);
             foundUse = true;
         }
     } else if (isDisallowedElement(target)) {

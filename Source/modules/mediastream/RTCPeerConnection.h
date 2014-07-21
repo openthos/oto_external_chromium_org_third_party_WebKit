@@ -31,8 +31,7 @@
 #ifndef RTCPeerConnection_h
 #define RTCPeerConnection_h
 
-#include "bindings/v8/Dictionary.h"
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/Dictionary.h"
 #include "core/dom/ActiveDOMObject.h"
 #include "modules/EventTargetModules.h"
 #include "modules/mediastream/MediaStream.h"
@@ -41,7 +40,6 @@
 #include "public/platform/WebMediaConstraints.h"
 #include "public/platform/WebRTCPeerConnectionHandler.h"
 #include "public/platform/WebRTCPeerConnectionHandlerClient.h"
-#include "wtf/RefCounted.h"
 
 namespace WebCore {
 
@@ -51,27 +49,32 @@ class RTCConfiguration;
 class RTCDTMFSender;
 class RTCDataChannel;
 class RTCErrorCallback;
+class RTCOfferOptions;
 class RTCSessionDescription;
 class RTCSessionDescriptionCallback;
 class RTCStatsCallback;
 class VoidCallback;
 
-class RTCPeerConnection FINAL : public RefCountedWillBeRefCountedGarbageCollected<RTCPeerConnection>, public ScriptWrappable, public blink::WebRTCPeerConnectionHandlerClient, public EventTargetWithInlineData, public ActiveDOMObject {
-    REFCOUNTED_EVENT_TARGET(RTCPeerConnection);
+class RTCPeerConnection FINAL
+    : public RefCountedGarbageCollectedWillBeGarbageCollectedFinalized<RTCPeerConnection>
+    , public blink::WebRTCPeerConnectionHandlerClient
+    , public EventTargetWithInlineData
+    , public ActiveDOMObject {
+    DEFINE_EVENT_TARGET_REFCOUNTING_WILL_BE_REMOVED(RefCountedGarbageCollectedWillBeGarbageCollectedFinalized<RTCPeerConnection>);
     WILL_BE_USING_GARBAGE_COLLECTED_MIXIN(RTCPeerConnection);
 public:
-    static PassRefPtrWillBeRawPtr<RTCPeerConnection> create(ExecutionContext*, const Dictionary& rtcConfiguration, const Dictionary& mediaConstraints, ExceptionState&);
+    static RTCPeerConnection* create(ExecutionContext*, const Dictionary&, const Dictionary&, ExceptionState&);
     virtual ~RTCPeerConnection();
 
-    void createOffer(PassOwnPtr<RTCSessionDescriptionCallback>, PassOwnPtr<RTCErrorCallback>, const Dictionary& mediaConstraints, ExceptionState&);
+    void createOffer(PassOwnPtr<RTCSessionDescriptionCallback>, PassOwnPtr<RTCErrorCallback>, const Dictionary&, ExceptionState&);
 
-    void createAnswer(PassOwnPtr<RTCSessionDescriptionCallback>, PassOwnPtr<RTCErrorCallback>, const Dictionary& mediaConstraints, ExceptionState&);
+    void createAnswer(PassOwnPtr<RTCSessionDescriptionCallback>, PassOwnPtr<RTCErrorCallback>, const Dictionary&, ExceptionState&);
 
-    void setLocalDescription(PassRefPtrWillBeRawPtr<RTCSessionDescription>, PassOwnPtr<VoidCallback>, PassOwnPtr<RTCErrorCallback>, ExceptionState&);
-    PassRefPtrWillBeRawPtr<RTCSessionDescription> localDescription(ExceptionState&);
+    void setLocalDescription(RTCSessionDescription*, PassOwnPtr<VoidCallback>, PassOwnPtr<RTCErrorCallback>, ExceptionState&);
+    RTCSessionDescription* localDescription(ExceptionState&);
 
-    void setRemoteDescription(PassRefPtrWillBeRawPtr<RTCSessionDescription>, PassOwnPtr<VoidCallback>, PassOwnPtr<RTCErrorCallback>, ExceptionState&);
-    PassRefPtrWillBeRawPtr<RTCSessionDescription> remoteDescription(ExceptionState&);
+    void setRemoteDescription(RTCSessionDescription*, PassOwnPtr<VoidCallback>, PassOwnPtr<RTCErrorCallback>, ExceptionState&);
+    RTCSessionDescription* remoteDescription(ExceptionState&);
 
     String signalingState() const;
 
@@ -92,15 +95,15 @@ public:
 
     MediaStream* getStreamById(const String& streamId);
 
-    void addStream(PassRefPtrWillBeRawPtr<MediaStream>, const Dictionary& mediaConstraints, ExceptionState&);
+    void addStream(MediaStream*, const Dictionary& mediaConstraints, ExceptionState&);
 
-    void removeStream(PassRefPtrWillBeRawPtr<MediaStream>, ExceptionState&);
+    void removeStream(MediaStream*, ExceptionState&);
 
-    void getStats(PassOwnPtr<RTCStatsCallback> successCallback, PassRefPtr<MediaStreamTrack> selector);
+    void getStats(PassOwnPtr<RTCStatsCallback> successCallback, MediaStreamTrack* selector);
 
-    PassRefPtrWillBeRawPtr<RTCDataChannel> createDataChannel(String label, const Dictionary& dataChannelDict, ExceptionState&);
+    RTCDataChannel* createDataChannel(String label, const Dictionary& dataChannelDict, ExceptionState&);
 
-    PassRefPtrWillBeRawPtr<RTCDTMFSender> createDTMFSender(PassRefPtrWillBeRawPtr<MediaStreamTrack>, ExceptionState&);
+    RTCDTMFSender* createDTMFSender(MediaStreamTrack*, ExceptionState&);
 
     void close(ExceptionState&);
 
@@ -147,6 +150,8 @@ private:
     RTCPeerConnection(ExecutionContext*, PassRefPtr<RTCConfiguration>, blink::WebMediaConstraints, ExceptionState&);
 
     static PassRefPtr<RTCConfiguration> parseConfiguration(const Dictionary& configuration, ExceptionState&);
+    static PassRefPtr<RTCOfferOptions> parseOfferOptions(const Dictionary& options);
+
     void scheduleDispatchEvent(PassRefPtrWillBeRawPtr<Event>);
     void dispatchScheduledEvent();
     bool hasLocalStreamWithTrackId(const String& trackId);
@@ -162,7 +167,7 @@ private:
     MediaStreamVector m_localStreams;
     MediaStreamVector m_remoteStreams;
 
-    WillBeHeapVector<RefPtrWillBeMember<RTCDataChannel> > m_dataChannels;
+    HeapVector<Member<RTCDataChannel> > m_dataChannels;
 
     OwnPtr<blink::WebRTCPeerConnectionHandler> m_peerHandler;
 

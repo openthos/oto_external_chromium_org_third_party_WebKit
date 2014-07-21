@@ -26,6 +26,7 @@
 #ifndef WebGLRenderingContextBase_h
 #define WebGLRenderingContextBase_h
 
+#include "bindings/core/v8/Nullable.h"
 #include "core/dom/ActiveDOMObject.h"
 #include "core/html/canvas/CanvasRenderingContext.h"
 #include "core/html/canvas/WebGLExtensionName.h"
@@ -185,7 +186,7 @@ public:
 
     PassRefPtr<WebGLActiveInfo> getActiveAttrib(WebGLProgram*, GLuint index);
     PassRefPtr<WebGLActiveInfo> getActiveUniform(WebGLProgram*, GLuint index);
-    bool getAttachedShaders(WebGLProgram*, Vector<RefPtr<WebGLShader> >&);
+    Nullable<Vector<RefPtr<WebGLShader> > > getAttachedShaders(WebGLProgram*);
     GLint getAttribLocation(WebGLProgram*, const String& name);
     WebGLGetInfo getBufferParameter(GLenum target, GLenum pname);
     PassRefPtr<WebGLContextAttributes> getContextAttributes();
@@ -200,7 +201,7 @@ public:
     String getShaderInfoLog(WebGLShader*);
     PassRefPtr<WebGLShaderPrecisionFormat> getShaderPrecisionFormat(GLenum shaderType, GLenum precisionType);
     String getShaderSource(WebGLShader*);
-    Vector<String> getSupportedExtensions();
+    Nullable<Vector<String> > getSupportedExtensions();
     WebGLGetInfo getTexParameter(GLenum target, GLenum pname);
     WebGLGetInfo getUniform(WebGLProgram*, const WebGLUniformLocation*);
     PassRefPtr<WebGLUniformLocation> getUniformLocation(WebGLProgram*, const String&);
@@ -542,9 +543,6 @@ protected:
         ApprovedExtension               = 0x00,
         // Extension that is behind the draft extensions runtime flag:
         DraftExtension                  = 0x01,
-        // Extension that is still in draft state, but has been selectively enabled by default under a prefix. Do not use
-        // this for enabling new draft extensions; use the DraftExtension flag instead, and do not use vendor prefixes:
-        EnabledDraftExtension           = 0x04,
     };
 
     class ExtensionTracker {

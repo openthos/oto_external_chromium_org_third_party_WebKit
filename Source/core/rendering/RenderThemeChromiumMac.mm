@@ -21,9 +21,9 @@
 #import "config.h"
 #import "core/rendering/RenderThemeChromiumMac.h"
 
-#import "CSSValueKeywords.h"
-#import "HTMLNames.h"
-#import "UserAgentStyleSheets.h"
+#import "core/CSSValueKeywords.h"
+#import "core/HTMLNames.h"
+#import "core/UserAgentStyleSheets.h"
 #import "core/css/CSSValueList.h"
 #import "core/dom/Document.h"
 #import "core/dom/Element.h"
@@ -62,8 +62,6 @@
 #import <math.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/StdLibExtras.h>
-
-using namespace std;
 
 // The methods in this file are specific to the Mac OS X platform.
 
@@ -513,7 +511,7 @@ Color RenderThemeChromiumMac::systemColor(CSSValueID cssValueId) const
 bool RenderThemeChromiumMac::isControlStyled(const RenderStyle* style, const CachedUAStyle* uaStyle) const
 {
     ASSERT(uaStyle);
-    if (style->appearance() == TextFieldPart || style->appearance() == TextAreaPart || style->appearance() == ListboxPart)
+    if (style->appearance() == TextFieldPart || style->appearance() == TextAreaPart)
         return style->border() != uaStyle->border || style->boxShadow();
 
     // FIXME: This is horrible, but there is not much else that can be done.  Menu lists cannot draw properly when
@@ -1084,7 +1082,7 @@ bool RenderThemeChromiumMac::paintProgressBar(RenderObject* renderObject, const 
 
     trackInfo.bounds = IntRect(IntPoint(), inflatedRect.size());
     trackInfo.min = 0;
-    trackInfo.max = numeric_limits<SInt32>::max();
+    trackInfo.max = std::numeric_limits<SInt32>::max();
     trackInfo.value = lround(renderProgress->position() * nextafter(trackInfo.max, 0));
     trackInfo.trackInfo.progress.phase = lround(renderProgress->animationProgress() * nextafter(progressAnimationNumFrames, 0));
     trackInfo.attributes = kThemeTrackHorizontal;
@@ -1131,7 +1129,7 @@ bool RenderThemeChromiumMac::paintMenuListButton(RenderObject* o, const PaintInf
                              r.width() - o->style()->borderLeftWidth() - o->style()->borderRightWidth(),
                              r.height() - o->style()->borderTopWidth() - o->style()->borderBottomWidth());
     // Since we actually know the size of the control here, we restrict the font scale to make sure the arrows will fit vertically in the bounds
-    float fontScale = min(o->style()->fontSize() / baseFontSize, bounds.height() / (baseArrowHeight * 2 + baseSpaceBetweenArrows));
+    float fontScale = std::min(o->style()->fontSize() / baseFontSize, bounds.height() / (baseArrowHeight * 2 + baseSpaceBetweenArrows));
     float centerY = bounds.y() + bounds.height() / 2.0f;
     float arrowHeight = baseArrowHeight * fontScale;
     float arrowWidth = baseArrowWidth * fontScale;
@@ -1768,10 +1766,10 @@ String RenderThemeChromiumMac::fileListNameForWidth(Locale& locale, const FileLi
         strToTruncate = [[NSFileManager defaultManager] displayNameAtPath:(fileList->item(0)->path())];
     } else {
         // FIXME: Localization of fileList->length().
-        return StringTruncator::rightTruncate(locale.queryString(blink::WebLocalizedString::MultipleFileUploadText, String::number(fileList->length())), width, font, StringTruncator::EnableRoundingHacks);
+        return StringTruncator::rightTruncate(locale.queryString(blink::WebLocalizedString::MultipleFileUploadText, String::number(fileList->length())), width, font);
     }
 
-    return StringTruncator::centerTruncate(strToTruncate, width, font, StringTruncator::EnableRoundingHacks);
+    return StringTruncator::centerTruncate(strToTruncate, width, font);
 }
 
 NSView* FlippedView()
@@ -1793,7 +1791,7 @@ PassRefPtr<RenderTheme> RenderThemeChromiumMac::create()
 
 bool RenderThemeChromiumMac::usesTestModeFocusRingColor() const
 {
-    return isRunningLayoutTest();
+    return LayoutTestSupport::isRunningLayoutTest();
 }
 
 NSView* RenderThemeChromiumMac::documentViewFor(RenderObject*) const
@@ -1859,8 +1857,9 @@ String RenderThemeChromiumMac::extraFullScreenStyleSheet()
 String RenderThemeChromiumMac::extraDefaultStyleSheet()
 {
     return RenderTheme::extraDefaultStyleSheet() +
-           String(themeChromiumUserAgentStyleSheet, sizeof(themeChromiumUserAgentStyleSheet)) +
-           String(themeMacUserAgentStyleSheet, sizeof(themeMacUserAgentStyleSheet));
+        String(themeChromiumCss, sizeof(themeChromiumCss)) +
+        String(themeInputMultipleFieldsCss, sizeof(themeInputMultipleFieldsCss)) +
+        String(themeMacCss, sizeof(themeMacCss));
 }
 
 bool RenderThemeChromiumMac::paintMediaVolumeSliderContainer(RenderObject* object, const PaintInfo& paintInfo, const IntRect& rect)

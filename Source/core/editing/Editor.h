@@ -26,7 +26,7 @@
 #ifndef Editor_h
 #define Editor_h
 
-#include "core/clipboard/ClipboardAccessPolicy.h"
+#include "core/clipboard/DataTransferAccessPolicy.h"
 #include "core/dom/DocumentMarker.h"
 #include "core/editing/EditAction.h"
 #include "core/editing/EditingBehavior.h"
@@ -41,8 +41,8 @@
 
 namespace WebCore {
 
-class Clipboard;
 class CompositeEditCommand;
+class DataTransfer;
 class EditCommand;
 class EditCommandComposition;
 class EditorClient;
@@ -100,8 +100,6 @@ public:
     static void countEvent(ExecutionContext*, const Event*);
     void copyImage(const HitTestResult&);
 
-    void indent();
-    void outdent();
     void transpose();
 
     bool shouldDeleteRange(Range*) const;
@@ -111,9 +109,6 @@ public:
     bool selectionStartHasStyle(CSSPropertyID, const String& value) const;
     TriState selectionHasStyle(CSSPropertyID, const String& value) const;
     String selectionStartCSSPropertyValue(CSSPropertyID);
-
-    TriState selectionUnorderedListState() const;
-    TriState selectionOrderedListState() const;
 
     void removeFormattingAndStyle();
 
@@ -159,6 +154,11 @@ public:
     };
     Command command(const String& commandName); // Command source is CommandFromMenuOrKeyBinding.
     Command command(const String& commandName, EditorCommandSource);
+
+    // |Editor::executeCommand| is implementation of |WebFrame::executeCommand|
+    // rather than |Document::execCommand|.
+    bool executeCommand(const String&);
+    bool executeCommand(const String& commandName, const String& value);
 
     bool insertText(const String&, Event* triggeringEvent);
     bool insertTextWithoutSendingTextEvent(const String&, bool selectInsertedText, TextEvent* triggeringEvent);
@@ -263,7 +263,7 @@ private:
     void pasteAsPlainTextWithPasteboard(Pasteboard*);
     void pasteWithPasteboard(Pasteboard*);
     void writeSelectionToPasteboard(Pasteboard*, Range*, const String& plainText);
-    bool dispatchCPPEvent(const AtomicString&, ClipboardAccessPolicy, PasteMode = AllMimeTypes);
+    bool dispatchCPPEvent(const AtomicString&, DataTransferAccessPolicy, PasteMode = AllMimeTypes);
 
     void revealSelectionAfterEditingOperation(const ScrollAlignment& = ScrollAlignment::alignCenterIfNeeded, RevealExtentOption = DoNotRevealExtent);
     void changeSelectionAfterCommand(const VisibleSelection& newSelection, FrameSelection::SetSelectionOptions);

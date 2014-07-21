@@ -44,6 +44,8 @@ class CSSAnimations;
 class RenderObject;
 class Element;
 
+typedef WillBeHeapHashMap<RawPtrWillBeWeakMember<AnimationPlayer>, int> AnimationPlayerCountedSet;
+
 class ActiveAnimations : public NoBaseWillBeGarbageCollectedFinalized<ActiveAnimations> {
     WTF_MAKE_NONCOPYABLE(ActiveAnimations);
 public:
@@ -57,13 +59,13 @@ public:
     // Animations that are currently active for this element, their effects will be applied
     // during a style recalc. CSS Transitions are included in this stack.
     AnimationStack& defaultStack() { return m_defaultStack; }
+    const AnimationStack& defaultStack() const { return m_defaultStack; }
     // Tracks the state of active CSS Animations and Transitions. The individual animations
     // will also be part of the default stack, but the mapping betwen animation name and
     // player is kept here.
     CSSAnimations& cssAnimations() { return m_cssAnimations; }
     const CSSAnimations& cssAnimations() const { return m_cssAnimations; }
 
-    typedef WillBeHeapHashMap<RawPtrWillBeWeakMember<AnimationPlayer>, int> AnimationPlayerCountedSet;
     // AnimationPlayers which have animations targeting this element.
     const AnimationPlayerCountedSet& players() const { return m_players; }
     void addPlayer(AnimationPlayer*);

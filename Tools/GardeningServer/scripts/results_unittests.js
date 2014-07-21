@@ -153,20 +153,6 @@ test("ResultAnalyzer", 44, function() {
     ok(!analyzer.flaky());
 });
 
-test("expectedFailures", 1, function() {
-    var expectedFailures = results.expectedFailures(unittest.kExampleResultsJSON);
-    deepEqual(expectedFailures, {
-        "scrollbars/custom-scrollbar-with-incomplete-style.html": {
-            "expected": "IMAGE",
-            "actual": "IMAGE"
-        },
-        "userscripts/user-script-video-document.html": {
-            "expected": "FAIL",
-            "actual": "TEXT"
-        }
-    });
-});
-
 test("unexpectedFailures", 1, function() {
     var unexpectedFailures = results.unexpectedFailures(unittest.kExampleResultsJSON);
     deepEqual(unexpectedFailures, {
@@ -190,6 +176,15 @@ test("unexpectedFailuresByTest", 1, function() {
                 "is_unexpected": true,
             }
         }
+    });
+});
+
+test("failureInfo", 1, function() {
+    var failureInfo = results.failureInfo("userscripts/another-test.html", "Mock Builder", "FAIL PASS");
+    deepEqual(failureInfo, {
+        "testName": "userscripts/another-test.html",
+        "builderName": "Mock Builder",
+        "failureTypeList": ["FAIL", "PASS"],
     });
 });
 
@@ -427,14 +422,6 @@ test("collectUnexpectedResults", 1, function() {
 
     var collectedResults = results.collectUnexpectedResults(dictionaryOfResultNodes);
     deepEqual(collectedResults, ["TEXT", "IMAGE"]);
-});
-
-test("failureTypeToExtensionList", 5, function() {
-    deepEqual(results.failureTypeToExtensionList('TEXT'), ['txt']);
-    deepEqual(results.failureTypeToExtensionList('IMAGE+TEXT'), ['txt', 'png']);
-    deepEqual(results.failureTypeToExtensionList('IMAGE'), ['png']);
-    deepEqual(results.failureTypeToExtensionList('CRASH'), []);
-    deepEqual(results.failureTypeToExtensionList('TIMEOUT'), []);
 });
 
 asyncTest("fetchResultsURLs", 5, function() {

@@ -48,8 +48,10 @@ IdlDefinitions
     IdlInterface
         IdlAttribute < TypedObject
         IdlConstant < TypedObject
+        IdlLiteral
         IdlOperation < TypedObject
             IdlArgument < TypedObject
+        IdlStringifier
     IdlException < IdlInterface
         (same contents as IdlInterface)
 
@@ -261,6 +263,7 @@ class IdlInterface(object):
         self.extended_attributes = {}
         self.operations = []
         self.parent = None
+        self.stringifier = None
         if not node:  # Early exit for IdlException.__init__
             return
 
@@ -287,6 +290,9 @@ class IdlInterface(object):
                 self.operations.append(IdlOperation(child))
             elif child_class == 'Inherit':
                 self.parent = child.GetName()
+            elif child_class == 'Stringifier':
+                self.stringifier = IdlStringifier(child)
+                self.process_stringifier()
             else:
                 raise ValueError('Unrecognized node class: %s' % child_class)
 
@@ -301,6 +307,14 @@ class IdlInterface(object):
             custom_constructor.resolve_typedefs(typedefs)
         for operation in self.operations:
             operation.resolve_typedefs(typedefs)
+
+    def process_stringifier(self):
+        """Add the stringifier's attribute or named operation child, if it has
+        one, as a regular attribute/operation of this interface."""
+        if self.stringifier.attribute:
+            self.attributes.append(self.stringifier.attribute)
+        elif self.stringifier.operation:
+            self.operations.append(self.stringifier.operation)
 
     def merge(self, other):
         """Merge in another interface's members (e.g., partial interface)"""
@@ -384,7 +398,13 @@ class IdlConstant(TypedObject):
         # ConstType is more limited than Type, so subtree is smaller and
         # we don't use the full type_node_to_type function.
         self.idl_type = type_node_inner_to_type(type_node)
-        self.value = value_node.GetName()
+        # FIXME: This code is unnecessarily complicated due to the rather
+        # inconsistent way the upstream IDL parser outputs default values.
+        # http://crbug.com/374178
+        if value_node.GetProperty('TYPE') == 'float':
+            self.value = value_node.GetProperty('VALUE')
+        else:
+            self.value = value_node.GetName()
 
         if num_children == 3:
             ext_attributes_node = children[2]
@@ -436,7 +456,7 @@ def default_node_to_idl_literal(node):
             raise ValueError('Unsupported string value: %r' % value)
         return IdlLiteral(idl_type, value)
     if idl_type == 'integer':
-        return IdlLiteral(idl_type, int(node.GetProperty('NAME')))
+        return IdlLiteral(idl_type, int(node.GetProperty('NAME'), base=0))
     if idl_type == 'float':
         return IdlLiteral(idl_type, float(node.GetProperty('VALUE')))
     if idl_type == 'boolean':
@@ -559,6 +579,36 @@ def arguments_node_to_arguments(node):
         return []
     return [IdlArgument(argument_node)
             for argument_node in node.GetChildren()]
+
+
+################################################################################
+# Stringifiers
+################################################################################
+
+class IdlStringifier(object):
+    def __init__(self, node):
+        self.attribute = None
+        self.operation = None
+        self.extended_attributes = {}
+
+        for child in node.GetChildren():
+            child_class = child.GetClass()
+            if child_class == 'Attribute':
+                self.attribute = IdlAttribute(child)
+            elif child_class == 'Operation':
+                operation = IdlOperation(child)
+                if operation.name:
+                    self.operation = operation
+            elif child_class == 'ExtAttributes':
+                self.extended_attributes = ext_attributes_node_to_extended_attributes(child)
+            else:
+                raise ValueError('Unrecognized node class: %s' % child_class)
+
+        # Copy the stringifier's extended attributes (such as [Unforgable]) onto
+        # the underlying attribute or operation, if there is one.
+        if self.attribute or self.operation:
+            (self.attribute or self.operation).extended_attributes.update(
+                self.extended_attributes)
 
 
 ################################################################################
@@ -719,7 +769,8 @@ def type_node_inner_to_type(node, is_array=False, is_nullable=False):
     elif node_class == 'Sequence':
         if is_array:
             raise ValueError('Arrays of sequences are not supported')
-        return sequence_node_to_type(node, is_nullable=is_nullable)
+        sequence_is_nullable = node.GetProperty('NULLABLE') or False
+        return sequence_node_to_type(node, is_nullable=sequence_is_nullable)
     elif node_class == 'UnionType':
         if is_array:
             raise ValueError('Arrays of unions are not supported')

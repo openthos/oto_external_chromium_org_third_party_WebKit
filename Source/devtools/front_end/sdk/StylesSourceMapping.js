@@ -84,6 +84,16 @@ WebInspector.StylesSourceMapping.prototype = {
     },
 
     /**
+     * @param {!WebInspector.UISourceCode} uiSourceCode
+     * @param {number} lineNumber
+     * @return {boolean}
+     */
+    uiLineHasMapping: function(uiSourceCode, lineNumber)
+    {
+        return true;
+    },
+
+    /**
      * @return {!WebInspector.Target}
      */
     target: function()
@@ -368,7 +378,7 @@ WebInspector.StyleFile.prototype = {
     _styleContentSet: function(finishCallback, error)
     {
         if (error)
-            this._mapping._cssModel.target().consoleModel.showErrorMessage(error);
+            WebInspector.console.error(error);
         finishCallback();
     },
 

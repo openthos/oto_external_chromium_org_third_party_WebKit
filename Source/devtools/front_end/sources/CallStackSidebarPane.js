@@ -40,7 +40,6 @@ WebInspector.CallStackSidebarPane = function()
 }
 
 WebInspector.CallStackSidebarPane.Events = {
-    CallFrameRestarted: "CallFrameRestarted",
     CallFrameSelected: "CallFrameSelected"
 }
 
@@ -149,7 +148,7 @@ WebInspector.CallStackSidebarPane.prototype = {
 
     /**
      * @param {!WebInspector.CallStackSidebarPane.Placard} placard
-     * @param {?Event} event
+     * @param {!Event} event
      */
     _placardContextMenu: function(placard, event)
     {
@@ -164,7 +163,7 @@ WebInspector.CallStackSidebarPane.prototype = {
 
     /**
      * @param {number} index
-     * @param {?Event} event
+     * @param {!Event} event
      */
     _asyncPlacardContextMenu: function(index, event)
     {
@@ -183,7 +182,6 @@ WebInspector.CallStackSidebarPane.prototype = {
     _restartFrame: function(placard)
     {
         placard._callFrame.restart();
-        this.dispatchEventToListeners(WebInspector.CallStackSidebarPane.Events.CallFrameRestarted, placard._callFrame);
     },
 
     _asyncStackTracesStateChanged: function()
@@ -308,7 +306,7 @@ WebInspector.CallStackSidebarPane.prototype = {
     },
 
     /**
-     * @param {function(!Array.<!WebInspector.KeyboardShortcut.Descriptor>, function(?Event=):boolean)} registerShortcutDelegate
+     * @param {function(!Array.<!WebInspector.KeyboardShortcut.Descriptor>, function(!Event=):boolean)} registerShortcutDelegate
      */
     registerShortcuts: function(registerShortcutDelegate)
     {

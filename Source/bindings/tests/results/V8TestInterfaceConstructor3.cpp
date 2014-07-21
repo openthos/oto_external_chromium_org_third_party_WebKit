@@ -7,10 +7,10 @@
 #include "config.h"
 #include "V8TestInterfaceConstructor3.h"
 
-#include "bindings/v8/ExceptionState.h"
-#include "bindings/v8/V8DOMConfiguration.h"
-#include "bindings/v8/V8HiddenValue.h"
-#include "bindings/v8/V8ObjectConstructor.h"
+#include "bindings/core/v8/ExceptionState.h"
+#include "bindings/core/v8/V8DOMConfiguration.h"
+#include "bindings/core/v8/V8HiddenValue.h"
+#include "bindings/core/v8/V8ObjectConstructor.h"
 #include "core/dom/ContextFeatures.h"
 #include "core/dom/Document.h"
 #include "core/frame/LocalDOMWindow.h"
@@ -45,7 +45,6 @@ template <typename T> void V8_USE(T) { }
 
 static void constructor(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    v8::Isolate* isolate = info.GetIsolate();
     if (UNLIKELY(info.Length() < 1)) {
         throwMinimumArityTypeErrorForConstructor("TestInterfaceConstructor3", 1, info.Length(), info.GetIsolate());
         return;
@@ -55,9 +54,8 @@ static void constructor(const v8::FunctionCallbackInfo<v8::Value>& info)
         TOSTRING_VOID_INTERNAL(stringArg, info[0]);
     }
     RefPtr<TestInterfaceConstructor3> impl = TestInterfaceConstructor3::create(stringArg);
-
     v8::Handle<v8::Object> wrapper = info.Holder();
-    V8DOMWrapper::associateObjectWithWrapper<V8TestInterfaceConstructor3>(impl.release(), &V8TestInterfaceConstructor3::wrapperTypeInfo, wrapper, isolate, WrapperConfiguration::Independent);
+    V8DOMWrapper::associateObjectWithWrapper<V8TestInterfaceConstructor3>(impl.release(), &V8TestInterfaceConstructor3::wrapperTypeInfo, wrapper, info.GetIsolate(), WrapperConfiguration::Independent);
     v8SetReturnValue(info, wrapper);
 }
 
@@ -65,7 +63,7 @@ static void constructor(const v8::FunctionCallbackInfo<v8::Value>& info)
 
 void V8TestInterfaceConstructor3::constructorCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    TRACE_EVENT_SCOPED_SAMPLING_STATE("Blink", "DOMConstructor");
+    TRACE_EVENT_SCOPED_SAMPLING_STATE("blink", "DOMConstructor");
     if (!info.IsConstructCall()) {
         throwTypeError(ExceptionMessages::constructorNotCallableAsFunction("TestInterfaceConstructor3"), info.GetIsolate());
         return;
@@ -79,7 +77,7 @@ void V8TestInterfaceConstructor3::constructorCallback(const v8::FunctionCallback
     TestInterfaceConstructor3V8Internal::constructor(info);
 }
 
-static void configureV8TestInterfaceConstructor3Template(v8::Handle<v8::FunctionTemplate> functionTemplate, v8::Isolate* isolate)
+static void installV8TestInterfaceConstructor3Template(v8::Handle<v8::FunctionTemplate> functionTemplate, v8::Isolate* isolate)
 {
     functionTemplate->ReadOnlyPrototype();
 
@@ -100,7 +98,7 @@ static void configureV8TestInterfaceConstructor3Template(v8::Handle<v8::Function
 
 v8::Handle<v8::FunctionTemplate> V8TestInterfaceConstructor3::domTemplate(v8::Isolate* isolate)
 {
-    return V8DOMConfiguration::domClassTemplate(isolate, const_cast<WrapperTypeInfo*>(&wrapperTypeInfo), configureV8TestInterfaceConstructor3Template);
+    return V8DOMConfiguration::domClassTemplate(isolate, const_cast<WrapperTypeInfo*>(&wrapperTypeInfo), installV8TestInterfaceConstructor3Template);
 }
 
 bool V8TestInterfaceConstructor3::hasInstance(v8::Handle<v8::Value> v8Value, v8::Isolate* isolate)

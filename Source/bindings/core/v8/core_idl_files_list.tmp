@@ -113,7 +113,6 @@
 ../../../core/fileapi/FileList.idl
 ../../../core/fileapi/FileReader.idl
 ../../../core/fileapi/FileReaderSync.idl
-../../../core/fileapi/Stream.idl
 ../../../core/frame/BarProp.idl
 ../../../core/frame/Console.idl
 ../../../core/frame/ConsoleBase.idl
@@ -278,6 +277,7 @@
 ../../../core/plugins/PluginArray.idl
 ../../../core/storage/Storage.idl
 ../../../core/storage/StorageEvent.idl
+../../../core/streams/Stream.idl
 ../../../core/svg/SVGAElement.idl
 ../../../core/svg/SVGAltGlyphDefElement.idl
 ../../../core/svg/SVGAltGlyphElement.idl

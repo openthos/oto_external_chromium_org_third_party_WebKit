@@ -37,8 +37,6 @@
 #include "wtf/StdLibExtras.h"
 #include <algorithm>
 
-using namespace std;
-
 namespace WebCore {
 
 using namespace VectorMath;
@@ -68,7 +66,7 @@ OscillatorNode::OscillatorNode(AudioContext* context, float sampleRate)
     setType(m_type);
 
     // An oscillator is always mono.
-    addOutput(adoptPtr(new AudioNodeOutput(this, 1)));
+    addOutput(AudioNodeOutput::create(this, 1));
 
     initialize();
 }
@@ -267,7 +265,7 @@ void OscillatorNode::process(size_t framesToProcess)
     float frequency = 0;
     float* higherWaveData = 0;
     float* lowerWaveData = 0;
-    float tableInterpolationFactor;
+    float tableInterpolationFactor = 0;
 
     if (!hasSampleAccurateValues) {
         frequency = m_frequency->smoothedValue();

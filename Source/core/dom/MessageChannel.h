@@ -27,7 +27,7 @@
 #ifndef MessageChannel_h
 #define MessageChannel_h
 
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "platform/heap/Handle.h"
 #include "wtf/PassRefPtr.h"
 #include "wtf/RefCounted.h"
@@ -38,13 +38,13 @@ namespace WebCore {
 class MessagePort;
 class ExecutionContext;
 
-class MessageChannel FINAL : public RefCountedWillBeGarbageCollectedFinalized<MessageChannel>, public ScriptWrappable {
+class MessageChannel FINAL : public RefCountedWillBeGarbageCollected<MessageChannel>, public ScriptWrappable {
+    DECLARE_EMPTY_DESTRUCTOR_WILL_BE_REMOVED(MessageChannel);
 public:
     static PassRefPtrWillBeRawPtr<MessageChannel> create(ExecutionContext* context)
     {
         return adoptRefWillBeNoop(new MessageChannel(context));
     }
-    ~MessageChannel();
 
     MessagePort* port1() const { return m_port1.get(); }
     MessagePort* port2() const { return m_port2.get(); }

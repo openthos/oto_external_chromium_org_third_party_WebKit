@@ -38,6 +38,7 @@
 #include "platform/text/TextRunIterator.h"
 #include "platform/weborigin/KURL.h"
 #include "third_party/skia/include/core/SkAnnotation.h"
+#include "third_party/skia/include/core/SkClipStack.h"
 #include "third_party/skia/include/core/SkColorFilter.h"
 #include "third_party/skia/include/core/SkData.h"
 #include "third_party/skia/include/core/SkDevice.h"
@@ -116,7 +117,7 @@ GraphicsContext::GraphicsContext(SkCanvas* canvas, DisabledMode disableContextOr
     , m_paintStateIndex(0)
     , m_pendingCanvasSave(false)
     , m_annotationMode(0)
-#if ASSERT_ENABLED
+#if ENABLE(ASSERT)
     , m_annotationCount(0)
     , m_layerCount(0)
     , m_disableDestructionChecks(false)
@@ -142,7 +143,7 @@ GraphicsContext::GraphicsContext(SkCanvas* canvas, DisabledMode disableContextOr
 
 GraphicsContext::~GraphicsContext()
 {
-#if ASSERT_ENABLED
+#if ENABLE(ASSERT)
     if (!m_disableDestructionChecks) {
         ASSERT(!m_paintStateIndex);
         ASSERT(!m_paintState->saveCount());
@@ -210,23 +211,18 @@ void GraphicsContext::restoreLayer()
         m_opaqueRegion.popCanvasLayer(this);
 }
 
-void GraphicsContext::beginAnnotation(const char* rendererName, const char* paintPhase,
-    const String& elementId, const String& elementClass, const String& elementTag)
+void GraphicsContext::beginAnnotation(const AnnotationList& annotations)
 {
     if (contextDisabled())
         return;
 
     canvas()->beginCommentGroup("GraphicsContextAnnotation");
 
-    GraphicsContextAnnotation annotation(rendererName, paintPhase, elementId, elementClass, elementTag);
-    AnnotationList annotations;
-    annotation.asAnnotationList(annotations);
-
     AnnotationList::const_iterator end = annotations.end();
     for (AnnotationList::const_iterator it = annotations.begin(); it != end; ++it)
         canvas()->addComment(it->first, it->second.ascii().data());
 
-#if ASSERT_ENABLED
+#if ENABLE(ASSERT)
     ++m_annotationCount;
 #endif
 }
@@ -236,10 +232,10 @@ void GraphicsContext::endAnnotation()
     if (contextDisabled())
         return;
 
+    ASSERT(m_annotationCount > 0);
     canvas()->endCommentGroup();
 
-    ASSERT(m_annotationCount > 0);
-#if ASSERT_ENABLED
+#if ENABLE(ASSERT)
     --m_annotationCount;
 #endif
 }
@@ -463,7 +459,7 @@ void GraphicsContext::beginLayer(float opacity, CompositeOperator op, const Floa
         saveLayer(0, &layerPaint);
     }
 
-#if ASSERT_ENABLED
+#if ENABLE(ASSERT)
     ++m_layerCount;
 #endif
 }
@@ -476,7 +472,7 @@ void GraphicsContext::endLayer()
     restoreLayer();
 
     ASSERT(m_layerCount > 0);
-#if ASSERT_ENABLED
+#if ENABLE(ASSERT)
     --m_layerCount;
 #endif
 }
@@ -1152,12 +1148,26 @@ void GraphicsContext::didDrawRect(const SkRect& rect, const SkPaint& paint, cons
 }
 
 void GraphicsContext::drawPosText(const void* text, size_t byteLength,
-    const SkPoint pos[],  const SkRect& textRect, const SkPaint& paint)
+    const SkPoint pos[], const SkRect& textRect, const SkPaint& paint)
 {
     if (contextDisabled())
         return;
 
     m_canvas->drawPosText(text, byteLength, pos, paint);
+    didDrawTextInRect(textRect);
+
+    // FIXME: compute bounds for positioned text.
+    if (m_trackOpaqueRegion)
+        m_opaqueRegion.didDrawUnbounded(this, paint, OpaqueRegionSkia::FillOrStroke);
+}
+
+void GraphicsContext::drawPosTextH(const void* text, size_t byteLength,
+    const SkScalar xpos[], SkScalar constY, const SkRect& textRect, const SkPaint& paint)
+{
+    if (contextDisabled())
+        return;
+
+    m_canvas->drawPosTextH(text, byteLength, xpos, constY, paint);
     didDrawTextInRect(textRect);
 
     // FIXME: compute bounds for positioned text.

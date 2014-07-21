@@ -21,7 +21,7 @@
 #ifndef SVGPathSeg_h
 #define SVGPathSeg_h
 
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "wtf/RefCounted.h"
 #include "wtf/text/WTFString.h"
 
@@ -122,6 +122,9 @@ public:
     {
         m_contextElement = contextElement;
     }
+
+    static PassRefPtr<SVGPathSeg> create() { ASSERT_NOT_REACHED(); return nullptr; }
+    PassRefPtr<SVGPathSeg> clone() { ASSERT_NOT_REACHED(); return nullptr; }
 
 protected:
     void commitChange();

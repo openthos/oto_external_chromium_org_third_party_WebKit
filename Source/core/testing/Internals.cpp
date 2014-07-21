@@ -27,13 +27,13 @@
 #include "config.h"
 #include "core/testing/Internals.h"
 
-#include "bindings/v8/ExceptionMessages.h"
-#include "bindings/v8/ExceptionState.h"
-#include "bindings/v8/ScriptFunction.h"
-#include "bindings/v8/ScriptPromise.h"
-#include "bindings/v8/ScriptPromiseResolver.h"
-#include "bindings/v8/SerializedScriptValue.h"
-#include "bindings/v8/V8ThrowException.h"
+#include "bindings/core/v8/ExceptionMessages.h"
+#include "bindings/core/v8/ExceptionState.h"
+#include "bindings/core/v8/ScriptFunction.h"
+#include "bindings/core/v8/ScriptPromise.h"
+#include "bindings/core/v8/ScriptPromiseResolver.h"
+#include "bindings/core/v8/SerializedScriptValue.h"
+#include "bindings/core/v8/V8ThrowException.h"
 #include "core/InternalRuntimeFlags.h"
 #include "core/animation/AnimationTimeline.h"
 #include "core/css/StyleSheetContents.h"
@@ -53,6 +53,7 @@
 #include "core/dom/PseudoElement.h"
 #include "core/dom/Range.h"
 #include "core/dom/StaticNodeList.h"
+#include "core/dom/StyleEngine.h"
 #include "core/dom/TreeScope.h"
 #include "core/dom/ViewportDescription.h"
 #include "core/dom/shadow/ComposedTreeWalker.h"
@@ -79,6 +80,7 @@
 #include "core/html/HTMLMediaElement.h"
 #include "core/html/HTMLSelectElement.h"
 #include "core/html/HTMLTextAreaElement.h"
+#include "core/html/canvas/CanvasRenderingContext2D.h"
 #include "core/html/forms/FormController.h"
 #include "core/html/shadow/ShadowElementNames.h"
 #include "core/html/shadow/TextControlInnerElements.h"
@@ -114,6 +116,7 @@
 #include "core/testing/LayerRectList.h"
 #include "core/testing/MallocStatistics.h"
 #include "core/testing/MockPagePopupDriver.h"
+#include "core/testing/PrivateScriptTest.h"
 #include "core/testing/TypeConversions.h"
 #include "core/workers/WorkerThread.h"
 #include "platform/Cursor.h"
@@ -185,7 +188,6 @@ void Internals::resetToConsistentState(Page* page)
     page->setDeviceScaleFactor(1);
     page->setIsCursorVisible(true);
     page->setPageScaleFactor(1, IntPoint(0, 0));
-    TextRun::setAllowsRoundingHacks(false);
     WebCore::overrideUserPreferredLanguages(Vector<AtomicString>());
     delete s_pagePopupDriver;
     s_pagePopupDriver = 0;
@@ -294,6 +296,17 @@ unsigned Internals::needsLayoutCount(ExceptionState& exceptionState) const
     contextFrame->countObjectsNeedingLayout(needsLayoutObjects, totalObjects, isPartial);
     return needsLayoutObjects;
 }
+
+unsigned Internals::hitTestCount(Document* doc, ExceptionState& exceptionState) const
+{
+    if (!doc) {
+        exceptionState.throwDOMException(InvalidAccessError, "Must supply document to check");
+        return 0;
+    }
+
+    return doc->renderView()->hitTestCount();
+}
+
 
 bool Internals::isPreloaded(const String& url)
 {
@@ -797,10 +810,10 @@ unsigned Internals::activeMarkerCountForNode(Node* node, ExceptionState& excepti
 
     // Only TextMatch markers can be active.
     DocumentMarker::MarkerType markerType = DocumentMarker::TextMatch;
-    WillBeHeapVector<DocumentMarker*> markers = node->document().markers().markersFor(node, markerType);
+    DocumentMarkerVector markers = node->document().markers().markersFor(node, markerType);
 
     unsigned activeMarkerCount = 0;
-    for (WillBeHeapVector<DocumentMarker*>::iterator iter = markers.begin(); iter != markers.end(); ++iter) {
+    for (DocumentMarkerVector::iterator iter = markers.begin(); iter != markers.end(); ++iter) {
         if ((*iter)->activeMatch())
             activeMarkerCount++;
     }
@@ -821,7 +834,7 @@ DocumentMarker* Internals::markerAt(Node* node, const String& markerType, unsign
         return 0;
     }
 
-    WillBeHeapVector<DocumentMarker*> markers = node->document().markers().markersFor(node, markerTypes);
+    DocumentMarkerVector markers = node->document().markers().markersFor(node, markerTypes);
     if (markers.size() <= index)
         return 0;
     return markers[index];
@@ -1086,6 +1099,9 @@ String Internals::rangeAsText(const Range* range, ExceptionState& exceptionState
     return range->text();
 }
 
+// FIXME: The next four functions are very similar - combine them once
+// bestClickableNode/bestContextMenuNode have been combined..
+
 PassRefPtrWillBeRawPtr<DOMPoint> Internals::touchPositionAdjustedToBestClickableNode(long x, long y, long width, long height, Document* document, ExceptionState& exceptionState)
 {
     if (!document || !document->frame()) {
@@ -1098,10 +1114,14 @@ PassRefPtrWillBeRawPtr<DOMPoint> Internals::touchPositionAdjustedToBestClickable
     IntSize radius(width / 2, height / 2);
     IntPoint point(x + radius.width(), y + radius.height());
 
+    EventHandler& eventHandler = document->frame()->eventHandler();
+    IntPoint hitTestPoint = document->frame()->view()->windowToContents(point);
+    HitTestResult result = eventHandler.hitTestResultAtPoint(hitTestPoint, HitTestRequest::ReadOnly | HitTestRequest::Active, radius);
+
     Node* targetNode;
     IntPoint adjustedPoint;
 
-    bool foundNode = document->frame()->eventHandler().bestClickableNodeForTouchPoint(point, radius, adjustedPoint, targetNode);
+    bool foundNode = eventHandler.bestClickableNodeForHitTestResult(result, adjustedPoint, targetNode);
     if (foundNode)
         return DOMPoint::create(adjustedPoint.x(), adjustedPoint.y());
 
@@ -1120,9 +1140,13 @@ Node* Internals::touchNodeAdjustedToBestClickableNode(long x, long y, long width
     IntSize radius(width / 2, height / 2);
     IntPoint point(x + radius.width(), y + radius.height());
 
+    EventHandler& eventHandler = document->frame()->eventHandler();
+    IntPoint hitTestPoint = document->frame()->view()->windowToContents(point);
+    HitTestResult result = eventHandler.hitTestResultAtPoint(hitTestPoint, HitTestRequest::ReadOnly | HitTestRequest::Active, radius);
+
     Node* targetNode;
     IntPoint adjustedPoint;
-    document->frame()->eventHandler().bestClickableNodeForTouchPoint(point, radius, adjustedPoint, targetNode);
+    document->frame()->eventHandler().bestClickableNodeForHitTestResult(result, adjustedPoint, targetNode);
     return targetNode;
 }
 
@@ -1138,10 +1162,14 @@ PassRefPtrWillBeRawPtr<DOMPoint> Internals::touchPositionAdjustedToBestContextMe
     IntSize radius(width / 2, height / 2);
     IntPoint point(x + radius.width(), y + radius.height());
 
+    EventHandler& eventHandler = document->frame()->eventHandler();
+    IntPoint hitTestPoint = document->frame()->view()->windowToContents(point);
+    HitTestResult result = eventHandler.hitTestResultAtPoint(hitTestPoint, HitTestRequest::ReadOnly | HitTestRequest::Active, radius);
+
     Node* targetNode = 0;
     IntPoint adjustedPoint;
 
-    bool foundNode = document->frame()->eventHandler().bestContextMenuNodeForTouchPoint(point, radius, adjustedPoint, targetNode);
+    bool foundNode = eventHandler.bestContextMenuNodeForHitTestResult(result, adjustedPoint, targetNode);
     if (foundNode)
         return DOMPoint::create(adjustedPoint.x(), adjustedPoint.y());
 
@@ -1160,9 +1188,13 @@ Node* Internals::touchNodeAdjustedToBestContextMenuNode(long x, long y, long wid
     IntSize radius(width / 2, height / 2);
     IntPoint point(x + radius.width(), y + radius.height());
 
+    EventHandler& eventHandler = document->frame()->eventHandler();
+    IntPoint hitTestPoint = document->frame()->view()->windowToContents(point);
+    HitTestResult result = eventHandler.hitTestResultAtPoint(hitTestPoint, HitTestRequest::ReadOnly | HitTestRequest::Active, radius);
+
     Node* targetNode = 0;
     IntPoint adjustedPoint;
-    document->frame()->eventHandler().bestContextMenuNodeForTouchPoint(point, radius, adjustedPoint, targetNode);
+    eventHandler.bestContextMenuNodeForHitTestResult(result, adjustedPoint, targetNode);
     return targetNode;
 }
 
@@ -1292,9 +1324,9 @@ static RenderLayer* findRenderLayerForGraphicsLayer(RenderLayer* searchRoot, Gra
 {
     *layerOffset = IntSize();
     if (searchRoot->hasCompositedLayerMapping() && graphicsLayer == searchRoot->compositedLayerMapping()->mainGraphicsLayer()) {
-        CompositedLayerMappingPtr compositedLayerMapping = searchRoot->compositedLayerMapping();
-        LayoutSize offset = compositedLayerMapping->contentOffsetInCompositingLayer();
-        *layerOffset = IntSize(offset.width(), offset.height());
+        LayoutRect rect;
+        RenderLayer::mapRectToPaintBackingCoordinates(searchRoot->renderer(), rect);
+        *layerOffset = IntSize(rect.x(), rect.y());
         return searchRoot;
     }
 
@@ -1308,7 +1340,9 @@ static RenderLayer* findRenderLayerForGraphicsLayer(RenderLayer* searchRoot, Gra
         GraphicsLayer* squashingLayer = searchRoot->groupedMapping()->squashingLayer();
         if (graphicsLayer == squashingLayer) {
             *layerType ="squashing";
-            *layerOffset = -searchRoot->offsetFromSquashingLayerOrigin();
+            LayoutRect rect;
+            RenderLayer::mapRectToPaintBackingCoordinates(searchRoot->renderer(), rect);
+            *layerOffset = IntSize(rect.x(), rect.y());
             return searchRoot;
         }
     }
@@ -1435,7 +1469,7 @@ PassRefPtrWillBeRawPtr<LayerRectList> Internals::touchEventTargetLayerRects(Docu
 }
 
 PassRefPtrWillBeRawPtr<StaticNodeList> Internals::nodesFromRect(Document* document, int centerX, int centerY, unsigned topPadding, unsigned rightPadding,
-    unsigned bottomPadding, unsigned leftPadding, bool ignoreClipping, bool allowShadowContent, bool allowChildFrameContent, ExceptionState& exceptionState) const
+    unsigned bottomPadding, unsigned leftPadding, bool ignoreClipping, bool allowChildFrameContent, ExceptionState& exceptionState) const
 {
     if (!document || !document->frame() || !document->frame()->view()) {
         exceptionState.throwDOMException(InvalidAccessError, "No view can be obtained from the provided document.");
@@ -1455,8 +1489,6 @@ PassRefPtrWillBeRawPtr<StaticNodeList> Internals::nodesFromRect(Document* docume
     HitTestRequest::HitTestRequestType hitType = HitTestRequest::ReadOnly | HitTestRequest::Active;
     if (ignoreClipping)
         hitType |= HitTestRequest::IgnoreClipping;
-    if (!allowShadowContent)
-        hitType |= HitTestRequest::ConfusingAndOftenMisusedDisallowShadowContent;
     if (allowChildFrameContent)
         hitType |= HitTestRequest::AllowChildFrameContent;
 
@@ -1473,8 +1505,12 @@ PassRefPtrWillBeRawPtr<StaticNodeList> Internals::nodesFromRect(Document* docume
     if (!topPadding && !rightPadding && !bottomPadding && !leftPadding) {
         HitTestResult result(point);
         renderView->hitTest(request, result);
-        if (result.innerNode())
-            matches.append(result.innerNode()->deprecatedShadowAncestorNode());
+
+        if (Node* innerNode = result.innerNode()) {
+            if (innerNode->isInShadowTree())
+                innerNode = innerNode->shadowHost();
+            matches.append(innerNode);
+        }
     } else {
         HitTestResult result(point, topPadding, rightPadding, bottomPadding, leftPadding);
         renderView->hitTest(request, result);
@@ -1635,7 +1671,7 @@ bool Internals::scrollsWithRespectTo(Element* element1, Element* element2, Excep
         return 0;
     }
 
-    element1->document().updateLayout();
+    element1->document().view()->updateLayoutAndStyleForPainting();
 
     RenderObject* renderer1 = element1->renderer();
     RenderObject* renderer2 = element2->renderer();
@@ -1685,7 +1721,7 @@ bool Internals::isUnclippedDescendant(Element* element, ExceptionState& exceptio
     if (!layer->compositor()->acceleratedCompositingForOverflowScrollEnabled())
         return false;
 
-    return layer->compositingInputs().isUnclippedDescendant;
+    return layer->isUnclippedDescendant();
 }
 
 String Internals::layerTreeAsText(Document* document, unsigned flags, ExceptionState& exceptionState) const
@@ -1724,62 +1760,6 @@ String Internals::elementLayerTreeAsText(Element* element, unsigned flags, Excep
     }
 
     return layer->compositedLayerMapping()->mainGraphicsLayer()->layerTreeAsText(flags);
-}
-
-static RenderLayer* getRenderLayerForElement(Element* element, ExceptionState& exceptionState)
-{
-    if (!element) {
-        exceptionState.throwDOMException(InvalidAccessError, ExceptionMessages::argumentNullOrIncorrectType(1, "Element"));
-        return 0;
-    }
-
-    RenderObject* renderer = element->renderer();
-    if (!renderer || !renderer->isBox()) {
-        exceptionState.throwDOMException(InvalidAccessError, renderer ? "The provided element's renderer is not a box." : "The provided element has no renderer.");
-        return 0;
-    }
-
-    RenderLayer* layer = toRenderBox(renderer)->layer();
-    if (!layer) {
-        exceptionState.throwDOMException(InvalidAccessError, "No render layer can be obtained from the provided element.");
-        return 0;
-    }
-
-    return layer;
-}
-
-String Internals::repaintRectsAsText(Document* document, ExceptionState& exceptionState) const
-{
-    if (!document || !document->frame()) {
-        exceptionState.throwDOMException(InvalidAccessError, document ? "The document's frame cannot be retrieved." : "The document provided is invalid.");
-        return String();
-    }
-
-    return document->frame()->trackedRepaintRectsAsText();
-}
-
-PassRefPtrWillBeRawPtr<ClientRectList> Internals::repaintRects(Element* element, ExceptionState& exceptionState) const
-{
-    if (!element) {
-        exceptionState.throwDOMException(InvalidAccessError, ExceptionMessages::argumentNullOrIncorrectType(1, "Element"));
-        return nullptr;
-    }
-
-    element->document().frame()->view()->updateLayoutAndStyleForPainting();
-
-    if (RenderLayer* layer = getRenderLayerForElement(element, exceptionState)) {
-        if (layer->compositingState() == PaintsIntoOwnBacking) {
-            OwnPtr<Vector<FloatRect> > rects = layer->collectTrackedRepaintRects();
-            ASSERT(rects.get());
-            Vector<FloatQuad> quads(rects->size());
-            for (size_t i = 0; i < rects->size(); ++i)
-                quads[i] = FloatRect(rects->at(i));
-            return ClientRectList::create(quads);
-        }
-    }
-
-    exceptionState.throwDOMException(InvalidAccessError, "The provided element is not composited.");
-    return nullptr;
 }
 
 String Internals::scrollingStateTreeAsText(Document* document, ExceptionState& exceptionState) const
@@ -1832,11 +1812,6 @@ void Internals::garbageCollectDocumentResources(Document* document, ExceptionSta
 void Internals::evictAllResources() const
 {
     memoryCache()->evictResources();
-}
-
-void Internals::allowRoundingHacks() const
-{
-    TextRun::setAllowsRoundingHacks(true);
 }
 
 String Internals::counterValue(Element* element)
@@ -1925,34 +1900,6 @@ void Internals::setIsCursorVisible(Document* document, bool isVisible, Exception
     document->page()->setIsCursorVisible(isVisible);
 }
 
-void Internals::webkitWillEnterFullScreenForElement(Document* document, Element* element)
-{
-    if (!document)
-        return;
-    FullscreenElementStack::from(*document).webkitWillEnterFullScreenForElement(element);
-}
-
-void Internals::webkitDidEnterFullScreenForElement(Document* document, Element* element)
-{
-    if (!document)
-        return;
-    FullscreenElementStack::from(*document).webkitDidEnterFullScreenForElement(element);
-}
-
-void Internals::webkitWillExitFullScreenForElement(Document* document, Element* element)
-{
-    if (!document)
-        return;
-    FullscreenElementStack::from(*document).webkitWillExitFullScreenForElement(element);
-}
-
-void Internals::webkitDidExitFullScreenForElement(Document* document, Element* element)
-{
-    if (!document)
-        return;
-    FullscreenElementStack::from(*document).webkitDidExitFullScreenForElement(element);
-}
-
 void Internals::mediaPlayerRequestFullscreen(HTMLMediaElement* mediaElement)
 {
     mediaElement->mediaPlayerRequestFullscreen();
@@ -1976,6 +1923,11 @@ PassRefPtrWillBeRawPtr<MallocStatistics> Internals::mallocStatistics() const
 PassRefPtrWillBeRawPtr<TypeConversions> Internals::typeConversions() const
 {
     return TypeConversions::create();
+}
+
+PrivateScriptTest* Internals::privateScriptTest() const
+{
+    return PrivateScriptTest::create(frame());
 }
 
 Vector<String> Internals::getReferencedFilePaths() const
@@ -2243,9 +2195,6 @@ bool Internals::loseSharedGraphicsContext3D()
 
 void Internals::forceCompositingUpdate(Document* document, ExceptionState& exceptionState)
 {
-    // Hit when running content_shell with --expose-internals-for-testing.
-    DisableCompositingQueryAsserts disabler;
-
     if (!document || !document->renderView()) {
         exceptionState.throwDOMException(InvalidAccessError, document ? "The document's render view cannot be retrieved." : "The document provided is invalid.");
         return;
@@ -2295,11 +2244,6 @@ private:
 };
 
 } // namespace
-
-ScriptPromise Internals::createPromise(ScriptState* scriptState)
-{
-    return ScriptPromiseResolver::create(scriptState)->promise();
-}
 
 ScriptPromise Internals::createResolvedPromise(ScriptState* scriptState, ScriptValue value)
 {
@@ -2377,11 +2321,31 @@ void Internals::setNetworkConnectionInfo(const String& type, ExceptionState& exc
         webtype = blink::ConnectionTypeOther;
     } else if (type == "none") {
         webtype = blink::ConnectionTypeNone;
+    } else if (type == "unknown") {
+        webtype = blink::ConnectionTypeUnknown;
     } else {
         exceptionState.throwDOMException(NotFoundError, ExceptionMessages::failedToEnumerate("connection type", type));
         return;
     }
     networkStateNotifier().setWebConnectionTypeForTest(webtype);
+}
+
+unsigned Internals::countHitRegions(CanvasRenderingContext2D* context)
+{
+    return context->hitRegionsCount();
+}
+
+String Internals::serializeNavigationMarkup(Document* document)
+{
+    Vector<Document::TransitionElementData> elementData;
+    frame()->document()->getTransitionElementData(elementData);
+
+    StringBuilder markup;
+    Vector<Document::TransitionElementData>::iterator iter = elementData.begin();
+    for (; iter != elementData.end(); ++iter)
+        markup.append(iter->markup);
+
+    return markup.toString();
 }
 
 } // namespace WebCore

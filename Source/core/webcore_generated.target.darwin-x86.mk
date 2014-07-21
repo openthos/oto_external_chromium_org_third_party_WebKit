@@ -207,140 +207,127 @@ GYP_COPIED_SOURCE_ORIGIN_DIRS := \
 	$(gyp_shared_intermediate_dir)/blink/core
 
 LOCAL_SRC_FILES := \
-	third_party/WebKit/Source/bindings/v8/custom/V8ArrayBufferCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8ArrayBufferViewCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8AudioNodeCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8BlobCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8BlobCustomHelpers.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8CSSRuleCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8CSSStyleDeclarationCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8CSSValueCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8CanvasRenderingContext2DCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8ClientCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8CryptoCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8CustomEventCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8CustomSQLStatementErrorCallback.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8CustomXPathNSResolver.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8DataViewCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8DedicatedWorkerGlobalScopeCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8DeviceMotionEventCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8DeviceOrientationEventCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8DocumentCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8ElementCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8EntryCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8EntrySyncCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8ErrorEventCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8EventCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8EventTargetCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8FileCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8FileReaderCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8GeolocationCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8HTMLAllCollectionCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8HTMLCanvasElementCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8HTMLCollectionCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8HTMLDocumentCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8HTMLElementCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8HTMLOptionsCollectionCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8HTMLPlugInElementCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8HistoryCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8ImageDataCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8InjectedScriptHostCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8InjectedScriptManager.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8InspectorFrontendHostCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8JavaScriptCallFrameCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8LocationCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8MessageChannelCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8MessageEventCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8MessagePortCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8MutationObserverCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8NodeCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8PerformanceEntryCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8PopStateEventCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8SQLResultSetRowListCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8SQLTransactionCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8SQLTransactionSyncCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8SVGElementCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8SVGPathSegCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8ServiceWorkerCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8StyleSheetCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8SubtleCryptoCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8TextCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8TextTrackCueCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8TrackEventCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8WebGLRenderingContextCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8WebKitPointCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8WindowCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8WorkerCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8WorkerGlobalScopeCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8XMLHttpRequestCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/custom/V8XSLTProcessorCustom.cpp \
-	third_party/WebKit/Source/bindings/v8/ActiveDOMCallback.cpp \
-	third_party/WebKit/Source/bindings/v8/ArrayValue.cpp \
-	third_party/WebKit/Source/bindings/v8/BindingSecurity.cpp \
-	third_party/WebKit/Source/bindings/v8/CustomElementBinding.cpp \
-	third_party/WebKit/Source/bindings/v8/CustomElementConstructorBuilder.cpp \
-	third_party/WebKit/Source/bindings/v8/CustomElementWrapper.cpp \
-	third_party/WebKit/Source/bindings/v8/DOMDataStore.cpp \
-	third_party/WebKit/Source/bindings/v8/DOMWrapperWorld.cpp \
-	third_party/WebKit/Source/bindings/v8/Dictionary.cpp \
-	third_party/WebKit/Source/bindings/v8/ExceptionMessages.cpp \
-	third_party/WebKit/Source/bindings/v8/ExceptionState.cpp \
-	third_party/WebKit/Source/bindings/v8/ExceptionStatePlaceholder.cpp \
-	third_party/WebKit/Source/bindings/v8/IDBBindingUtilities.cpp \
-	third_party/WebKit/Source/bindings/v8/NPV8Object.cpp \
-	third_party/WebKit/Source/bindings/v8/PageScriptDebugServer.cpp \
-	third_party/WebKit/Source/bindings/v8/RetainedDOMInfo.cpp \
-	third_party/WebKit/Source/bindings/v8/ScheduledAction.cpp \
-	third_party/WebKit/Source/bindings/v8/ScriptCallStackFactory.cpp \
-	third_party/WebKit/Source/bindings/v8/ScriptController.cpp \
-	third_party/WebKit/Source/bindings/v8/ScriptDebugServer.cpp \
-	third_party/WebKit/Source/bindings/v8/ScriptEventListener.cpp \
-	third_party/WebKit/Source/bindings/v8/ScriptFunction.cpp \
-	third_party/WebKit/Source/bindings/v8/ScriptFunctionCall.cpp \
-	third_party/WebKit/Source/bindings/v8/ScriptGCEvent.cpp \
-	third_party/WebKit/Source/bindings/v8/ScriptHeapSnapshot.cpp \
-	third_party/WebKit/Source/bindings/v8/ScriptPreprocessor.cpp \
-	third_party/WebKit/Source/bindings/v8/ScriptProfiler.cpp \
-	third_party/WebKit/Source/bindings/v8/ScriptPromise.cpp \
-	third_party/WebKit/Source/bindings/v8/ScriptPromiseResolver.cpp \
-	third_party/WebKit/Source/bindings/v8/ScriptPromiseResolverWithContext.cpp \
-	third_party/WebKit/Source/bindings/v8/ScriptRegexp.cpp \
-	third_party/WebKit/Source/bindings/v8/ScriptState.cpp \
-	third_party/WebKit/Source/bindings/v8/ScriptString.cpp \
-	third_party/WebKit/Source/bindings/v8/ScriptValue.cpp \
-	third_party/WebKit/Source/bindings/v8/SerializedScriptValue.cpp \
-	third_party/WebKit/Source/bindings/v8/V8AbstractEventListener.cpp \
-	third_party/WebKit/Source/bindings/v8/V8Binding.cpp \
-	third_party/WebKit/Source/bindings/v8/V8Callback.cpp \
-	third_party/WebKit/Source/bindings/v8/V8CustomElementLifecycleCallbacks.cpp \
-	third_party/WebKit/Source/bindings/v8/V8DOMActivityLogger.cpp \
-	third_party/WebKit/Source/bindings/v8/V8DOMConfiguration.cpp \
-	third_party/WebKit/Source/bindings/v8/V8DOMWrapper.cpp \
-	third_party/WebKit/Source/bindings/v8/V8ErrorHandler.cpp \
-	third_party/WebKit/Source/bindings/v8/V8EventListener.cpp \
-	third_party/WebKit/Source/bindings/v8/V8EventListenerList.cpp \
-	third_party/WebKit/Source/bindings/v8/V8GCController.cpp \
-	third_party/WebKit/Source/bindings/v8/V8GCForContextDispose.cpp \
-	third_party/WebKit/Source/bindings/v8/V8HiddenValue.cpp \
-	third_party/WebKit/Source/bindings/v8/V8Initializer.cpp \
-	third_party/WebKit/Source/bindings/v8/V8LazyEventListener.cpp \
-	third_party/WebKit/Source/bindings/v8/V8MutationCallback.cpp \
-	third_party/WebKit/Source/bindings/v8/V8NPObject.cpp \
-	third_party/WebKit/Source/bindings/v8/V8NPUtils.cpp \
-	third_party/WebKit/Source/bindings/v8/V8NodeFilterCondition.cpp \
-	third_party/WebKit/Source/bindings/v8/V8ObjectConstructor.cpp \
-	third_party/WebKit/Source/bindings/v8/V8PerContextData.cpp \
-	third_party/WebKit/Source/bindings/v8/V8PerIsolateData.cpp \
-	third_party/WebKit/Source/bindings/v8/V8RecursionScope.cpp \
-	third_party/WebKit/Source/bindings/v8/V8ScriptRunner.cpp \
-	third_party/WebKit/Source/bindings/v8/V8StringResource.cpp \
-	third_party/WebKit/Source/bindings/v8/V8ThrowException.cpp \
-	third_party/WebKit/Source/bindings/v8/V8ValueCache.cpp \
-	third_party/WebKit/Source/bindings/v8/V8WindowShell.cpp \
-	third_party/WebKit/Source/bindings/v8/V8WorkerGlobalScopeEventListener.cpp \
-	third_party/WebKit/Source/bindings/v8/WorkerScriptController.cpp \
-	third_party/WebKit/Source/bindings/v8/WorkerScriptDebugServer.cpp \
-	third_party/WebKit/Source/bindings/v8/npruntime.cpp
+	third_party/WebKit/Source/bindings/core/v8/custom/V8ArrayBufferCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8ArrayBufferViewCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8BlobCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8BlobCustomHelpers.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8CSSRuleCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8CSSStyleDeclarationCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8CSSValueCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8CanvasRenderingContext2DCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8CustomEventCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8CustomXPathNSResolver.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8DataViewCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8DedicatedWorkerGlobalScopeCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8DocumentCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8ElementCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8ErrorEventCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8EventCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8EventTargetCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8FileCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8FileReaderCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8HTMLAllCollectionCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8HTMLCanvasElementCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8HTMLCollectionCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8HTMLDocumentCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8HTMLElementCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8HTMLOptionsCollectionCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8HTMLPlugInElementCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8HistoryCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8ImageDataCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8InjectedScriptHostCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8InjectedScriptManager.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8InspectorFrontendHostCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8JavaScriptCallFrameCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8LocationCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8MessageChannelCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8MessageEventCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8MessagePortCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8MutationObserverCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8NodeCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8PerformanceEntryCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8PopStateEventCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8SVGElementCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8SVGPathSegCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8StyleSheetCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8TextCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8TextTrackCueCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8TrackEventCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8WebGLRenderingContextCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8WebKitPointCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8WindowCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8WorkerCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8WorkerGlobalScopeCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8XMLHttpRequestCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/custom/V8XSLTProcessorCustom.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ActiveDOMCallback.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ArrayValue.cpp \
+	third_party/WebKit/Source/bindings/core/v8/BindingSecurity.cpp \
+	third_party/WebKit/Source/bindings/core/v8/CustomElementBinding.cpp \
+	third_party/WebKit/Source/bindings/core/v8/CustomElementConstructorBuilder.cpp \
+	third_party/WebKit/Source/bindings/core/v8/CustomElementWrapper.cpp \
+	third_party/WebKit/Source/bindings/core/v8/DOMDataStore.cpp \
+	third_party/WebKit/Source/bindings/core/v8/DOMWrapperWorld.cpp \
+	third_party/WebKit/Source/bindings/core/v8/Dictionary.cpp \
+	third_party/WebKit/Source/bindings/core/v8/DictionaryHelperForCore.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ExceptionMessages.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ExceptionState.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ExceptionStatePlaceholder.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ModuleProxy.cpp \
+	third_party/WebKit/Source/bindings/core/v8/NPV8Object.cpp \
+	third_party/WebKit/Source/bindings/core/v8/PageScriptDebugServer.cpp \
+	third_party/WebKit/Source/bindings/core/v8/PrivateScriptRunner.cpp \
+	third_party/WebKit/Source/bindings/core/v8/RetainedDOMInfo.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ScheduledAction.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ScriptCallStackFactory.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ScriptController.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ScriptDebugServer.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ScriptEventListener.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ScriptFunction.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ScriptFunctionCall.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ScriptGCEvent.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ScriptHeapSnapshot.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ScriptPreprocessor.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ScriptProfiler.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ScriptPromise.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ScriptPromiseResolver.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ScriptPromisePropertyBase.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ScriptRegexp.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ScriptState.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ScriptString.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ScriptValue.cpp \
+	third_party/WebKit/Source/bindings/core/v8/SerializedScriptValue.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8AbstractEventListener.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8Binding.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8CustomElementLifecycleCallbacks.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8DOMActivityLogger.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8DOMConfiguration.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8DOMWrapper.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8ErrorHandler.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8EventListener.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8EventListenerList.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8GCController.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8GCForContextDispose.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8HiddenValue.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8Initializer.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8LazyEventListener.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8MutationCallback.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8NPObject.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8NPUtils.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8NodeFilterCondition.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8ObjectConstructor.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8PerContextData.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8PerIsolateData.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8RecursionScope.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8ScriptRunner.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8StringResource.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8ThrowException.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8ValueCache.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8WindowShell.cpp \
+	third_party/WebKit/Source/bindings/core/v8/V8WorkerGlobalScopeEventListener.cpp \
+	third_party/WebKit/Source/bindings/core/v8/WorkerScriptController.cpp \
+	third_party/WebKit/Source/bindings/core/v8/WorkerScriptDebugServer.cpp \
+	third_party/WebKit/Source/bindings/core/v8/npruntime.cpp
 
 
 # Flags passed to both C and C++ files.
@@ -374,9 +361,9 @@ MY_CFLAGS_Debug := \
 	-fno-stack-protector \
 	-Os \
 	-g \
-	-fomit-frame-pointer \
 	-fdata-sections \
 	-ffunction-sections \
+	-fomit-frame-pointer \
 	-funwind-tables
 
 MY_DEFS_Debug := \
@@ -395,6 +382,7 @@ MY_DEFS_Debug := \
 	'-DSYSTEM_NATIVELY_SIGNALS_MEMORY_PRESSURE' \
 	'-DENABLE_EGLIMAGE=1' \
 	'-DCLD_VERSION=1' \
+	'-DCLD_DATA_FROM_STATIC' \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
@@ -408,7 +396,6 @@ MY_DEFS_Debug := \
 	'-DENABLE_CUSTOM_SCHEME_HANDLER=0' \
 	'-DENABLE_SVG_FONTS=1' \
 	'-DWTF_USE_CONCATENATED_IMPULSE_RESPONSES=1' \
-	'-DENABLE_MEDIA_CAPTURE=1' \
 	'-DWTF_USE_WEBAUDIO_OPENMAX_DL_FFT=1' \
 	'-DENABLE_WEB_AUDIO=1' \
 	'-DENABLE_OPENTYPE_VERTICAL=1' \
@@ -420,14 +407,10 @@ MY_DEFS_Debug := \
 	'-DSK_ATTR_DEPRECATED=SK_NOTHING_ARG1' \
 	'-DGR_GL_IGNORE_ES3_MSAA=0' \
 	'-DSK_WILL_NEVER_DRAW_PERSPECTIVE_TEXT' \
-	'-DSK_SUPPORT_LEGACY_GETTOPDEVICE' \
-	'-DSK_SUPPORT_LEGACY_BITMAP_CONFIG' \
-	'-DSK_SUPPORT_LEGACY_DEVICE_VIRTUAL_ISOPAQUE' \
-	'-DSK_SUPPORT_LEGACY_N32_NAME' \
-	'-DSK_SUPPORT_LEGACY_SETCONFIG' \
+	'-DSK_SUPPORT_LEGACY_PICTURE_CLONE' \
+	'-DSK_SUPPORT_LEGACY_GETDEVICE' \
 	'-DSK_IGNORE_ETC1_SUPPORT' \
 	'-DSK_IGNORE_GPU_DITHER' \
-	'-DSK_SUPPORT_LEGACY_GETTOTALCLIP' \
 	'-DSK_BUILD_FOR_ANDROID' \
 	'-DSK_USE_POSIX_THREADS' \
 	'-DSK_DEFERRED_CANVAS_USES_FACTORIES=1' \
@@ -457,10 +440,6 @@ LOCAL_C_INCLUDES_Debug := \
 	$(gyp_shared_intermediate_dir)/shim_headers/icui18n/target \
 	$(gyp_shared_intermediate_dir) \
 	$(LOCAL_PATH)/third_party/WebKit/Source \
-	$(gyp_shared_intermediate_dir)/blink/core \
-	$(gyp_shared_intermediate_dir)/blink/modules \
-	$(gyp_shared_intermediate_dir)/blink/bindings/core/v8 \
-	$(gyp_shared_intermediate_dir)/blink/bindings/modules/v8 \
 	$(gyp_shared_intermediate_dir)/blink \
 	$(LOCAL_PATH)/third_party/openmax_dl \
 	$(LOCAL_PATH) \
@@ -507,6 +486,9 @@ LOCAL_CPPFLAGS_Debug := \
 	-fvisibility-inlines-hidden \
 	-Wsign-compare \
 	-Wno-c++0x-compat \
+	-std=gnu++11 \
+	-Wno-narrowing \
+	-Wno-literal-suffix \
 	-Wno-non-virtual-dtor \
 	-Wno-sign-promo
 
@@ -563,6 +545,7 @@ MY_DEFS_Release := \
 	'-DSYSTEM_NATIVELY_SIGNALS_MEMORY_PRESSURE' \
 	'-DENABLE_EGLIMAGE=1' \
 	'-DCLD_VERSION=1' \
+	'-DCLD_DATA_FROM_STATIC' \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
@@ -576,7 +559,6 @@ MY_DEFS_Release := \
 	'-DENABLE_CUSTOM_SCHEME_HANDLER=0' \
 	'-DENABLE_SVG_FONTS=1' \
 	'-DWTF_USE_CONCATENATED_IMPULSE_RESPONSES=1' \
-	'-DENABLE_MEDIA_CAPTURE=1' \
 	'-DWTF_USE_WEBAUDIO_OPENMAX_DL_FFT=1' \
 	'-DENABLE_WEB_AUDIO=1' \
 	'-DENABLE_OPENTYPE_VERTICAL=1' \
@@ -588,14 +570,10 @@ MY_DEFS_Release := \
 	'-DSK_ATTR_DEPRECATED=SK_NOTHING_ARG1' \
 	'-DGR_GL_IGNORE_ES3_MSAA=0' \
 	'-DSK_WILL_NEVER_DRAW_PERSPECTIVE_TEXT' \
-	'-DSK_SUPPORT_LEGACY_GETTOPDEVICE' \
-	'-DSK_SUPPORT_LEGACY_BITMAP_CONFIG' \
-	'-DSK_SUPPORT_LEGACY_DEVICE_VIRTUAL_ISOPAQUE' \
-	'-DSK_SUPPORT_LEGACY_N32_NAME' \
-	'-DSK_SUPPORT_LEGACY_SETCONFIG' \
+	'-DSK_SUPPORT_LEGACY_PICTURE_CLONE' \
+	'-DSK_SUPPORT_LEGACY_GETDEVICE' \
 	'-DSK_IGNORE_ETC1_SUPPORT' \
 	'-DSK_IGNORE_GPU_DITHER' \
-	'-DSK_SUPPORT_LEGACY_GETTOTALCLIP' \
 	'-DSK_BUILD_FOR_ANDROID' \
 	'-DSK_USE_POSIX_THREADS' \
 	'-DSK_DEFERRED_CANVAS_USES_FACTORIES=1' \
@@ -626,10 +604,6 @@ LOCAL_C_INCLUDES_Release := \
 	$(gyp_shared_intermediate_dir)/shim_headers/icui18n/target \
 	$(gyp_shared_intermediate_dir) \
 	$(LOCAL_PATH)/third_party/WebKit/Source \
-	$(gyp_shared_intermediate_dir)/blink/core \
-	$(gyp_shared_intermediate_dir)/blink/modules \
-	$(gyp_shared_intermediate_dir)/blink/bindings/core/v8 \
-	$(gyp_shared_intermediate_dir)/blink/bindings/modules/v8 \
 	$(gyp_shared_intermediate_dir)/blink \
 	$(LOCAL_PATH)/third_party/openmax_dl \
 	$(LOCAL_PATH) \
@@ -676,6 +650,9 @@ LOCAL_CPPFLAGS_Release := \
 	-fvisibility-inlines-hidden \
 	-Wsign-compare \
 	-Wno-c++0x-compat \
+	-std=gnu++11 \
+	-Wno-narrowing \
+	-Wno-literal-suffix \
 	-Wno-non-virtual-dtor \
 	-Wno-sign-promo
 

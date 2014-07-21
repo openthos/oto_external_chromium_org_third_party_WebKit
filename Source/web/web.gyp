@@ -29,6 +29,9 @@
 #
 
 {
+    'variables': {
+      'blink_web_output_dir': '<(SHARED_INTERMEDIATE_DIR)/blink/web',
+    },
     'includes': [
         '../bindings/bindings.gypi',
         '../core/core.gypi',
@@ -200,86 +203,6 @@
                         ['include', '^linux/WebFontRendering\\.cpp$'],
                     ],
                 }],
-            ],
-            'actions': [
-                {
-                    'action_name': 'PickerCommon',
-                    'process_outputs_as_sources': 1,
-                    'variables': {
-                        'resources': [
-                            'resources/pickerCommon.css',
-                            'resources/pickerCommon.js',
-                        ],
-                    },
-                    'inputs': [
-                        '../build/scripts/make-file-arrays.py',
-                        '<@(resources)',
-                    ],
-                    'outputs': [
-                        '<(SHARED_INTERMEDIATE_DIR)/blink/PickerCommon.h',
-                        '<(SHARED_INTERMEDIATE_DIR)/blink/PickerCommon.cpp',
-                        ],
-                    'action': [
-                        'python',
-                        '../build/scripts/make-file-arrays.py',
-                        '--out-h=<(SHARED_INTERMEDIATE_DIR)/blink/PickerCommon.h',
-                        '--out-cpp=<(SHARED_INTERMEDIATE_DIR)/blink/PickerCommon.cpp',
-                        '<@(resources)',
-                    ],
-                },
-                {
-                    'action_name': 'CalendarPicker',
-                    'process_outputs_as_sources': 1,
-                    'variables': {
-                        'resources': [
-                            'resources/calendarPicker.css',
-                            'resources/calendarPicker.js',
-                            'resources/pickerButton.css',
-                            'resources/suggestionPicker.css',
-                            'resources/suggestionPicker.js',
-                        ],
-                    },
-                    'inputs': [
-                        '../build/scripts/make-file-arrays.py',
-                        '<@(resources)'
-                    ],
-                    'outputs': [
-                        '<(SHARED_INTERMEDIATE_DIR)/blink/CalendarPicker.h',
-                        '<(SHARED_INTERMEDIATE_DIR)/blink/CalendarPicker.cpp',
-                    ],
-                    'action': [
-                        'python',
-                        '../build/scripts/make-file-arrays.py',
-                        '--out-h=<(SHARED_INTERMEDIATE_DIR)/blink/CalendarPicker.h',
-                        '--out-cpp=<(SHARED_INTERMEDIATE_DIR)/blink/CalendarPicker.cpp',
-                        '<@(resources)',
-                    ],
-               },
-                {
-                    'action_name': 'ColorSuggestionPicker',
-                    'process_outputs_as_sources': 1,
-                    'variables': {
-                        'resources': [
-                            'resources/colorSuggestionPicker.css',
-                            'resources/colorSuggestionPicker.js',
-                        ],
-                    },
-                    'inputs': [
-                        '../build/scripts/make-file-arrays.py',
-                        '<@(resources)',
-                    ],
-                    'outputs': [
-                        '<(SHARED_INTERMEDIATE_DIR)/blink/ColorSuggestionPicker.h',
-                        '<(SHARED_INTERMEDIATE_DIR)/blink/ColorSuggestionPicker.cpp',
-                    ],
-                    'action': [
-                        'python',
-                        '../build/scripts/make-file-arrays.py',
-                        '--out-h=<(SHARED_INTERMEDIATE_DIR)/blink/ColorSuggestionPicker.h',
-                        '--out-cpp=<(SHARED_INTERMEDIATE_DIR)/blink/ColorSuggestionPicker.cpp',
-                        '<@(resources)',
-                    ],
-                },
             ],
         },
         {

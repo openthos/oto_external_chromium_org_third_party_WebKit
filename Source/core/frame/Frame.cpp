@@ -45,7 +45,9 @@
 #include "core/page/EventHandler.h"
 #include "core/page/FocusController.h"
 #include "core/page/Page.h"
+#include "core/rendering/RenderLayer.h"
 #include "core/rendering/RenderPart.h"
+#include "platform/graphics/GraphicsLayer.h"
 #include "public/platform/WebLayer.h"
 #include "wtf/PassOwnPtr.h"
 #include "wtf/RefCountedLeakCounter.h"
@@ -159,6 +161,19 @@ RenderPart* Frame::ownerRenderer() const
     return toRenderPart(object);
 }
 
+void Frame::setRemotePlatformLayer(blink::WebLayer* layer)
+{
+    if (m_remotePlatformLayer)
+        GraphicsLayer::unregisterContentsLayer(m_remotePlatformLayer);
+    m_remotePlatformLayer = layer;
+    if (m_remotePlatformLayer)
+        GraphicsLayer::registerContentsLayer(layer);
+
+    ASSERT(owner());
+    toHTMLFrameOwnerElement(owner())->setNeedsCompositingUpdate();
+    if (RenderPart* renderer = ownerRenderer())
+        renderer->layer()->updateSelfPaintingLayer();
+}
 
 void Frame::willDetachFrameHost()
 {
@@ -182,6 +197,17 @@ bool Frame::isMainFrame() const
 {
     Page* page = this->page();
     return page && this == page->mainFrame();
+}
+
+bool Frame::isLocalRoot() const
+{
+    if (isRemoteFrame())
+        return false;
+
+    if (!tree().parent())
+        return true;
+
+    return tree().parent()->isRemoteFrame();
 }
 
 void Frame::disconnectOwnerElement()

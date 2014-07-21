@@ -40,11 +40,14 @@ class SVGAnimatedPropertyBase;
 class SubtreeLayoutScope;
 class SVGCursorElement;
 class SVGDocumentExtensions;
+class SVGElement;
 class SVGElementRareData;
 class SVGFitToViewBox;
 class SVGSVGElement;
 
 void mapAttributeToCSSProperty(HashMap<StringImpl*, CSSPropertyID>* propertyNameToIdMap, const QualifiedName& attrName);
+
+typedef WillBeHeapHashSet<RawPtrWillBeMember<SVGElement> > SVGElementSet;
 
 class SVGElement : public Element {
 public:
@@ -71,15 +74,6 @@ public:
     bool instanceUpdatesBlocked() const;
     void setInstanceUpdatesBlocked(bool);
 
-    const AtomicString& xmlbase() const;
-    void setXMLbase(const AtomicString&);
-
-    const AtomicString& xmllang() const;
-    void setXMLlang(const AtomicString&);
-
-    const AtomicString& xmlspace() const;
-    void setXMLspace(const AtomicString&);
-
     SVGSVGElement* ownerSVGElement() const;
     SVGElement* viewportElement() const;
 
@@ -99,7 +93,8 @@ public:
     PassRefPtr<SVGAnimatedPropertyBase> propertyFromAttribute(const QualifiedName& attributeName);
     static AnimatedPropertyType animatedPropertyTypeForCSSAttribute(const QualifiedName& attributeName);
 
-    void sendSVGLoadEventIfPossible(bool sendParentLoadEvents = false);
+    void sendSVGLoadEventToSelfAndAncestorChainIfPossible();
+    bool sendSVGLoadEventIfPossible();
     void sendSVGLoadEventIfPossibleAsynchronously();
     void svgLoadEventTimerFired(Timer<SVGElement>*);
     virtual Timer<SVGElement>* svgLoadEventTimer();
@@ -135,7 +130,7 @@ public:
     virtual void synchronizeRequiredExtensions() { }
     virtual void synchronizeSystemLanguage() { }
 
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     virtual bool isAnimatableAttribute(const QualifiedName&) const;
 #endif
 
@@ -146,7 +141,7 @@ public:
     virtual bool haveLoadedRequiredResources();
 
     virtual bool addEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture = false) OVERRIDE FINAL;
-    virtual bool removeEventListener(const AtomicString& eventType, EventListener*, bool useCapture = false) OVERRIDE FINAL;
+    virtual bool removeEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture = false) OVERRIDE FINAL;
 
     void invalidateRelativeLengthClients(SubtreeLayoutScope* = 0);
 
@@ -158,6 +153,12 @@ public:
     SVGAnimatedString* className() { return m_className.get(); }
 
     bool inUseShadowTree() const;
+
+    SVGElementSet* setOfIncomingReferences() const;
+    void addReferenceTo(SVGElement*);
+    void rebuildAllIncomingReferences();
+    void removeAllIncomingReferences();
+    void removeAllOutgoingReferences();
 
     class InvalidationGuard {
         STACK_ALLOCATED();
@@ -196,11 +197,10 @@ protected:
 
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet*) OVERRIDE;
-    virtual bool rendererIsNeeded(const RenderStyle&) OVERRIDE;
 
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void removedFrom(ContainerNode*) OVERRIDE;
-    virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0) OVERRIDE;
+    virtual void childrenChanged(const ChildrenChange&) OVERRIDE;
 
     static CSSPropertyID cssPropertyIdForSVGAttributeName(const QualifiedName&);
     void updateRelativeLengthsInformation() { updateRelativeLengthsInformation(selfHasRelativeLengths(), this); }
@@ -209,7 +209,6 @@ protected:
     virtual bool selfHasRelativeLengths() const { return false; }
 
     SVGElementRareData* ensureSVGRareData();
-
     inline bool hasSVGRareData() const { return m_SVGRareData; }
     inline SVGElementRareData* svgRareData() const
     {
@@ -233,14 +232,12 @@ private:
 
     void buildPendingResourcesIfNeeded();
 
-    bool supportsSpatialNavigationFocus() const;
-
     WillBeHeapHashSet<RawPtrWillBeWeakMember<SVGElement> > m_elementsWithRelativeLengths;
 
     typedef HashMap<QualifiedName, RefPtr<SVGAnimatedPropertyBase> > AttributeToPropertyMap;
     AttributeToPropertyMap m_newAttributeToPropertyMap;
 
-#if ASSERT_ENABLED
+#if ENABLE(ASSERT)
     bool m_inRelativeLengthClientsInvalidation;
 #endif
     unsigned m_isContextElement : 1;

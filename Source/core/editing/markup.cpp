@@ -29,7 +29,7 @@
 #include "config.h"
 #include "core/editing/markup.h"
 
-#include "bindings/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionState.h"
 #include "core/CSSPropertyNames.h"
 #include "core/CSSValueKeywords.h"
 #include "core/HTMLNames.h"
@@ -146,7 +146,7 @@ private:
     enum NodeTraversalMode { EmitString, DoNotEmitString };
     Node* traverseNodesForSerialization(Node* startNode, Node* pastEnd, NodeTraversalMode);
 
-    bool shouldAnnotate() { return m_shouldAnnotate == AnnotateForInterchange; }
+    bool shouldAnnotate() const { return m_shouldAnnotate == AnnotateForInterchange || m_shouldAnnotate == AnnotateForNavigationTransition; }
     bool shouldApplyWrappingStyle(const Node& node) const
     {
         return m_highestNodeToBeSerialized && m_highestNodeToBeSerialized->parentNode() == node.parentNode()
@@ -317,6 +317,9 @@ void StyledMarkupAccumulator::appendElement(StringBuilder& out, Element& element
             if (shouldAnnotate())
                 newInlineStyle->mergeStyleFromRulesForSerialization(&toHTMLElement(element));
 
+            if (&element == m_highestNodeToBeSerialized && m_shouldAnnotate == AnnotateForNavigationTransition)
+                newInlineStyle->addAbsolutePositioningFromElement(element);
+
             if (addDisplayInline)
                 newInlineStyle->forceInline();
 
@@ -343,8 +346,14 @@ Node* StyledMarkupAccumulator::serializeNodes(Node* startNode, Node* pastEnd)
         m_highestNodeToBeSerialized = lastClosed;
     }
 
-    if (m_highestNodeToBeSerialized && m_highestNodeToBeSerialized->parentNode())
+    if (m_highestNodeToBeSerialized && m_highestNodeToBeSerialized->parentNode()) {
         m_wrappingStyle = EditingStyle::wrappingStyleForSerialization(m_highestNodeToBeSerialized->parentNode(), shouldAnnotate());
+        if (m_shouldAnnotate == AnnotateForNavigationTransition) {
+            m_wrappingStyle->style()->removeProperty(CSSPropertyBackgroundColor);
+            m_wrappingStyle->style()->removeProperty(CSSPropertyBackgroundImage);
+        }
+    }
+
 
     return traverseNodesForSerialization(startNode, pastEnd, EmitString);
 }
@@ -371,7 +380,7 @@ Node* StyledMarkupAccumulator::traverseNodesForSerialization(Node* startNode, No
             // Don't write out empty block containers that aren't fully selected.
             continue;
 
-        if (!n->renderer() && !enclosingNodeWithTag(firstPositionInOrBeforeNode(n), selectTag)) {
+        if (!n->renderer() && !enclosingNodeWithTag(firstPositionInOrBeforeNode(n), selectTag) && m_shouldAnnotate != AnnotateForNavigationTransition) {
             next = NodeTraversal::nextSkippingChildren(*n);
             // Don't skip over pastEnd.
             if (pastEnd && pastEnd->isDescendantOf(n))
@@ -976,11 +985,23 @@ static inline void removeElementPreservingChildren(PassRefPtrWillBeRawPtr<Docume
     fragment->removeChild(element);
 }
 
-PassRefPtrWillBeRawPtr<DocumentFragment> createContextualFragment(const String& markup, HTMLElement* element, ParserContentPolicy parserContentPolicy, ExceptionState& exceptionState)
+static inline bool isSupportedContainer(Element* element)
 {
     ASSERT(element);
-    if (element->ieForbidsInsertHTML() || element->hasLocalName(colTag) || element->hasLocalName(colgroupTag) || element->hasLocalName(framesetTag)
+    if (!element->isHTMLElement())
+        return true;
+
+    if (element->hasLocalName(colTag) || element->hasLocalName(colgroupTag) || element->hasLocalName(framesetTag)
         || element->hasLocalName(headTag) || element->hasLocalName(styleTag) || element->hasLocalName(titleTag)) {
+        return false;
+    }
+    return !toHTMLElement(element)->ieForbidsInsertHTML();
+}
+
+PassRefPtrWillBeRawPtr<DocumentFragment> createContextualFragment(const String& markup, Element* element, ParserContentPolicy parserContentPolicy, ExceptionState& exceptionState)
+{
+    ASSERT(element);
+    if (!isSupportedContainer(element)) {
         exceptionState.throwDOMException(NotSupportedError, "The range's container is '" + element->localName() + "', which is not supported.");
         return nullptr;
     }
@@ -1081,6 +1102,17 @@ void mergeWithNextTextNode(PassRefPtrWillBeRawPtr<Node> node, ExceptionState& ex
     textNode->appendData(textNext->data());
     if (textNext->parentNode()) // Might have been removed by mutation event.
         textNext->remove(exceptionState);
+}
+
+String createStyledMarkupForNavigationTransition(Node* node)
+{
+    node->document().updateLayoutIgnorePendingStylesheets();
+
+    StyledMarkupAccumulator accumulator(0, ResolveAllURLs, AnnotateForNavigationTransition, nullptr, 0);
+    accumulator.serializeNodes(node, NodeTraversal::nextSkippingChildren(*node));
+
+    static const char* documentMarkup = "<!DOCTYPE html><meta name=\"viewport\" content=\"width=device-width, user-scalable=0\">";
+    return documentMarkup + accumulator.takeResults();
 }
 
 }

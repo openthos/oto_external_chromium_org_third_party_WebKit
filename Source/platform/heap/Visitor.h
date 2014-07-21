@@ -36,13 +36,9 @@
 #include "wtf/Assertions.h"
 #include "wtf/Deque.h"
 #include "wtf/Forward.h"
-#include "wtf/HashCountedSet.h"
 #include "wtf/HashMap.h"
-#include "wtf/HashSet.h"
 #include "wtf/HashTraits.h"
 #include "wtf/InstanceCounter.h"
-#include "wtf/LinkedHashSet.h"
-#include "wtf/ListHashSet.h"
 #include "wtf/OwnPtr.h"
 #include "wtf/RefPtr.h"
 #include "wtf/TypeTraits.h"
@@ -51,7 +47,7 @@
 #include "wtf/text/WTFString.h"
 #endif
 
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
 #define DEBUG_ONLY(x) x
 #else
 #define DEBUG_ONLY(x)
@@ -66,12 +62,7 @@ template<typename T> class Member;
 template<typename T> class WeakMember;
 class Visitor;
 
-enum ShouldWeakPointersBeMarkedStrongly {
-    WeakPointersActStrong,
-    WeakPointersActWeak
-};
-
-template<bool needsTracing, WTF::WeakHandlingFlag weakHandlingFlag, ShouldWeakPointersBeMarkedStrongly strongify, typename T, typename Traits> struct CollectionBackingTraceTrait;
+template<bool needsTracing, WTF::WeakHandlingFlag weakHandlingFlag, WTF::ShouldWeakPointersBeMarkedStrongly strongify, typename T, typename Traits> struct CollectionBackingTraceTrait;
 
 // The TraceMethodDelegate is used to convert a trace method for type T to a TraceCallback.
 // This allows us to pass a type's trace method as a parameter to the PersistentNode
@@ -182,7 +173,7 @@ public:
         DefaultTraceTrait<T>::mark(visitor, t);
     }
 
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     static void checkGCInfo(Visitor* visitor, const T* t)
     {
         DefaultTraceTrait<T>::checkGCInfo(visitor, t);
@@ -213,6 +204,17 @@ class PLATFORM_EXPORT Visitor {
 public:
     virtual ~Visitor() { }
 
+    template<typename T>
+    static void verifyGarbageCollectedIfMember(T*)
+    {
+    }
+
+    template<typename T>
+    static void verifyGarbageCollectedIfMember(Member<T>* t)
+    {
+        t->verifyTypeIsGarbageCollected();
+    }
+
     // One-argument templated mark method. This uses the static type of
     // the argument to get the TraceTrait. By default, the mark method
     // of the TraceTrait just calls the virtual two-argument mark method on this
@@ -222,17 +224,18 @@ public:
     {
         if (!t)
             return;
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
         TraceTrait<T>::checkGCInfo(this, t);
 #endif
         TraceTrait<T>::mark(this, t);
+
+        reinterpret_cast<const Member<T>*>(0)->verifyTypeIsGarbageCollected();
     }
 
     // Member version of the one-argument templated trace method.
     template<typename T>
     void trace(const Member<T>& t)
     {
-        t.verifyTypeIsGarbageCollected();
         mark(t.get());
     }
 
@@ -262,10 +265,11 @@ public:
         // Check that we actually know the definition of T when tracing.
         COMPILE_ASSERT(sizeof(T), WeNeedToKnowTheDefinitionOfTheTypeWeAreTracing);
         registerWeakCell(const_cast<WeakMember<T>&>(t).cell());
+        reinterpret_cast<const Member<T>*>(0)->verifyTypeIsGarbageCollected();
     }
 
     template<typename T>
-    void traceInCollection(T& t, ShouldWeakPointersBeMarkedStrongly strongify)
+    void traceInCollection(T& t, WTF::ShouldWeakPointersBeMarkedStrongly strongify)
     {
         HashTraits<T>::traceInCollection(this, t, strongify);
     }
@@ -291,34 +295,10 @@ public:
         OffHeapCollectionTraceTrait<Vector<T, inlineCapacity, WTF::DefaultAllocator> >::trace(this, vector);
     }
 
-    template<typename T, typename U, typename V>
-    void trace(const HashSet<T, U, V>& hashSet)
-    {
-        OffHeapCollectionTraceTrait<HashSet<T, U, V> >::trace(this, hashSet);
-    }
-
-    template<typename T, size_t inlineCapacity, typename U>
-    void trace(const ListHashSet<T, inlineCapacity, U>& hashSet)
-    {
-        OffHeapCollectionTraceTrait<ListHashSet<T, inlineCapacity, U> >::trace(this, hashSet);
-    }
-
-    template<typename T, typename U>
-    void trace(const LinkedHashSet<T, U>& hashSet)
-    {
-        OffHeapCollectionTraceTrait<LinkedHashSet<T, U> >::trace(this, hashSet);
-    }
-
     template<typename T, size_t N>
     void trace(const Deque<T, N>& deque)
     {
         OffHeapCollectionTraceTrait<Deque<T, N> >::trace(this, deque);
-    }
-
-    template<typename T, typename U, typename V>
-    void trace(const HashCountedSet<T, U, V>& set)
-    {
-        OffHeapCollectionTraceTrait<HashCountedSet<T, U, V> >::trace(this, set);
     }
 
     template<typename T, typename U, typename V, typename W, typename X>
@@ -327,48 +307,17 @@ public:
         OffHeapCollectionTraceTrait<HashMap<T, U, V, W, X, WTF::DefaultAllocator> >::trace(this, map);
     }
 
-    // OwnPtrs that are traced are treated as part objects and the
-    // trace method of the owned object is called.
-    template<typename T>
-    void trace(const OwnPtr<T>& t)
-    {
-        if (t)
-            t->trace(this);
-    }
-
-    // This trace method is to trace a RefPtrWillBeMember when ENABLE(OILPAN)
-    // is not enabled.
-    // Remove this once we remove RefPtrWillBeMember.
-    template<typename T>
-    void trace(const RefPtr<T>&)
-    {
-#if ENABLE(OILPAN)
-        // RefPtrs should never be traced.
-        ASSERT_NOT_REACHED();
-#endif
-    }
-
 #if !ENABLE(OILPAN)
-    // Similarly, this trace method is to trace a RawPtrWillBeMember
-    // when ENABLE(OILPAN) is not enabled.
-    // Remove this once we remove RawPtrWillBeMember.
-    template<typename T>
-    void trace(const RawPtr<T>&)
-    {
-    }
+    // These trace methods are needed to allow compiling and calling trace on
+    // transition types. We need to support calls in the non-oilpan build
+    // because a fully transitioned type (which will have its trace method
+    // called) might trace a field that is in transition. Once transition types
+    // are removed these can be removed.
+    template<typename T> void trace(const OwnPtr<T>&) { }
+    template<typename T> void trace(const RefPtr<T>&) { }
+    template<typename T> void trace(const RawPtr<T>&) { }
+    template<typename T> void trace(const WeakPtr<T>&) { }
 #endif
-
-    // This trace method is to trace a WeakPtrWillBeMember when ENABLE(OILPAN)
-    // is not enabled.
-    // Remove this once we remove WeakPtrWillBeMember.
-    template<typename T>
-    void trace(const WeakPtr<T>&)
-    {
-#if ENABLE(OILPAN)
-        // WeakPtrs should never be traced.
-        ASSERT_NOT_REACHED();
-#endif
-    }
 
     // This method marks an object and adds it to the set of objects
     // that should have their trace method called. Since not all
@@ -427,10 +376,17 @@ public:
         registerWeakCell(reinterpret_cast<void**>(cell), &handleWeakCell<T>);
     }
 
+    virtual void registerWeakTable(const void*, EphemeronCallback, EphemeronCallback) = 0;
+#if ENABLE(ASSERT)
+    virtual bool weakTableRegistered(const void*) = 0;
+#endif
+
     virtual bool isMarked(const void*) = 0;
 
     template<typename T> inline bool isAlive(T* obj)
     {
+        // Check that we actually know the definition of T when tracing.
+        COMPILE_ASSERT(sizeof(T), WeNeedToKnowTheDefinitionOfTheTypeWeAreTracing);
         return !!obj && ObjectAliveTrait<T>::isAlive(this, obj);
     }
     template<typename T> inline bool isAlive(const Member<T>& member)
@@ -442,7 +398,7 @@ public:
         return isAlive(ptr.get());
     }
 
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     void checkGCInfo(const void*, const GCInfo*);
 #endif
 
@@ -480,53 +436,6 @@ private:
     }
 };
 
-template<typename T, typename HashFunctions, typename Traits>
-struct OffHeapCollectionTraceTrait<WTF::HashSet<T, HashFunctions, Traits, WTF::DefaultAllocator> > {
-    typedef WTF::HashSet<T, HashFunctions, Traits, WTF::DefaultAllocator> HashSet;
-
-    static void trace(Visitor* visitor, const HashSet& set)
-    {
-        if (set.isEmpty())
-            return;
-        if (WTF::ShouldBeTraced<Traits>::value) {
-            HashSet& iterSet = const_cast<HashSet&>(set);
-            for (typename HashSet::iterator it = iterSet.begin(), end = iterSet.end(); it != end; ++it) {
-                const T& t = *it;
-                CollectionBackingTraceTrait<WTF::ShouldBeTraced<Traits>::value, Traits::weakHandlingFlag, WeakPointersActWeak, T, Traits>::trace(visitor, const_cast<T&>(t));
-            }
-        }
-        COMPILE_ASSERT(Traits::weakHandlingFlag == WTF::NoWeakHandlingInCollections, WeakOffHeapCollectionsConsideredDangerous0);
-    }
-};
-
-template<typename T, size_t inlineCapacity, typename HashFunctions>
-struct OffHeapCollectionTraceTrait<ListHashSet<T, inlineCapacity, HashFunctions> > {
-    typedef WTF::ListHashSet<T, inlineCapacity, HashFunctions> ListHashSet;
-
-    static void trace(Visitor* visitor, const ListHashSet& set)
-    {
-        if (set.isEmpty())
-            return;
-        ListHashSet& iterSet = const_cast<ListHashSet&>(set);
-        for (typename ListHashSet::iterator it = iterSet.begin(), end = iterSet.end(); it != end; ++it)
-            visitor->trace(*it);
-    }
-};
-
-template<typename T, typename HashFunctions>
-struct OffHeapCollectionTraceTrait<WTF::LinkedHashSet<T, HashFunctions> > {
-    typedef WTF::LinkedHashSet<T, HashFunctions> LinkedHashSet;
-
-    static void trace(Visitor* visitor, const LinkedHashSet& set)
-    {
-        if (set.isEmpty())
-            return;
-        LinkedHashSet& iterSet = const_cast<LinkedHashSet&>(set);
-        for (typename LinkedHashSet::iterator it = iterSet.begin(), end = iterSet.end(); it != end; ++it)
-            visitor->trace(*it);
-    }
-};
-
 template<typename Key, typename Value, typename HashFunctions, typename KeyTraits, typename ValueTraits>
 struct OffHeapCollectionTraceTrait<WTF::HashMap<Key, Value, HashFunctions, KeyTraits, ValueTraits, WTF::DefaultAllocator> > {
     typedef WTF::HashMap<Key, Value, HashFunctions, KeyTraits, ValueTraits, WTF::DefaultAllocator> HashMap;
@@ -538,8 +447,8 @@ struct OffHeapCollectionTraceTrait<WTF::HashMap<Key, Value, HashFunctions, KeyTr
         if (WTF::ShouldBeTraced<KeyTraits>::value || WTF::ShouldBeTraced<ValueTraits>::value) {
             HashMap& iterMap = const_cast<HashMap&>(map);
             for (typename HashMap::iterator it = iterMap.begin(), end = iterMap.end(); it != end; ++it) {
-                CollectionBackingTraceTrait<WTF::ShouldBeTraced<KeyTraits>::value, KeyTraits::weakHandlingFlag, WeakPointersActWeak, typename HashMap::KeyType, KeyTraits>::trace(visitor, it->key);
-                CollectionBackingTraceTrait<WTF::ShouldBeTraced<ValueTraits>::value, ValueTraits::weakHandlingFlag, WeakPointersActWeak, typename HashMap::MappedType, ValueTraits>::trace(visitor, it->value);
+                CollectionBackingTraceTrait<WTF::ShouldBeTraced<KeyTraits>::value, KeyTraits::weakHandlingFlag, WTF::WeakPointersActWeak, typename HashMap::KeyType, KeyTraits>::trace(visitor, it->key);
+                CollectionBackingTraceTrait<WTF::ShouldBeTraced<ValueTraits>::value, ValueTraits::weakHandlingFlag, WTF::WeakPointersActWeak, typename HashMap::MappedType, ValueTraits>::trace(visitor, it->value);
             }
         }
         COMPILE_ASSERT(KeyTraits::weakHandlingFlag == WTF::NoWeakHandlingInCollections, WeakOffHeapCollectionsConsideredDangerous1);
@@ -576,19 +485,6 @@ struct OffHeapCollectionTraceTrait<WTF::Deque<T, N> > {
     }
 };
 
-template<typename T, typename U, typename V>
-struct OffHeapCollectionTraceTrait<WTF::HashCountedSet<T, U, V> > {
-    typedef WTF::HashCountedSet<T, U, V> Set;
-
-    static void trace(Visitor* visitor, const Set& set)
-    {
-        if (set.isEmpty())
-            return;
-        for (typename Set::const_iterator it = set.begin(), end = set.end(); it != end; ++it)
-            TraceTrait<T>::trace(visitor, const_cast<T*>(&(it->key)));
-    }
-};
-
 template<typename T, typename Traits = WTF::VectorTraits<T> >
 class HeapVectorBacking;
 
@@ -610,7 +506,7 @@ public:
         visitor->mark(const_cast<T*>(t), &TraceTrait<T>::trace);
     }
 
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     static void checkGCInfo(Visitor* visitor, const T* t)
     {
         visitor->checkGCInfo(const_cast<T*>(t), GCInfoTrait<T>::get());
@@ -623,11 +519,21 @@ class DefaultTraceTrait<T, true> {
 public:
     static void mark(Visitor* visitor, const T* self)
     {
-        if (self)
-            self->adjustAndMark(visitor);
+        if (!self)
+            return;
+
+        // Before doing adjustAndMark we need to check if the page is orphaned
+        // since we cannot call adjustAndMark if so, as there will be no vtable.
+        // If orphaned just mark the page as traced.
+        BaseHeapPage* heapPage = pageHeaderFromObject(self);
+        if (heapPage->orphaned()) {
+            heapPage->setTracedAfterOrphaned();
+            return;
+        }
+        self->adjustAndMark(visitor);
     }
 
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     static void checkGCInfo(Visitor*, const T*) { }
 #endif
 };

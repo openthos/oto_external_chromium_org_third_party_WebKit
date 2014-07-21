@@ -72,7 +72,7 @@ private:
     {
         ASSERT_WITH_SECURITY_IMPLICATION(scriptContext->isWorkerGlobalScope());
         DedicatedWorkerGlobalScope* context = static_cast<DedicatedWorkerGlobalScope*>(scriptContext);
-        OwnPtr<MessagePortArray> ports = MessagePort::entanglePorts(*scriptContext, m_channels.release());
+        OwnPtrWillBeRawPtr<MessagePortArray> ports = MessagePort::entanglePorts(*scriptContext, m_channels.release());
         context->dispatchEvent(MessageEvent::create(ports.release(), m_message));
         context->thread()->workerObjectProxy().confirmMessageFromWorkerObject(context->hasPendingActivity());
     }
@@ -125,7 +125,7 @@ void WorkerMessagingProxy::postMessageToWorkerObject(PassRefPtr<SerializedScript
     if (!m_workerObject || m_askedToTerminate)
         return;
 
-    OwnPtr<MessagePortArray> ports = MessagePort::entanglePorts(*m_executionContext.get(), channels);
+    OwnPtrWillBeRawPtr<MessagePortArray> ports = MessagePort::entanglePorts(*m_executionContext.get(), channels);
     m_workerObject->dispatchEvent(MessageEvent::create(ports.release(), message));
 }
 
@@ -201,7 +201,7 @@ void WorkerMessagingProxy::workerThreadCreated(PassRefPtr<DedicatedWorkerThread>
 void WorkerMessagingProxy::workerObjectDestroyed()
 {
     m_workerObject = 0;
-    m_executionContext->postTask(createCallbackTask(&workerObjectDestroyedInternal, AllowCrossThreadAccess(this)));
+    m_executionContext->postTask(createCrossThreadTask(&workerObjectDestroyedInternal, AllowCrossThreadAccess(this)));
 }
 
 void WorkerMessagingProxy::workerObjectDestroyedInternal(ExecutionContext*, WorkerMessagingProxy* proxy)
@@ -224,7 +224,7 @@ void WorkerMessagingProxy::connectToInspector(WorkerGlobalScopeProxy::PageInspec
         return;
     ASSERT(!m_pageInspector);
     m_pageInspector = pageInspector;
-    m_workerThread->runLoop().postDebuggerTask(createCallbackTask(connectToWorkerGlobalScopeInspectorTask, true));
+    m_workerThread->runLoop().postDebuggerTask(createCrossThreadTask(connectToWorkerGlobalScopeInspectorTask, true));
 }
 
 static void disconnectFromWorkerGlobalScopeInspectorTask(ExecutionContext* context, bool)
@@ -237,7 +237,7 @@ void WorkerMessagingProxy::disconnectFromInspector()
     m_pageInspector = 0;
     if (m_askedToTerminate)
         return;
-    m_workerThread->runLoop().postDebuggerTask(createCallbackTask(disconnectFromWorkerGlobalScopeInspectorTask, true));
+    m_workerThread->runLoop().postDebuggerTask(createCrossThreadTask(disconnectFromWorkerGlobalScopeInspectorTask, true));
 }
 
 static void dispatchOnInspectorBackendTask(ExecutionContext* context, const String& message)
@@ -249,7 +249,7 @@ void WorkerMessagingProxy::sendMessageToInspector(const String& message)
 {
     if (m_askedToTerminate)
         return;
-    m_workerThread->runLoop().postDebuggerTask(createCallbackTask(dispatchOnInspectorBackendTask, String(message)));
+    m_workerThread->runLoop().postDebuggerTask(createCrossThreadTask(dispatchOnInspectorBackendTask, String(message)));
     WorkerDebuggerAgent::interruptAndDispatchInspectorCommands(m_workerThread.get());
 }
 

@@ -7,10 +7,11 @@
 #include "public/web/WebDocument.h"
 
 #include "core/CSSPropertyNames.h"
-#include "core/dom/Document.h"
 #include "core/dom/NodeRenderStyle.h"
+#include "core/dom/StyleEngine.h"
 #include "core/frame/LocalFrame.h"
 #include "core/html/HTMLElement.h"
+#include "core/page/Page.h"
 #include "core/rendering/style/RenderStyle.h"
 #include "platform/graphics/Color.h"
 #include "web/tests/FrameTestHelpers.h"

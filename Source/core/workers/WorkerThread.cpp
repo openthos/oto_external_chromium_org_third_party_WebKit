@@ -28,7 +28,7 @@
 
 #include "core/workers/WorkerThread.h"
 
-#include "bindings/v8/ScriptSourceCode.h"
+#include "bindings/core/v8/ScriptSourceCode.h"
 #include "core/inspector/InspectorInstrumentation.h"
 #include "core/workers/DedicatedWorkerGlobalScope.h"
 #include "core/workers/WorkerClients.h"
@@ -70,7 +70,6 @@ WorkerThread::WorkerThread(WorkerLoaderProxy& workerLoaderProxy, WorkerReporting
     , m_workerLoaderProxy(workerLoaderProxy)
     , m_workerReportingProxy(workerReportingProxy)
     , m_startupData(startupData)
-    , m_notificationClient(0)
     , m_shutdownEvent(adoptPtr(blink::Platform::current()->createWaitableEvent()))
 {
     MutexLocker lock(threadSetMutex());

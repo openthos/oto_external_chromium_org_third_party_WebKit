@@ -27,7 +27,7 @@
 #include "config.h"
 #include "core/html/shadow/MediaControls.h"
 
-#include "bindings/v8/ExceptionStatePlaceholder.h"
+#include "bindings/core/v8/ExceptionStatePlaceholder.h"
 #include "core/events/MouseEvent.h"
 #include "core/frame/Settings.h"
 #include "core/html/HTMLMediaElement.h"
@@ -191,6 +191,8 @@ void MediaControls::show()
     makeOpaque();
     m_panel->setIsDisplayed(true);
     m_panel->show();
+    if (m_overlayPlayButton)
+        m_overlayPlayButton->updateDisplayType();
 }
 
 void MediaControls::mediaElementFocused()
@@ -203,6 +205,8 @@ void MediaControls::hide()
 {
     m_panel->setIsDisplayed(false);
     m_panel->hide();
+    if (m_overlayPlayButton)
+        m_overlayPlayButton->hide();
 }
 
 void MediaControls::makeOpaque()

@@ -32,7 +32,7 @@
  * @constructor
  * @extends {WebInspector.PopoverHelper}
  * @param {!Element} panelElement
- * @param {function(!Element, !Event):!Element|undefined} getAnchor
+ * @param {function(!Element, !Event):(!Element|!AnchorBox|undefined)} getAnchor
  * @param {function(!Element, function(!WebInspector.RemoteObject, boolean, !Element=):undefined, string):undefined} queryObject
  * @param {function()=} onHide
  * @param {boolean=} disableOnClick
@@ -105,7 +105,7 @@ WebInspector.ObjectPopoverHelper.prototype = {
                 this.hidePopover();
                 return;
             }
-
+            this._objectTarget = result.target();
             var anchorElement = anchorOverride || element;
             var description = (this._remoteObjectFormatter && this._remoteObjectFormatter(result)) || result.description;
 
@@ -114,13 +114,14 @@ WebInspector.ObjectPopoverHelper.prototype = {
                 popoverContentElement = document.createElement("span");
                 popoverContentElement.className = "monospace console-formatted-" + result.type;
                 popoverContentElement.style.whiteSpace = "pre";
-                popoverContentElement.textContent = description;
+                if (result.type === "string")
+                    popoverContentElement.createTextChildren("\"", description, "\"");
+                else
+                    popoverContentElement.textContent = description;
                 if (result.type === "function") {
                     result.functionDetails(didGetDetails.bind(this, result.target(), anchorElement, popoverContentElement));
                     return;
                 }
-                if (result.type === "string")
-                    popoverContentElement.textContent = "\"" + popoverContentElement.textContent + "\"";
                 popover.show(popoverContentElement, anchorElement);
             } else {
                 if (result.subtype === "node") {
@@ -164,7 +165,10 @@ WebInspector.ObjectPopoverHelper.prototype = {
         }
         if (this._onHideCallback)
             this._onHideCallback();
-        RuntimeAgent.releaseObjectGroup(this._popoverObjectGroup);
+        if (this._objectTarget) {
+            this._objectTarget.runtimeAgent().releaseObjectGroup(this._popoverObjectGroup);
+            delete this._objectTarget;
+        }
     },
 
     _updateHTMLId: function(properties, rootTreeElementConstructor, rootPropertyComparer)

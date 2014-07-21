@@ -5,6 +5,8 @@
 #include "config.h"
 #include "modules/battery/BatteryManager.h"
 
+#include "core/dom/Document.h"
+#include "core/events/Event.h"
 #include "modules/battery/BatteryDispatcher.h"
 #include "modules/battery/BatteryStatus.h"
 #include "platform/RuntimeEnabledFeatures.h"
@@ -29,6 +31,7 @@ BatteryManager::BatteryManager(ExecutionContext* context)
     , m_batteryStatus(BatteryStatus::create())
     , m_state(NotStarted)
 {
+    ScriptWrappable::init(this);
 }
 
 ScriptPromise BatteryManager::startRequest(ScriptState* scriptState)
@@ -36,7 +39,7 @@ ScriptPromise BatteryManager::startRequest(ScriptState* scriptState)
     if (m_state == Pending)
         return m_resolver->promise();
 
-    m_resolver = ScriptPromiseResolverWithContext::create(scriptState);
+    m_resolver = ScriptPromiseResolver::create(scriptState);
     ScriptPromise promise = m_resolver->promise();
 
     if (m_state == Resolved) {

@@ -56,7 +56,7 @@ public:
 
     virtual void updateInspectorStateCookie(const WTF::String&) OVERRIDE;
 
-    virtual void setDeviceMetricsOverride(int, int, float, bool, bool) OVERRIDE;
+    virtual void setDeviceMetricsOverride(int, int, float, bool, bool, float, float, float) OVERRIDE;
     virtual void clearDeviceMetricsOverride() OVERRIDE;
     virtual void setTouchEventEmulationEnabled(bool) OVERRIDE;
 
@@ -66,7 +66,8 @@ public:
     virtual void setShowFPSCounter(bool) OVERRIDE;
     virtual void setContinuousPaintingEnabled(bool) OVERRIDE;
     virtual void setShowScrollBottleneckRects(bool) OVERRIDE;
-    virtual void requestPageScaleFactor(float scale, const WebCore::IntPoint& origin) OVERRIDE;
+    virtual void resetScrollAndPageScaleFactor() OVERRIDE;
+    virtual void showContextMenu(float x, float y, PassRefPtr<WebCore::ContextMenuProvider>) OVERRIDE;
 
     virtual void getAllocatedObjects(HashSet<const void*>&) OVERRIDE;
     virtual void dumpUncountedAllocatedObjects(const HashMap<const void*, size_t>&) OVERRIDE;

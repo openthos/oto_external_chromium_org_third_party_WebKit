@@ -29,9 +29,10 @@
 #include "config.h"
 #include "core/html/HTMLInputElement.h"
 
-#include "bindings/v8/ExceptionMessages.h"
-#include "bindings/v8/ExceptionState.h"
-#include "bindings/v8/ScriptEventListener.h"
+#include "bindings/core/v8/ExceptionMessages.h"
+#include "bindings/core/v8/ExceptionState.h"
+#include "bindings/core/v8/ScriptEventListener.h"
+#include "bindings/core/v8/V8DOMActivityLogger.h"
 #include "core/CSSPropertyNames.h"
 #include "core/HTMLNames.h"
 #include "core/accessibility/AXObjectCache.h"
@@ -452,11 +453,12 @@ void HTMLInputElement::updateType()
 
     if (didRespectHeightAndWidth != m_inputType->shouldRespectHeightAndWidthAttributes()) {
         ASSERT(elementData());
-        if (const Attribute* height = findAttributeByName(heightAttr))
+        AttributeCollection attributes = this->attributes();
+        if (const Attribute* height = attributes.find(heightAttr))
             attributeChanged(heightAttr, height->value());
-        if (const Attribute* width = findAttributeByName(widthAttr))
+        if (const Attribute* width = attributes.find(widthAttr))
             attributeChanged(widthAttr, width->value());
-        if (const Attribute* align = findAttributeByName(alignAttr))
+        if (const Attribute* align = attributes.find(alignAttr))
             attributeChanged(alignAttr, align->value());
     }
 
@@ -613,6 +615,22 @@ void HTMLInputElement::collectStyleForPresentationAttribute(const QualifiedName&
         applyBorderAttributeToStyle(value, style);
     else
         HTMLTextFormControlElement::collectStyleForPresentationAttribute(name, value, style);
+}
+
+void HTMLInputElement::attributeWillChange(const QualifiedName& name, const AtomicString& oldValue, const AtomicString& newValue)
+{
+    if (name == formactionAttr && inDocument()) {
+        V8DOMActivityLogger* activityLogger = V8DOMActivityLogger::currentActivityLoggerIfIsolatedWorld();
+        if (activityLogger) {
+            Vector<String> argv;
+            argv.append("input");
+            argv.append(formactionAttr.toString());
+            argv.append(oldValue);
+            argv.append(newValue);
+            activityLogger->logEvent("blinkSetAttribute", argv.size(), argv.data());
+        }
+    }
+    HTMLTextFormControlElement::attributeWillChange(name, oldValue, newValue);
 }
 
 void HTMLInputElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
@@ -895,7 +913,6 @@ void HTMLInputElement::copyNonAttributePropertiesFromElement(const Element& sour
     setChecked(sourceElement.m_isChecked);
     m_reflectsCheckedAttribute = sourceElement.m_reflectsCheckedAttribute;
     m_isIndeterminate = sourceElement.m_isIndeterminate;
-    m_inputType->copyNonAttributeProperties(sourceElement);
 
     HTMLTextFormControlElement::copyNonAttributePropertiesFromElement(source);
 
@@ -1212,11 +1229,6 @@ const AtomicString& HTMLInputElement::defaultValue() const
     return fastGetAttribute(valueAttr);
 }
 
-void HTMLInputElement::setDefaultValue(const AtomicString& value)
-{
-    setAttribute(valueAttr, value);
-}
-
 static inline bool isRFC2616TokenCharacter(UChar ch)
 {
     return isASCII(ch) && ch > ' ' && ch != '"' && ch != '(' && ch != ')' && ch != ',' && ch != '/' && (ch < ':' || ch > '@') && (ch < '[' || ch > ']') && ch != '{' && ch != '}' && ch != 0x7f;
@@ -1312,7 +1324,7 @@ KURL HTMLInputElement::src() const
     return document().completeURL(fastGetAttribute(srcAttr));
 }
 
-FileList* HTMLInputElement::files() const
+FileList* HTMLInputElement::files()
 {
     return m_inputType->files();
 }
@@ -1412,6 +1424,16 @@ void HTMLInputElement::didChangeForm()
 
 Node::InsertionNotificationRequest HTMLInputElement::insertedInto(ContainerNode* insertionPoint)
 {
+    if (insertionPoint->inDocument()) {
+        V8DOMActivityLogger* activityLogger = V8DOMActivityLogger::currentActivityLoggerIfIsolatedWorld();
+        if (activityLogger) {
+            Vector<String> argv;
+            argv.append("input");
+            argv.append(fastGetAttribute(typeAttr));
+            argv.append(fastGetAttribute(formactionAttr));
+            activityLogger->logEvent("blinkAddElement", argv.size(), argv.data());
+        }
+    }
     HTMLTextFormControlElement::insertedInto(insertionPoint);
     if (insertionPoint->inDocument() && !form())
         addToRadioButtonGroup();

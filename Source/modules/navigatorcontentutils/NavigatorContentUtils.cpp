@@ -27,7 +27,7 @@
 #include "config.h"
 #include "modules/navigatorcontentutils/NavigatorContentUtils.h"
 
-#include "bindings/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionState.h"
 #include "core/dom/Document.h"
 #include "core/dom/ExceptionCode.h"
 #include "core/frame/LocalFrame.h"
@@ -107,28 +107,25 @@ static bool isProtocolWhitelisted(const String& scheme)
     return protocolWhitelist->contains(builder.toString());
 }
 
-static bool verifyProtocolHandlerScheme(const String& scheme, const String& method, ExceptionState& exceptionState)
+static bool verifyCustomHandlerScheme(const String& scheme, ExceptionState& exceptionState)
 {
-    if (scheme.startsWith("web+")) {
-        // The specification requires that the length of scheme is at least five characteres (including 'web+' prefix).
-        if (scheme.length() >= 5 && isValidProtocol(scheme))
-            return true;
-        if (!isValidProtocol(scheme))
-            exceptionState.throwSecurityError("The scheme '" + scheme + "' is not a valid protocol.");
-        else
-            exceptionState.throwSecurityError("The scheme '" + scheme + "' is less than five characters long.");
+    if (!isValidProtocol(scheme)) {
+        exceptionState.throwSecurityError("The scheme '" + scheme + "' is not valid protocol");
         return false;
     }
 
-    // The specification requires that schemes don't contain colons.
-    size_t index = scheme.find(':');
-    if (index != kNotFound) {
-        exceptionState.throwDOMException(SyntaxError, "The scheme '" + scheme + "' contains colon.");
+    if (scheme.startsWith("web+")) {
+        // The specification requires that the length of scheme is at least five characteres (including 'web+' prefix).
+        if (scheme.length() >= 5)
+            return true;
+
+        exceptionState.throwSecurityError("The scheme '" + scheme + "' is less than five characters long.");
         return false;
     }
 
     if (isProtocolWhitelisted(scheme))
         return true;
+
     exceptionState.throwSecurityError("The scheme '" + scheme + "' doesn't belong to the protocol whitelist. Please prefix non-whitelisted schemes with the string 'web+'.");
     return false;
 }
@@ -158,7 +155,7 @@ void NavigatorContentUtils::registerProtocolHandler(Navigator& navigator, const 
     if (!verifyCustomHandlerURL(baseURL, url, exceptionState))
         return;
 
-    if (!verifyProtocolHandlerScheme(scheme, "registerProtocolHandler", exceptionState))
+    if (!verifyCustomHandlerScheme(scheme, exceptionState))
         return;
 
     ASSERT(navigator.frame()->page());
@@ -201,7 +198,7 @@ String NavigatorContentUtils::isProtocolHandlerRegistered(Navigator& navigator, 
     if (!verifyCustomHandlerURL(baseURL, url, exceptionState))
         return declined;
 
-    if (!verifyProtocolHandlerScheme(scheme, "isProtocolHandlerRegistered", exceptionState))
+    if (!verifyCustomHandlerScheme(scheme, exceptionState))
         return declined;
 
     ASSERT(navigator.frame()->page());
@@ -219,7 +216,7 @@ void NavigatorContentUtils::unregisterProtocolHandler(Navigator& navigator, cons
     if (!verifyCustomHandlerURL(baseURL, url, exceptionState))
         return;
 
-    if (!verifyProtocolHandlerScheme(scheme, "unregisterProtocolHandler", exceptionState))
+    if (!verifyCustomHandlerScheme(scheme, exceptionState))
         return;
 
     ASSERT(navigator.frame()->page());

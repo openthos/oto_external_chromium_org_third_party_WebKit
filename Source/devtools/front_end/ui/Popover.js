@@ -38,16 +38,13 @@ WebInspector.Popover = function(popoverHelper)
     WebInspector.View.call(this);
     this.markAsRoot();
     this.element.className = "popover custom-popup-vertical-scroll custom-popup-horizontal-scroll"; // Override
+    this._containerElement = document.createElementWithClass("div", "fill popover-container");
 
-    this._popupArrowElement = document.createElement("div");
-    this._popupArrowElement.className = "arrow";
-    this.element.appendChild(this._popupArrowElement);
-
-    this._contentDiv = document.createElement("div");
-    this._contentDiv.className = "content";
-    this.element.appendChild(this._contentDiv);
+    this._popupArrowElement = this.element.createChild("div", "arrow");
+    this._contentDiv = this.element.createChild("div", "content");
 
     this._popoverHelper = popoverHelper;
+    this._hideBound = this.hide.bind(this);
 }
 
 WebInspector.Popover.prototype = {
@@ -90,7 +87,7 @@ WebInspector.Popover.prototype = {
 
         // This should not happen, but we hide previous popup to be on the safe side.
         if (WebInspector.Popover._popover)
-            WebInspector.Popover._popover.detach();
+            WebInspector.Popover._popover.hide();
         WebInspector.Popover._popover = this;
 
         // Temporarily attach in order to measure preferred dimensions.
@@ -98,7 +95,9 @@ WebInspector.Popover.prototype = {
         preferredWidth = preferredWidth || preferredSize.width;
         preferredHeight = preferredHeight || preferredSize.height;
 
-        WebInspector.View.prototype.show.call(this, document.body);
+        window.addEventListener("resize", this._hideBound, false);
+        document.body.appendChild(this._containerElement);
+        WebInspector.View.prototype.show.call(this, this._containerElement);
 
         if (view)
             view.show(this._contentDiv);
@@ -115,7 +114,9 @@ WebInspector.Popover.prototype = {
 
     hide: function()
     {
+        window.removeEventListener("resize", this._hideBound, false);
         this.detach();
+        this._containerElement.remove();
         delete WebInspector.Popover._popover;
     },
 
@@ -229,7 +230,7 @@ WebInspector.Popover.prototype = {
 /**
  * @constructor
  * @param {!Element} panelElement
- * @param {function(!Element, !Event):(!Element|!AnchorBox)|undefined} getAnchor
+ * @param {function(!Element, !Event):(!Element|!AnchorBox|undefined)} getAnchor
  * @param {function(!Element, !WebInspector.Popover):undefined} showPopover
  * @param {function()=} onHide
  * @param {boolean=} disableOnClick

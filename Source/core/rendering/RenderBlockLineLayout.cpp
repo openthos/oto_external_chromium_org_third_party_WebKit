@@ -27,6 +27,7 @@
 #include "core/rendering/RenderFlowThread.h"
 #include "core/rendering/RenderLayer.h"
 #include "core/rendering/RenderListMarker.h"
+#include "core/rendering/RenderObjectInlines.h"
 #include "core/rendering/RenderRegion.h"
 #include "core/rendering/RenderRubyRun.h"
 #include "core/rendering/RenderView.h"
@@ -47,7 +48,6 @@
 
 namespace WebCore {
 
-using namespace std;
 using namespace WTF::Unicode;
 
 static RenderObject* firstRenderObjectForDirectionalityDetermination(RenderObject* root, RenderObject* current = 0)
@@ -351,7 +351,7 @@ static void updateLogicalWidthForLeftAlignedBlock(bool isLeftToRightDirection, B
     // In particular with RTL blocks, wide lines should still spill out to the left.
     if (isLeftToRightDirection) {
         if (totalLogicalWidth > availableLogicalWidth && trailingSpaceRun)
-            trailingSpaceRun->m_box->setLogicalWidth(max<float>(0, trailingSpaceRun->m_box->logicalWidth() - totalLogicalWidth + availableLogicalWidth));
+            trailingSpaceRun->m_box->setLogicalWidth(std::max<float>(0, trailingSpaceRun->m_box->logicalWidth() - totalLogicalWidth + availableLogicalWidth));
         return;
     }
 
@@ -377,7 +377,7 @@ static void updateLogicalWidthForRightAlignedBlock(bool isLeftToRightDirection, 
     }
 
     if (totalLogicalWidth > availableLogicalWidth && trailingSpaceRun) {
-        trailingSpaceRun->m_box->setLogicalWidth(max<float>(0, trailingSpaceRun->m_box->logicalWidth() - totalLogicalWidth + availableLogicalWidth));
+        trailingSpaceRun->m_box->setLogicalWidth(std::max<float>(0, trailingSpaceRun->m_box->logicalWidth() - totalLogicalWidth + availableLogicalWidth));
         totalLogicalWidth -= trailingSpaceRun->m_box->logicalWidth();
     } else
         logicalLeft += availableLogicalWidth - totalLogicalWidth;
@@ -388,11 +388,11 @@ static void updateLogicalWidthForCenterAlignedBlock(bool isLeftToRightDirection,
     float trailingSpaceWidth = 0;
     if (trailingSpaceRun) {
         totalLogicalWidth -= trailingSpaceRun->m_box->logicalWidth();
-        trailingSpaceWidth = min(trailingSpaceRun->m_box->logicalWidth(), (availableLogicalWidth - totalLogicalWidth + 1) / 2);
-        trailingSpaceRun->m_box->setLogicalWidth(max<float>(0, trailingSpaceWidth));
+        trailingSpaceWidth = std::min(trailingSpaceRun->m_box->logicalWidth(), (availableLogicalWidth - totalLogicalWidth + 1) / 2);
+        trailingSpaceRun->m_box->setLogicalWidth(std::max<float>(0, trailingSpaceWidth));
     }
     if (isLeftToRightDirection)
-        logicalLeft += max<float>((availableLogicalWidth - totalLogicalWidth) / 2, 0);
+        logicalLeft += std::max<float>((availableLogicalWidth - totalLogicalWidth) / 2, 0);
     else
         logicalLeft += totalLogicalWidth > availableLogicalWidth ? (availableLogicalWidth - totalLogicalWidth) : (availableLogicalWidth - totalLogicalWidth) / 2 - trailingSpaceWidth;
 }
@@ -490,14 +490,14 @@ static inline void setLogicalWidthForTextRun(RootInlineBox* lineBox, BidiRun* ru
     run->m_box->setLogicalWidth(measuredWidth + hyphenWidth);
     if (!fallbackFonts.isEmpty()) {
         ASSERT(run->m_box->isText());
-        GlyphOverflowAndFallbackFontsMap::ValueType* it = textBoxDataMap.add(toInlineTextBox(run->m_box), make_pair(Vector<const SimpleFontData*>(), GlyphOverflow())).storedValue;
+        GlyphOverflowAndFallbackFontsMap::ValueType* it = textBoxDataMap.add(toInlineTextBox(run->m_box), std::make_pair(Vector<const SimpleFontData*>(), GlyphOverflow())).storedValue;
         ASSERT(it->value.first.isEmpty());
         copyToVector(fallbackFonts, it->value.first);
         run->m_box->parent()->clearDescendantsHaveSameLineHeightAndBaseline();
     }
     if ((glyphOverflow.top || glyphOverflow.bottom || glyphOverflow.left || glyphOverflow.right)) {
         ASSERT(run->m_box->isText());
-        GlyphOverflowAndFallbackFontsMap::ValueType* it = textBoxDataMap.add(toInlineTextBox(run->m_box), make_pair(Vector<const SimpleFontData*>(), GlyphOverflow())).storedValue;
+        GlyphOverflowAndFallbackFontsMap::ValueType* it = textBoxDataMap.add(toInlineTextBox(run->m_box), std::make_pair(Vector<const SimpleFontData*>(), GlyphOverflow())).storedValue;
         it->value.second = glyphOverflow;
         run->m_box->clearKnownToHaveNoOverflow();
     }
@@ -1119,7 +1119,7 @@ void RenderBlockFlow::layoutRunsAndFloatsInRange(LineLayoutState& layoutState, I
             if (numLinesAvailable <= 0)
                 return;
 
-            int numLinesToTake = min(numLinesAvailable, numLinesNeeded);
+            int numLinesToTake = std::min(numLinesAvailable, numLinesNeeded);
             // Wind back from our first widowed line.
             lineBox = currentFirstLineOfNewPage;
             for (int i = 0; i < numLinesToTake; ++i)
@@ -1215,10 +1215,7 @@ void RenderBlockFlow::repaintDirtyFloats(Vector<FloatWithRect>& floats)
         if (!floats[i].everHadLayout) {
             RenderBox* f = floats[i].object;
             if (!f->x() && !f->y() && f->checkForPaintInvalidation()) {
-                if (RuntimeEnabledFeatures::repaintAfterLayoutEnabled())
-                    f->setShouldDoFullPaintInvalidationAfterLayout(true);
-                else
-                    f->paintInvalidationForWholeRenderer();
+                f->setShouldDoFullPaintInvalidation(true);
             }
         }
     }
@@ -1328,7 +1325,7 @@ static inline void stripTrailingSpace(float& inlineMax, float& inlineMin, Render
 static inline void updatePreferredWidth(LayoutUnit& preferredWidth, float& result)
 {
     LayoutUnit snappedResult = LayoutUnit::fromFloatCeil(result);
-    preferredWidth = max(snappedResult, preferredWidth);
+    preferredWidth = std::max(snappedResult, preferredWidth);
 }
 
 // When converting between floating point and LayoutUnits we risk losing precision
@@ -1498,7 +1495,7 @@ void RenderBlockFlow::computeInlinePreferredLogicalWidths(LayoutUnit& minLogical
                 }
 
                 // Add our width to the max.
-                inlineMax += max<float>(0, childMax);
+                inlineMax += std::max<float>(0, childMax);
 
                 if (!autoWrap || !canBreakReplacedElement || (isPrevChildInlineFlow && !shouldBreakLineAfterText)) {
                     if (child->isFloating())
@@ -1621,7 +1618,7 @@ void RenderBlockFlow::computeInlinePreferredLogicalWidths(LayoutUnit& minLogical
                     inlineMax = lastLineMaxWidth;
                     addedTextIndent = true;
                 } else {
-                    inlineMax += max<float>(0, childMax);
+                    inlineMax += std::max<float>(0, childMax);
                 }
             }
 
@@ -1662,8 +1659,12 @@ void RenderBlockFlow::layoutInlineChildren(bool relayoutChildren, LayoutUnit& re
     bool isFullLayout = !firstLineBox() || selfNeedsLayout() || relayoutChildren || clearLinesForPagination;
     LineLayoutState layoutState(isFullLayout, repaintLogicalTop, repaintLogicalBottom, flowThread);
 
-    if (isFullLayout)
+    if (isFullLayout) {
+        // Ensure the old line boxes will be erased.
+        if (firstLineBox())
+            setShouldDoFullPaintInvalidation(true);
         lineBoxes()->deleteLineBoxes();
+    }
 
     // Text truncation kicks in in two cases:
     //     1) If your overflow isn't visible and your text-overflow-mode isn't clip.
@@ -1729,7 +1730,7 @@ void RenderBlockFlow::layoutInlineChildren(bool relayoutChildren, LayoutUnit& re
     // Expand the last line to accommodate Ruby and emphasis marks.
     int lastLineAnnotationsAdjustment = 0;
     if (lastRootBox()) {
-        LayoutUnit lowestAllowedPosition = max(lastRootBox()->lineBottom(), logicalHeight() + paddingAfter());
+        LayoutUnit lowestAllowedPosition = std::max(lastRootBox()->lineBottom(), logicalHeight() + paddingAfter());
         if (!style()->isFlippedLinesWritingMode())
             lastLineAnnotationsAdjustment = lastRootBox()->computeUnderAnnotationAdjustment(lowestAllowedPosition);
         else
@@ -1746,6 +1747,10 @@ void RenderBlockFlow::layoutInlineChildren(bool relayoutChildren, LayoutUnit& re
     // truncate text.
     if (hasTextOverflow)
         checkLinesForTextOverflow();
+
+    // Ensure the new line boxes will be painted.
+    if (isFullLayout && firstLineBox())
+        setShouldDoFullPaintInvalidation(true);
 }
 
 void RenderBlockFlow::checkFloatsInCleanLine(RootInlineBox* line, Vector<FloatWithRect>& floats, size_t& floatIndex, bool& encounteredNewFloat, bool& dirtiedByFloat)
@@ -1766,9 +1771,9 @@ void RenderBlockFlow::checkFloatsInCleanLine(RootInlineBox* line, Vector<FloatWi
 
         if (floats[floatIndex].rect.size() != newSize) {
             LayoutUnit floatTop = isHorizontalWritingMode() ? floats[floatIndex].rect.y() : floats[floatIndex].rect.x();
-            LayoutUnit floatHeight = isHorizontalWritingMode() ? max(floats[floatIndex].rect.height(), newSize.height())
-                                                                 : max(floats[floatIndex].rect.width(), newSize.width());
-            floatHeight = min(floatHeight, LayoutUnit::max() - floatTop);
+            LayoutUnit floatHeight = isHorizontalWritingMode() ? std::max(floats[floatIndex].rect.height(), newSize.height())
+                : std::max(floats[floatIndex].rect.width(), newSize.width());
+            floatHeight = std::min(floatHeight, LayoutUnit::max() - floatTop);
             line->markDirty();
             markLinesDirtyInBlockRange(line->lineBottomWithLeading(), floatTop + floatHeight, line);
             floats[floatIndex].rect.setSize(newSize);
@@ -1824,8 +1829,7 @@ RootInlineBox* RenderBlockFlow::determineStartPosition(LineLayoutState& layoutSt
         // If we encountered a new float and have inline children, mark ourself to force us to issue paint invalidations.
         if (layoutState.hasInlineChild() && !selfNeedsLayout()) {
             setNeedsLayoutAndFullPaintInvalidation(MarkOnlyThis);
-            if (RuntimeEnabledFeatures::repaintAfterLayoutEnabled())
-                setShouldDoFullPaintInvalidationAfterLayout(true);
+            setShouldDoFullPaintInvalidation(true);
         }
 
         // FIXME: This should just call deleteLineBoxTree, but that causes
@@ -1963,7 +1967,7 @@ bool RenderBlockFlow::checkPaginationAndFloatsAtEndLine(LineLayoutState& layoutS
         return true;
 
     // See if any floats end in the range along which we want to shift the lines vertically.
-    LayoutUnit logicalTop = min(logicalHeight(), layoutState.endLineLogicalTop());
+    LayoutUnit logicalTop = std::min(logicalHeight(), layoutState.endLineLogicalTop());
 
     RootInlineBox* lastLine = layoutState.endLine();
     while (RootInlineBox* nextLine = lastLine->nextRootBox())

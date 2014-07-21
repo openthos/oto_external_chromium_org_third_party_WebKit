@@ -53,8 +53,6 @@ public:
     static bool isDiscardable(SkPixelRef*);
     bool allocAndLockDiscardableMemory(size_t);
 
-    SK_DECLARE_UNFLATTENABLE_OBJECT()
-
 protected:
     // SkPixelRef implementation.
     virtual bool onNewLockPixels(LockRec*) OVERRIDE;

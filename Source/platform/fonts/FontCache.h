@@ -32,6 +32,7 @@
 
 #include <limits.h>
 #include "platform/PlatformExport.h"
+#include "platform/fonts/FontFaceCreationParams.h"
 #include "wtf/Forward.h"
 #include "wtf/HashMap.h"
 #include "wtf/PassRefPtr.h"
@@ -58,6 +59,7 @@ class SkTypeface;
 namespace WebCore {
 
 class FontCacheClient;
+class FontFaceCreationParams;
 class FontPlatformData;
 class FontData;
 class FontDescription;
@@ -121,6 +123,7 @@ public:
     struct PlatformFallbackFont {
         String name;
         CString filename;
+        int fontconfigInterfaceId;
         int ttcIndex;
         bool isBold;
         bool isItalic;
@@ -143,15 +146,16 @@ private:
     }
 
     // FIXME: This method should eventually be removed.
-    FontPlatformData* getFontPlatformData(const FontDescription&, const AtomicString& family, bool checkingAlternateName = false);
+    FontPlatformData* getFontPlatformData(const FontDescription&, const FontFaceCreationParams&, bool checkingAlternateName = false);
 
     // These methods are implemented by each platform.
-    FontPlatformData* createFontPlatformData(const FontDescription&, const AtomicString& family, float fontSize);
+    FontPlatformData* createFontPlatformData(const FontDescription&, const FontFaceCreationParams&, float fontSize);
 
     // Implemented on skia platforms.
-    PassRefPtr<SkTypeface> createTypeface(const FontDescription&, const AtomicString& family, CString& name);
+    PassRefPtr<SkTypeface> createTypeface(const FontDescription&, const FontFaceCreationParams&, CString& name);
 
     PassRefPtr<SimpleFontData> fontDataFromFontPlatformData(const FontPlatformData*, ShouldRetain = Retain);
+    PassRefPtr<SimpleFontData> fallbackOnStandardFontStyle(const FontDescription&, UChar32);
 
     // Don't purge if this count is > 0;
     int m_purgePreventCount;

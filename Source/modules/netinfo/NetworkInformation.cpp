@@ -6,6 +6,7 @@
 #include "modules/netinfo/NetworkInformation.h"
 
 #include "core/dom/ExecutionContext.h"
+#include "core/events/Event.h"
 #include "core/page/NetworkStateNotifier.h"
 #include "modules/EventTargetModules.h"
 #include "wtf/text/WTFString.h"
@@ -27,6 +28,8 @@ String connectionTypeToString(blink::WebConnectionType type)
         return "other";
     case blink::ConnectionTypeNone:
         return "none";
+    case blink::ConnectionTypeUnknown:
+        return "unknown";
     }
     ASSERT_NOT_REACHED();
     return "none";
@@ -90,7 +93,7 @@ bool NetworkInformation::addEventListener(const AtomicString& eventType, PassRef
     return true;
 }
 
-bool NetworkInformation::removeEventListener(const AtomicString& eventType, EventListener* listener, bool useCapture)
+bool NetworkInformation::removeEventListener(const AtomicString& eventType, PassRefPtr<EventListener> listener, bool useCapture)
 {
     if (!EventTargetWithInlineData::removeEventListener(eventType, listener, useCapture))
         return false;

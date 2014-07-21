@@ -26,8 +26,8 @@
 #include "config.h"
 #include "core/frame/csp/ContentSecurityPolicy.h"
 
-#include "bindings/v8/ScriptCallStackFactory.h"
-#include "bindings/v8/ScriptController.h"
+#include "bindings/core/v8/ScriptCallStackFactory.h"
+#include "bindings/core/v8/ScriptController.h"
 #include "core/dom/DOMStringList.h"
 #include "core/dom/Document.h"
 #include "core/events/SecurityPolicyViolationEvent.h"
@@ -140,6 +140,11 @@ ContentSecurityPolicy::ContentSecurityPolicy(ExecutionContext* executionContext)
 
 ContentSecurityPolicy::~ContentSecurityPolicy()
 {
+}
+
+Document* ContentSecurityPolicy::document() const
+{
+    return m_executionContext->isDocument() ? toDocument(m_executionContext) : 0;
 }
 
 void ContentSecurityPolicy::copyStateFrom(const ContentSecurityPolicy* other)
@@ -386,22 +391,22 @@ bool ContentSecurityPolicy::allowScriptFromSource(const KURL& url, ContentSecuri
     return isAllowedByAllWithURL<&CSPDirectiveList::allowScriptFromSource>(m_policies, url, reportingStatus);
 }
 
-bool ContentSecurityPolicy::allowScriptNonce(const String& nonce) const
+bool ContentSecurityPolicy::allowScriptWithNonce(const String& nonce) const
 {
     return isAllowedByAllWithNonce<&CSPDirectiveList::allowScriptNonce>(m_policies, nonce);
 }
 
-bool ContentSecurityPolicy::allowStyleNonce(const String& nonce) const
+bool ContentSecurityPolicy::allowStyleWithNonce(const String& nonce) const
 {
     return isAllowedByAllWithNonce<&CSPDirectiveList::allowStyleNonce>(m_policies, nonce);
 }
 
-bool ContentSecurityPolicy::allowScriptHash(const String& source) const
+bool ContentSecurityPolicy::allowScriptWithHash(const String& source) const
 {
     return checkDigest<&CSPDirectiveList::allowScriptHash>(source, m_scriptHashAlgorithmsUsed, m_policies);
 }
 
-bool ContentSecurityPolicy::allowStyleHash(const String& source) const
+bool ContentSecurityPolicy::allowStyleWithHash(const String& source) const
 {
     return checkDigest<&CSPDirectiveList::allowStyleHash>(source, m_styleHashAlgorithmsUsed, m_policies);
 }
@@ -474,8 +479,7 @@ bool ContentSecurityPolicy::allowChildContextFromSource(const KURL& url, Content
 bool ContentSecurityPolicy::allowWorkerContextFromSource(const KURL& url, ContentSecurityPolicy::ReportingStatus reportingStatus) const
 {
     // CSP 1.1 moves workers from 'script-src' to the new 'child-src'. Measure the impact of this backwards-incompatible change.
-    if (m_executionContext->isDocument()) {
-        Document* document = static_cast<Document*>(m_executionContext);
+    if (Document* document = this->document()) {
         UseCounter::count(*document, UseCounter::WorkerSubjectToCSP);
         if (isAllowedByAllWithURL<&CSPDirectiveList::allowChildContextFromSource>(m_policies, url, SuppressReport) && !isAllowedByAllWithURL<&CSPDirectiveList::allowScriptFromSource>(m_policies, url, SuppressReport))
             UseCounter::count(*document, UseCounter::WorkerAllowedByChildBlockedByScript);
@@ -588,10 +592,10 @@ static void gatherSecurityPolicyViolationEventData(SecurityPolicyViolationEventI
 void ContentSecurityPolicy::reportViolation(const String& directiveText, const String& effectiveDirective, const String& consoleMessage, const KURL& blockedURL, const Vector<KURL>& reportURIs, const String& header)
 {
     // FIXME: Support sending reports from worker.
-    if (!m_executionContext->isDocument())
+    Document* document = this->document();
+    if (!document)
         return;
 
-    Document* document = this->document();
     LocalFrame* frame = document->frame();
     if (!frame)
         return;
@@ -767,7 +771,7 @@ bool ContentSecurityPolicy::shouldBypassMainWorld(ExecutionContext* context)
     if (context && context->isDocument()) {
         Document* document = toDocument(context);
         if (document->frame())
-            return document->frame()->script().shouldBypassMainWorldContentSecurityPolicy();
+            return document->frame()->script().shouldBypassMainWorldCSP();
     }
     return false;
 }

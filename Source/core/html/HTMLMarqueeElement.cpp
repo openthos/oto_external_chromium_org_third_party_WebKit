@@ -23,7 +23,7 @@
 #include "config.h"
 #include "core/html/HTMLMarqueeElement.h"
 
-#include "bindings/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionState.h"
 #include "core/CSSPropertyNames.h"
 #include "core/CSSValueKeywords.h"
 #include "core/HTMLNames.h"
@@ -124,51 +124,6 @@ void HTMLMarqueeElement::stop()
 {
     if (RenderMarquee* marqueeRenderer = renderMarquee())
         marqueeRenderer->stop();
-}
-
-int HTMLMarqueeElement::scrollAmount() const
-{
-    bool ok;
-    int scrollAmount = fastGetAttribute(scrollamountAttr).toInt(&ok);
-    return ok && scrollAmount >= 0 ? scrollAmount : RenderStyle::initialMarqueeIncrement().intValue();
-}
-
-void HTMLMarqueeElement::setScrollAmount(int scrollAmount, ExceptionState& exceptionState)
-{
-    if (scrollAmount < 0)
-        exceptionState.throwDOMException(IndexSizeError, "The provided value (" + String::number(scrollAmount) + ") is negative.");
-    else
-        setIntegralAttribute(scrollamountAttr, scrollAmount);
-}
-
-int HTMLMarqueeElement::scrollDelay() const
-{
-    bool ok;
-    int scrollDelay = fastGetAttribute(scrolldelayAttr).toInt(&ok);
-    return ok && scrollDelay >= 0 ? scrollDelay : RenderStyle::initialMarqueeSpeed();
-}
-
-void HTMLMarqueeElement::setScrollDelay(int scrollDelay, ExceptionState& exceptionState)
-{
-    if (scrollDelay < 0)
-        exceptionState.throwDOMException(IndexSizeError, "The provided value (" + String::number(scrollDelay) + ") is negative.");
-    else
-        setIntegralAttribute(scrolldelayAttr, scrollDelay);
-}
-
-int HTMLMarqueeElement::loop() const
-{
-    bool ok;
-    int loopValue = fastGetAttribute(loopAttr).toInt(&ok);
-    return ok && loopValue > 0 ? loopValue : -1;
-}
-
-void HTMLMarqueeElement::setLoop(int loop, ExceptionState& exceptionState)
-{
-    if (loop <= 0 && loop != -1)
-        exceptionState.throwDOMException(IndexSizeError, "The provided value (" + String::number(loop) + ") is neither positive nor -1.");
-    else
-        setIntegralAttribute(loopAttr, loop);
 }
 
 void HTMLMarqueeElement::suspend()

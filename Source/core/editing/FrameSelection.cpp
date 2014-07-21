@@ -26,8 +26,7 @@
 #include "config.h"
 #include "core/editing/FrameSelection.h"
 
-#include <stdio.h>
-#include "bindings/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionState.h"
 #include "core/HTMLNames.h"
 #include "core/accessibility/AXObjectCache.h"
 #include "core/css/StylePropertySet.h"
@@ -45,6 +44,7 @@
 #include "core/editing/TypingCommand.h"
 #include "core/editing/VisibleUnits.h"
 #include "core/editing/htmlediting.h"
+#include "core/events/Event.h"
 #include "core/frame/LocalDOMWindow.h"
 #include "core/frame/LocalFrame.h"
 #include "core/html/HTMLBodyElement.h"
@@ -72,6 +72,7 @@
 #include "platform/geometry/FloatQuad.h"
 #include "platform/graphics/GraphicsContext.h"
 #include "wtf/text/CString.h"
+#include <stdio.h>
 
 #define EDIT_DEBUG 0
 
@@ -296,6 +297,7 @@ void FrameSelection::setSelection(const VisibleSelection& newSelection, SetSelec
     }
 
     notifyAccessibilityForSelectionChange();
+    notifyCompositorForSelectionChange();
     m_frame->domWindow()->enqueueDocumentEvent(Event::create(EventTypeNames::selectionchange));
 }
 
@@ -1294,7 +1296,7 @@ bool FrameSelection::contains(const LayoutPoint& point)
     if (!document->renderView())
         return false;
 
-    HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::ConfusingAndOftenMisusedDisallowShadowContent);
+    HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active);
     HitTestResult result(point);
     document->renderView()->hitTest(request, result);
     Node* innerNode = result.innerNode();
@@ -1352,7 +1354,7 @@ void FrameSelection::selectFrameElementInParentIfFullySelected()
         return;
 
     // This method's purpose is it to make it easier to select iframes (in order to delete them).  Don't do anything if the iframe isn't deletable.
-    if (!ownerElementParent->rendererIsEditable())
+    if (!ownerElementParent->hasEditableStyle())
         return;
 
     // Create compute positions before and after the element.
@@ -1446,6 +1448,15 @@ void FrameSelection::notifyAccessibilityForSelectionChange()
         if (AXObjectCache* cache = m_frame->document()->existingAXObjectCache())
             cache->selectionChanged(m_selection.start().containerNode());
     }
+}
+
+void FrameSelection::notifyCompositorForSelectionChange()
+{
+    if (!RuntimeEnabledFeatures::compositedSelectionUpdatesEnabled())
+        return;
+
+    if (Page* page = m_frame->page())
+        page->animator().scheduleVisualUpdate();
 }
 
 void FrameSelection::focusedOrActiveStateChanged()
@@ -1628,10 +1639,9 @@ void FrameSelection::caretBlinkTimerFired(Timer<FrameSelection>*)
 {
     ASSERT(caretIsVisible());
     ASSERT(isCaret());
-    bool caretPaint = m_caretPaint;
-    if (isCaretBlinkingSuspended() && caretPaint)
+    if (isCaretBlinkingSuspended() && m_caretPaint)
         return;
-    m_caretPaint = !caretPaint;
+    m_caretPaint = !m_caretPaint;
     invalidateCaretRect();
 }
 
@@ -1800,7 +1810,7 @@ void FrameSelection::setSelectionFromNone()
 
     Document* document = m_frame->document();
     bool caretBrowsing = m_frame->settings() && m_frame->settings()->caretBrowsingEnabled();
-    if (!isNone() || !(document->rendererIsEditable() || caretBrowsing))
+    if (!isNone() || !(document->hasEditableStyle() || caretBrowsing))
         return;
 
     Node* node = document->documentElement();

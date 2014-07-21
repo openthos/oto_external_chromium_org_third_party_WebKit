@@ -31,7 +31,7 @@
 #ifndef AsyncCallStackTracker_h
 #define AsyncCallStackTracker_h
 
-#include "bindings/v8/ScriptValue.h"
+#include "bindings/core/v8/ScriptValue.h"
 #include "wtf/Deque.h"
 #include "wtf/HashMap.h"
 #include "wtf/HashSet.h"
@@ -45,6 +45,7 @@ class Event;
 class EventListener;
 class EventTarget;
 class ExecutionContext;
+class ExecutionContextTask;
 class MutationObserver;
 class XMLHttpRequest;
 
@@ -91,24 +92,33 @@ public:
     void didEnqueueEvent(EventTarget*, Event*, const ScriptValue& callFrames);
     void didRemoveEvent(EventTarget*, Event*);
     void willHandleEvent(EventTarget*, Event*, EventListener*, bool useCapture);
+
     void willLoadXHR(XMLHttpRequest*, const ScriptValue& callFrames);
+    void didLoadXHR(XMLHttpRequest*);
 
     void didEnqueueMutationRecord(ExecutionContext*, MutationObserver*, const ScriptValue& callFrames);
     bool hasEnqueuedMutationRecord(ExecutionContext*, MutationObserver*);
     void didClearAllMutationRecords(ExecutionContext*, MutationObserver*);
     void willDeliverMutationRecords(ExecutionContext*, MutationObserver*);
 
+    void didPostExecutionContextTask(ExecutionContext*, ExecutionContextTask*, const ScriptValue& callFrames);
+    void didKillAllExecutionContextTasks(ExecutionContext*);
+    void willPerformExecutionContextTask(ExecutionContext*, ExecutionContextTask*);
+
+    void didEnqueueV8AsyncTask(ExecutionContext*, const String& eventName, int id, const ScriptValue& callFrames);
+    void willHandleV8AsyncTask(ExecutionContext*, const String& eventName, int id);
+
     void didFireAsyncCall();
     void clear();
 
 private:
-    void willHandleXHREvent(XMLHttpRequest*, EventTarget*, Event*);
+    void willHandleXHREvent(XMLHttpRequest*, Event*);
 
     PassRefPtr<AsyncCallChain> createAsyncCallChain(const String& description, const ScriptValue& callFrames);
-    void setCurrentAsyncCallChain(PassRefPtr<AsyncCallChain>);
+    void setCurrentAsyncCallChain(ExecutionContext*, PassRefPtr<AsyncCallChain>);
     void clearCurrentAsyncCallChain();
     static void ensureMaxAsyncCallChainDepth(AsyncCallChain*, unsigned);
-    static bool validateCallFrames(const ScriptValue& callFrames);
+    bool validateCallFrames(const ScriptValue& callFrames);
 
     class ExecutionContextData;
     ExecutionContextData* createContextDataIfNeeded(ExecutionContext*);

@@ -5,11 +5,11 @@
 #include "config.h"
 #include "modules/serviceworkers/RespondWithObserver.h"
 
-#include "V8Response.h"
-#include "bindings/v8/ScriptFunction.h"
-#include "bindings/v8/ScriptPromise.h"
-#include "bindings/v8/ScriptValue.h"
-#include "bindings/v8/V8Binding.h"
+#include "bindings/core/v8/ScriptFunction.h"
+#include "bindings/core/v8/ScriptPromise.h"
+#include "bindings/core/v8/ScriptValue.h"
+#include "bindings/core/v8/V8Binding.h"
+#include "bindings/modules/v8/V8Response.h"
 #include "core/dom/ExecutionContext.h"
 #include "modules/serviceworkers/ServiceWorkerGlobalScopeClient.h"
 #include "wtf/Assertions.h"
@@ -88,7 +88,7 @@ void RespondWithObserver::respondWith(ScriptState* scriptState, const ScriptValu
         ThenFunction::create(this, ThenFunction::Rejected));
 }
 
-void RespondWithObserver::sendResponse(PassRefPtr<Response> response)
+void RespondWithObserver::sendResponse(PassRefPtrWillBeRawPtr<Response> response)
 {
     if (!executionContext())
         return;

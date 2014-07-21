@@ -82,14 +82,13 @@ public:
     // WebDevToolsAgentPrivate implementation.
     virtual void didCreateScriptContext(WebLocalFrameImpl*, int worldId) OVERRIDE;
     virtual bool handleInputEvent(WebCore::Page*, const WebInputEvent&) OVERRIDE;
+    virtual void didLayout() OVERRIDE;
 
     // WebDevToolsAgent implementation.
-    virtual void attach() OVERRIDE;
-    virtual void reattach(const WebString& savedState) OVERRIDE;
     virtual void attach(const WebString& hostId) OVERRIDE;
     virtual void reattach(const WebString& hostId, const WebString& savedState) OVERRIDE;
     virtual void detach() OVERRIDE;
-    virtual void didNavigate() OVERRIDE;
+    virtual void continueProgram() OVERRIDE;
     virtual void didBeginFrame(int frameId) OVERRIDE;
     virtual void didCancelFrame() OVERRIDE;
     virtual void willComposite() OVERRIDE;
@@ -97,7 +96,6 @@ public:
     virtual void dispatchOnInspectorBackend(const WebString& message) OVERRIDE;
     virtual void inspectElementAt(const WebPoint&) OVERRIDE;
     virtual void evaluateInWebInspector(long callId, const WebString& script) OVERRIDE;
-    virtual void setProcessId(long) OVERRIDE;
     virtual void setLayerTreeId(int) OVERRIDE;
     virtual void processGPUEvent(const GPUEvent&) OVERRIDE;
 
@@ -108,7 +106,7 @@ public:
     virtual void sendMessageToFrontend(PassRefPtr<WebCore::JSONObject> message) OVERRIDE;
     virtual void flush() OVERRIDE;
 
-    virtual void setDeviceMetricsOverride(int width, int height, float deviceScaleFactor, bool emulateViewport, bool fitWindow) OVERRIDE;
+    virtual void setDeviceMetricsOverride(int width, int height, float deviceScaleFactor, bool mobile, bool fitWindow, float scale, float offsetX, float offsetY) OVERRIDE;
     virtual void clearDeviceMetricsOverride() OVERRIDE;
     virtual void setTouchEventEmulationEnabled(bool) OVERRIDE;
 
@@ -135,8 +133,8 @@ private:
     virtual void willProcessTask() OVERRIDE;
     virtual void didProcessTask() OVERRIDE;
 
-    void enableViewportEmulation();
-    void disableViewportEmulation();
+    void enableMobileEmulation();
+    void disableMobileEmulation();
     void updatePageScaleFactorLimits();
 
     WebCore::InspectorController* inspectorController();
@@ -149,8 +147,10 @@ private:
     bool m_attached;
     bool m_generatingEvent;
 
+    bool m_webViewDidLayoutOnceAfterLoad;
+
     bool m_deviceMetricsEnabled;
-    bool m_emulateViewportEnabled;
+    bool m_emulateMobileEnabled;
     bool m_originalViewportEnabled;
     bool m_isOverlayScrollbarsEnabled;
 

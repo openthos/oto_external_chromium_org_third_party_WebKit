@@ -31,7 +31,7 @@
 #include "config.h"
 #include "modules/webmidi/MIDIOutput.h"
 
-#include "bindings/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionState.h"
 #include "core/dom/ExceptionCode.h"
 #include "core/dom/ExecutionContext.h"
 #include "core/frame/LocalDOMWindow.h"
@@ -173,10 +173,10 @@ private:
 
 } // namespace
 
-PassRefPtrWillBeRawPtr<MIDIOutput> MIDIOutput::create(MIDIAccess* access, unsigned portIndex, const String& id, const String& manufacturer, const String& name, const String& version)
+MIDIOutput* MIDIOutput::create(MIDIAccess* access, unsigned portIndex, const String& id, const String& manufacturer, const String& name, const String& version)
 {
     ASSERT(access);
-    return adoptRefWillBeRefCountedGarbageCollected(new MIDIOutput(access, portIndex, id, manufacturer, name, version));
+    return adoptRefCountedGarbageCollectedWillBeNoop(new MIDIOutput(access, portIndex, id, manufacturer, name, version));
 }
 
 MIDIOutput::MIDIOutput(MIDIAccess* access, unsigned portIndex, const String& id, const String& manufacturer, const String& name, const String& version)

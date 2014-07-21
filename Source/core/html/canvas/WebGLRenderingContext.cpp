@@ -84,7 +84,7 @@ PassOwnPtrWillBeRawPtr<WebGLRenderingContext> WebGLRenderingContext::create(HTML
         defaultAttrs = WebGLContextAttributes::create();
         attrs = defaultAttrs.get();
     }
-    blink::WebGraphicsContext3D::Attributes attributes = attrs->attributes(document.topDocument().url().string(), settings);
+    blink::WebGraphicsContext3D::Attributes attributes = attrs->attributes(document.topDocument().url().string(), settings, 1);
     OwnPtr<blink::WebGraphicsContext3D> context = adoptPtr(blink::Platform::current()->createOffscreenGraphicsContext3D(attributes, 0));
     if (!context || !context->makeContextCurrent()) {
         canvas->dispatchEvent(WebGLContextEvent::create(EventTypeNames::webglcontextcreationerror, false, true, "Could not create a WebGL context."));
@@ -123,10 +123,12 @@ WebGLRenderingContext::~WebGLRenderingContext()
 void WebGLRenderingContext::registerContextExtensions()
 {
     // Register extensions.
-    static const char* const webkitPrefix[] = { "WEBKIT_", 0, };
     static const char* const bothPrefixes[] = { "", "WEBKIT_", 0, };
 
     registerExtension<ANGLEInstancedArrays>(m_angleInstancedArrays);
+    registerExtension<EXTBlendMinMax>(m_extBlendMinMax);
+    registerExtension<EXTFragDepth>(m_extFragDepth);
+    registerExtension<EXTShaderTextureLOD>(m_extShaderTextureLOD);
     registerExtension<EXTTextureFilterAnisotropic>(m_extTextureFilterAnisotropic, ApprovedExtension, bothPrefixes);
     registerExtension<OESElementIndexUint>(m_oesElementIndexUint);
     registerExtension<OESStandardDerivatives>(m_oesStandardDerivatives);
@@ -135,20 +137,15 @@ void WebGLRenderingContext::registerContextExtensions()
     registerExtension<OESTextureHalfFloat>(m_oesTextureHalfFloat);
     registerExtension<OESTextureHalfFloatLinear>(m_oesTextureHalfFloatLinear);
     registerExtension<OESVertexArrayObject>(m_oesVertexArrayObject);
-    registerExtension<WebGLCompressedTextureATC>(m_webglCompressedTextureATC, EnabledDraftExtension, webkitPrefix);
-    registerExtension<WebGLCompressedTexturePVRTC>(m_webglCompressedTexturePVRTC, EnabledDraftExtension, webkitPrefix);
+    registerExtension<WebGLCompressedTextureATC>(m_webglCompressedTextureATC, ApprovedExtension, bothPrefixes);
+    registerExtension<WebGLCompressedTextureETC1>(m_webglCompressedTextureETC1);
+    registerExtension<WebGLCompressedTexturePVRTC>(m_webglCompressedTexturePVRTC, ApprovedExtension, bothPrefixes);
     registerExtension<WebGLCompressedTextureS3TC>(m_webglCompressedTextureS3TC, ApprovedExtension, bothPrefixes);
     registerExtension<WebGLDebugRendererInfo>(m_webglDebugRendererInfo);
     registerExtension<WebGLDebugShaders>(m_webglDebugShaders);
     registerExtension<WebGLDepthTexture>(m_webglDepthTexture, ApprovedExtension, bothPrefixes);
     registerExtension<WebGLDrawBuffers>(m_webglDrawBuffers);
     registerExtension<WebGLLoseContext>(m_webglLoseContext, ApprovedExtension, bothPrefixes);
-
-    // Register draft extensions.
-    registerExtension<EXTBlendMinMax>(m_extBlendMinMax, DraftExtension);
-    registerExtension<EXTFragDepth>(m_extFragDepth, DraftExtension);
-    registerExtension<EXTShaderTextureLOD>(m_extShaderTextureLOD, DraftExtension);
-    registerExtension<WebGLCompressedTextureETC1>(m_webglCompressedTextureETC1, DraftExtension);
 }
 
 } // namespace WebCore

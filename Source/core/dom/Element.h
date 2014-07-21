@@ -132,7 +132,7 @@ public:
     // attribute or one of the SVG animatable attributes.
     bool fastHasAttribute(const QualifiedName&) const;
     const AtomicString& fastGetAttribute(const QualifiedName&) const;
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     bool fastAttributeLookupAllowed(const QualifiedName&) const;
 #endif
 
@@ -168,15 +168,10 @@ public:
     // so this function is not suitable for non-style uses.
     const AtomicString& idForStyleResolution() const;
 
-    // Internal methods that assume the existence of attribute storage, one should use hasAttributes()
-    // before calling them. This is not a trivial getter and its return value should be cached for
+    // Internal method that assumes the existence of attribute storage, one should use hasAttributes()
+    // before calling it. This is not a trivial getter and its return value should be cached for
     // performance.
-    AttributeCollection attributes() const { return elementData()->attributes(); }
-    size_t attributeCount() const;
-    const Attribute& attributeAt(unsigned index) const;
-    const Attribute* findAttributeByName(const QualifiedName&) const;
-    size_t findAttributeIndexByName(const QualifiedName& name) const { return elementData()->findAttributeIndexByName(name); }
-    size_t findAttributeIndexByName(const AtomicString& name, bool shouldIgnoreAttributeCase) const { return elementData()->findAttributeIndexByName(name, shouldIgnoreAttributeCase); }
+    AttributeCollection attributes() const;
 
     void scrollIntoView(bool alignToTop = true);
     void scrollIntoViewIfNeeded(bool centerIfNeeded = true);
@@ -292,6 +287,7 @@ public:
     };
 
     // This method is called whenever an attribute is added, changed or removed.
+    virtual void attributeWillChange(const QualifiedName&, const AtomicString& oldValue, const AtomicString& newValue) { }
     virtual void attributeChanged(const QualifiedName&, const AtomicString&, AttributeModificationReason = ModifiedDirectly);
     virtual void parseAttribute(const QualifiedName&, const AtomicString&);
 
@@ -364,6 +360,9 @@ public:
 
     virtual bool isURLAttribute(const Attribute&) const { return false; }
     virtual bool isHTMLContentAttribute(const Attribute&) const { return false; }
+
+    virtual bool isLiveLink() const { return false; }
+    KURL hrefURL() const;
 
     KURL getURLAttribute(const QualifiedName&) const;
     KURL getNonEmptyURLAttribute(const QualifiedName&) const;
@@ -466,18 +465,16 @@ public:
     void setCustomElementDefinition(PassRefPtr<CustomElementDefinition>);
     CustomElementDefinition* customElementDefinition() const;
 
-    enum {
-        ALLOW_KEYBOARD_INPUT = 1 << 0,
-        LEGACY_MOZILLA_REQUEST = 1 << 1,
-    };
-
+    // Mozilla version
+    static const unsigned short ALLOW_KEYBOARD_INPUT = 1;
     void webkitRequestFullScreen(unsigned short flags);
+
+    // W3C version
+    void webkitRequestFullscreen();
+
     bool containsFullScreenElement() const { return hasElementFlag(ContainsFullScreenElement); }
     void setContainsFullScreenElement(bool);
     void setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(bool);
-
-    // W3C API
-    void webkitRequestFullscreen();
 
     bool isInTopLayer() const { return hasElementFlag(IsInTopLayer); }
     void setIsInTopLayer(bool);
@@ -525,7 +522,7 @@ protected:
 
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void removedFrom(ContainerNode*) OVERRIDE;
-    virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0) OVERRIDE;
+    virtual void childrenChanged(const ChildrenChange&) OVERRIDE;
 
     virtual void willRecalcStyle(StyleRecalcChange);
     virtual void didRecalcStyle(StyleRecalcChange);
@@ -534,7 +531,7 @@ protected:
     virtual bool shouldRegisterAsNamedItem() const { return false; }
     virtual bool shouldRegisterAsExtraNamedItem() const { return false; }
 
-    virtual bool supportsSpatialNavigationFocus() const;
+    bool supportsSpatialNavigationFocus() const;
 
     void clearTabIndexExplicitlyIfNeeded();
     void setTabIndexExplicitly(short);
@@ -652,7 +649,7 @@ private:
 
     bool isJavaScriptURLAttribute(const Attribute&) const;
 
-    RefPtr<ElementData> m_elementData;
+    RefPtrWillBeMember<ElementData> m_elementData;
 };
 
 DEFINE_NODE_TYPE_CASTS(Element, isElementNode());
@@ -702,22 +699,28 @@ inline Element* Node::parentElement() const
 inline bool Element::fastHasAttribute(const QualifiedName& name) const
 {
     ASSERT(fastAttributeLookupAllowed(name));
-    return elementData() && findAttributeByName(name);
+    return elementData() && attributes().findIndex(name) != kNotFound;
 }
 
 inline const AtomicString& Element::fastGetAttribute(const QualifiedName& name) const
 {
     ASSERT(fastAttributeLookupAllowed(name));
     if (elementData()) {
-        if (const Attribute* attribute = findAttributeByName(name))
+        if (const Attribute* attribute = attributes().find(name))
             return attribute->value();
     }
     return nullAtom;
 }
 
+inline AttributeCollection Element::attributes() const
+{
+    ASSERT(elementData());
+    return elementData()->attributes();
+}
+
 inline bool Element::hasAttributesWithoutUpdate() const
 {
-    return elementData() && elementData()->hasAttributes();
+    return elementData() && !elementData()->attributes().isEmpty();
 }
 
 inline const AtomicString& Element::idForStyleResolution() const
@@ -764,24 +767,6 @@ inline const SpaceSplitString& Element::classNames() const
     ASSERT(hasClass());
     ASSERT(elementData());
     return elementData()->classNames();
-}
-
-inline size_t Element::attributeCount() const
-{
-    ASSERT(elementData());
-    return elementData()->attributeCount();
-}
-
-inline const Attribute& Element::attributeAt(unsigned index) const
-{
-    ASSERT(elementData());
-    return elementData()->attributeAt(index);
-}
-
-inline const Attribute* Element::findAttributeByName(const QualifiedName& name) const
-{
-    ASSERT(elementData());
-    return elementData()->findAttributeByName(name);
 }
 
 inline bool Element::hasID() const

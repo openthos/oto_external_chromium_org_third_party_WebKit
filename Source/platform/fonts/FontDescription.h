@@ -26,6 +26,7 @@
 #define FontDescription_h
 
 #include "platform/FontFamilyNames.h"
+#include "platform/fonts/FixedPitchFontType.h"
 #include "platform/fonts/FontCacheKey.h"
 #include "platform/fonts/FontFamily.h"
 #include "platform/fonts/FontFeatureSettings.h"
@@ -102,7 +103,12 @@ public:
     GenericFamilyType genericFamily() const { return static_cast<GenericFamilyType>(m_genericFamily); }
 
     // only use fixed default size when there is only one font family, and that family is "monospace"
-    bool useFixedDefaultSize() const { return genericFamily() == MonospaceFamily && !family().next() && family().family() == FontFamilyNames::webkit_monospace; }
+    FixedPitchFontType fixedPitchFontType() const
+    {
+        if (genericFamily() == MonospaceFamily && !family().next() && family().family() == FontFamilyNames::webkit_monospace)
+            return FixedPitchFont;
+        return NonFixedPitchFont;
+    }
     Kerning kerning() const { return static_cast<Kerning>(m_kerning); }
     LigaturesState commonLigaturesState() const { return static_cast<LigaturesState>(m_commonLigaturesState); }
     LigaturesState discretionaryLigaturesState() const { return static_cast<LigaturesState>(m_discretionaryLigaturesState); }
@@ -127,7 +133,7 @@ public:
     FontDescription makeNormalFeatureSettings() const;
 
     float effectiveFontSize() const; // Returns either the computedSize or the computedPixelSize
-    FontCacheKey cacheKey(const AtomicString& familyName, FontTraits desiredTraits = FontTraits(0)) const;
+    FontCacheKey cacheKey(const FontFaceCreationParams&, FontTraits desiredTraits = FontTraits(0)) const;
 
     void setFamily(const FontFamily& family) { m_familyList = family; }
     void setComputedSize(float s) { m_computedSize = clampToFloat(s); }

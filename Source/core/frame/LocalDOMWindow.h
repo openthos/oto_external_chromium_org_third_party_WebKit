@@ -27,8 +27,7 @@
 #ifndef DOMWindow_h
 #define DOMWindow_h
 
-#include "bindings/v8/Dictionary.h"
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/Dictionary.h"
 #include "core/events/EventTarget.h"
 #include "core/frame/DOMWindowBase64.h"
 #include "core/frame/FrameDestructionObserver.h"
@@ -83,7 +82,7 @@ namespace WebCore {
 
     struct WindowFeatures;
 
-    typedef Vector<RefPtr<MessagePort>, 1> MessagePortArray;
+    typedef WillBeHeapVector<RefPtrWillBeMember<MessagePort>, 1> MessagePortArray;
 
 enum PageshowEventPersistence {
     PageshowEventNotPersisted = 0,
@@ -92,14 +91,14 @@ enum PageshowEventPersistence {
 
     enum SetLocationLocking { LockHistoryBasedOnGestureState, LockHistoryAndBackForwardList };
 
-    class LocalDOMWindow FINAL : public RefCountedWillBeRefCountedGarbageCollected<LocalDOMWindow>, public ScriptWrappable, public EventTargetWithInlineData, public DOMWindowBase64, public FrameDestructionObserver, public WillBeHeapSupplementable<LocalDOMWindow>, public LifecycleContext<LocalDOMWindow> {
+    class LocalDOMWindow FINAL : public RefCountedWillBeGarbageCollectedFinalized<LocalDOMWindow>, public EventTargetWithInlineData, public DOMWindowBase64, public FrameDestructionObserver, public WillBeHeapSupplementable<LocalDOMWindow>, public LifecycleContext<LocalDOMWindow> {
         WILL_BE_USING_GARBAGE_COLLECTED_MIXIN(LocalDOMWindow);
-        REFCOUNTED_EVENT_TARGET(LocalDOMWindow);
+        DEFINE_EVENT_TARGET_REFCOUNTING_WILL_BE_REMOVED(RefCounted<LocalDOMWindow>);
     public:
         static PassRefPtrWillBeRawPtr<Document> createDocument(const String& mimeType, const DocumentInit&, bool forceXHTML);
         static PassRefPtrWillBeRawPtr<LocalDOMWindow> create(LocalFrame& frame)
         {
-            return adoptRefWillBeRefCountedGarbageCollected(new LocalDOMWindow(frame));
+            return adoptRefWillBeNoop(new LocalDOMWindow(frame));
         }
         virtual ~LocalDOMWindow();
 
@@ -256,7 +255,7 @@ enum PageshowEventPersistence {
         // Events
         // EventTarget API
         virtual bool addEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture = false) OVERRIDE;
-        virtual bool removeEventListener(const AtomicString& eventType, EventListener*, bool useCapture = false) OVERRIDE;
+        virtual bool removeEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture = false) OVERRIDE;
         virtual void removeAllEventListeners() OVERRIDE;
 
         using EventTarget::dispatchEvent;
@@ -363,7 +362,7 @@ enum PageshowEventPersistence {
         RefPtrWillBeMember<Document> m_document;
 
         bool m_shouldPrintWhenFinishedLoading;
-#if ASSERT_ENABLED
+#if ENABLE(ASSERT)
         bool m_hasBeenReset;
 #endif
 

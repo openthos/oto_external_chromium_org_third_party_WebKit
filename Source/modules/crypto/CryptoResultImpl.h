@@ -31,7 +31,7 @@
 #ifndef CryptoResultImpl_h
 #define CryptoResultImpl_h
 
-#include "bindings/v8/ScriptPromise.h"
+#include "bindings/core/v8/ScriptPromise.h"
 #include "core/dom/ExceptionCode.h"
 #include "platform/CryptoResult.h"
 #include "public/platform/WebCrypto.h"
@@ -40,7 +40,7 @@
 
 namespace WebCore {
 
-class ScriptPromiseResolverWithContext;
+class ScriptPromiseResolver;
 ExceptionCode webCryptoErrorToExceptionCode(blink::WebCryptoErrorType);
 
 // Wrapper around a Promise to notify completion of the crypto operation.
@@ -67,7 +67,8 @@ public:
     virtual void completeWithKeyPair(const blink::WebCryptoKey& publicKey, const blink::WebCryptoKey& privateKey) OVERRIDE;
     virtual bool cancelled() const OVERRIDE;
 
-    // It is only valid to call this before completion.
+    // If called after completion (including cancellation) will return an empty
+    // ScriptPromise.
     ScriptPromise promise();
 
 private:
@@ -76,7 +77,7 @@ private:
 
     void cancel();
 
-    WeakPtr<ScriptPromiseResolverWithContext> m_resolver;
+    WeakPtr<ScriptPromiseResolver> m_resolver;
     volatile int m_cancelled;
 };
 

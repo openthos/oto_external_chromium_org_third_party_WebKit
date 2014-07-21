@@ -25,8 +25,7 @@
 #ifndef Node_h
 #define Node_h
 
-#include "bindings/v8/ExceptionStatePlaceholder.h"
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/ExceptionStatePlaceholder.h"
 #include "core/dom/MutationObserver.h"
 #include "core/dom/SimulatedClickOptions.h"
 #include "core/dom/TreeScope.h"
@@ -109,11 +108,11 @@ private:
 };
 
 #if ENABLE(OILPAN)
-#define NODE_BASE_CLASSES public GarbageCollectedFinalized<Node>, public EventTarget, public ScriptWrappable
+#define NODE_BASE_CLASSES public GarbageCollectedFinalized<Node>, public EventTarget
 #else
 // TreeShared should be the last to pack TreeShared::m_refCount and
 // Node::m_nodeFlags on 64bit platforms.
-#define NODE_BASE_CLASSES public EventTarget, public ScriptWrappable, public TreeShared<Node>
+#define NODE_BASE_CLASSES public EventTarget, public TreeShared<Node>
 #endif
 
 class Node : NODE_BASE_CLASSES {
@@ -196,10 +195,10 @@ public:
 
     // These should all actually return a node, but this is only important for language bindings,
     // which will already know and hold a ref on the right node to return.
-    void insertBefore(PassRefPtrWillBeRawPtr<Node> newChild, Node* refChild, ExceptionState& = ASSERT_NO_EXCEPTION);
-    void replaceChild(PassRefPtrWillBeRawPtr<Node> newChild, Node* oldChild, ExceptionState& = ASSERT_NO_EXCEPTION);
-    void removeChild(Node* child, ExceptionState&);
-    void appendChild(PassRefPtrWillBeRawPtr<Node> newChild, ExceptionState& = ASSERT_NO_EXCEPTION);
+    PassRefPtrWillBeRawPtr<Node> insertBefore(PassRefPtrWillBeRawPtr<Node> newChild, Node* refChild, ExceptionState& = ASSERT_NO_EXCEPTION);
+    PassRefPtrWillBeRawPtr<Node> replaceChild(PassRefPtrWillBeRawPtr<Node> newChild, PassRefPtrWillBeRawPtr<Node> oldChild, ExceptionState& = ASSERT_NO_EXCEPTION);
+    PassRefPtrWillBeRawPtr<Node> removeChild(PassRefPtrWillBeRawPtr<Node> child, ExceptionState& = ASSERT_NO_EXCEPTION);
+    PassRefPtrWillBeRawPtr<Node> appendChild(PassRefPtrWillBeRawPtr<Node> newChild, ExceptionState& = ASSERT_NO_EXCEPTION);
 
     bool hasChildren() const { return firstChild(); }
     virtual PassRefPtrWillBeRawPtr<Node> cloneNode(bool deep = false) = 0;
@@ -263,7 +262,7 @@ public:
     bool isStyledElement() const { return isHTMLElement() || isSVGElement(); }
 
     bool isDocumentNode() const;
-    bool isTreeScope() const { return &treeScope().rootNode() == this; }
+    bool isTreeScope() const;
     bool isDocumentFragment() const { return getFlag(IsDocumentFragmentFlag); }
     bool isShadowRoot() const { return isDocumentFragment() && isTreeScope(); }
     bool isInsertionPoint() const { return getFlag(IsInsertionPointFlag); }
@@ -275,9 +274,6 @@ public:
 
     // If this node is in a shadow tree, returns its shadow host. Otherwise, returns 0.
     Element* shadowHost() const;
-    // If this node is in a shadow tree, returns its shadow host. Otherwise, returns this.
-    // Deprecated. Should use shadowHost() and check the return value.
-    Node* deprecatedShadowAncestorNode() const;
     ShadowRoot* containingShadowRoot() const;
     ShadowRoot* youngestShadowRoot() const;
 
@@ -415,11 +411,11 @@ public:
     bool isContentEditable(UserSelectAllTreatment = UserSelectAllDoesNotAffectEditability);
     bool isContentRichlyEditable();
 
-    bool rendererIsEditable(EditableType editableType = ContentIsEditable, UserSelectAllTreatment treatment = UserSelectAllIsAlwaysNonEditable) const
+    bool hasEditableStyle(EditableType editableType = ContentIsEditable, UserSelectAllTreatment treatment = UserSelectAllIsAlwaysNonEditable) const
     {
         switch (editableType) {
         case ContentIsEditable:
-            return rendererIsEditable(Editable, treatment);
+            return hasEditableStyle(Editable, treatment);
         case HasEditableAXRole:
             return isEditableToAccessibility(Editable);
         }
@@ -431,7 +427,7 @@ public:
     {
         switch (editableType) {
         case ContentIsEditable:
-            return rendererIsEditable(RichlyEditable, UserSelectAllIsAlwaysNonEditable);
+            return hasEditableStyle(RichlyEditable, UserSelectAllIsAlwaysNonEditable);
         case HasEditableAXRole:
             return isEditableToAccessibility(RichlyEditable);
         }
@@ -535,7 +531,7 @@ public:
     // the node's rendering object from the rendering tree and delete it.
     virtual void detach(const AttachContext& = AttachContext());
 
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     bool inDetach() const;
 #endif
 
@@ -617,7 +613,7 @@ public:
     virtual ExecutionContext* executionContext() const OVERRIDE FINAL;
 
     virtual bool addEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture = false) OVERRIDE;
-    virtual bool removeEventListener(const AtomicString& eventType, EventListener*, bool useCapture = false) OVERRIDE;
+    virtual bool removeEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture = false) OVERRIDE;
     virtual void removeAllEventListeners() OVERRIDE;
     void removeAllEventListenersRecursively();
 
@@ -804,7 +800,7 @@ private:
     bool hasTreeSharedParent() const { return !!parentOrShadowHostNode(); }
 
     enum EditableLevel { Editable, RichlyEditable };
-    bool rendererIsEditable(EditableLevel, UserSelectAllTreatment = UserSelectAllIsAlwaysNonEditable) const;
+    bool hasEditableStyle(EditableLevel, UserSelectAllTreatment = UserSelectAllIsAlwaysNonEditable) const;
     bool isEditableToAccessibility(EditableLevel) const;
 
     bool isUserActionElementActive() const;

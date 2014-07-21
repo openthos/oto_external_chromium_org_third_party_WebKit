@@ -31,6 +31,7 @@
 #include "config.h"
 #include "core/inspector/ScriptCallStack.h"
 
+#include "core/inspector/ScriptAsyncCallStack.h"
 
 namespace WebCore {
 
@@ -57,12 +58,27 @@ size_t ScriptCallStack::size() const
     return m_frames.size();
 }
 
+PassRefPtrWillBeRawPtr<ScriptAsyncCallStack> ScriptCallStack::asyncCallStack() const
+{
+    return m_asyncCallStack;
+}
+
+void ScriptCallStack::setAsyncCallStack(PassRefPtrWillBeRawPtr<ScriptAsyncCallStack> asyncCallStack)
+{
+    m_asyncCallStack = asyncCallStack;
+}
+
 PassRefPtr<TypeBuilder::Array<TypeBuilder::Console::CallFrame> > ScriptCallStack::buildInspectorArray() const
 {
     RefPtr<TypeBuilder::Array<TypeBuilder::Console::CallFrame> > frames = TypeBuilder::Array<TypeBuilder::Console::CallFrame>::create();
     for (size_t i = 0; i < m_frames.size(); i++)
         frames->addItem(m_frames.at(i).buildInspectorObject());
     return frames;
+}
+
+void ScriptCallStack::trace(Visitor* visitor)
+{
+    visitor->trace(m_asyncCallStack);
 }
 
 } // namespace WebCore

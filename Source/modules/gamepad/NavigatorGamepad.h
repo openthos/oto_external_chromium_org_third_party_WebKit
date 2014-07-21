@@ -29,6 +29,7 @@
 #include "core/frame/DOMWindowLifecycleObserver.h"
 #include "core/frame/DOMWindowProperty.h"
 #include "core/frame/DeviceEventControllerBase.h"
+#include "platform/AsyncMethodRunner.h"
 #include "platform/Supplementable.h"
 #include "platform/heap/Handle.h"
 #include "public/platform/WebGamepads.h"
@@ -41,6 +42,7 @@ class WebGamepads;
 namespace WebCore {
 
 class Document;
+class Gamepad;
 class GamepadList;
 class Navigator;
 class WebKitGamepadList;
@@ -67,6 +69,9 @@ private:
 
     static const char* supplementName();
 
+    void dispatchOneEvent();
+    void didRemoveGamepadEventListeners();
+
     // DOMWindowProperty
     virtual void willDestroyGlobalObjectInFrame() OVERRIDE;
     virtual void willDetachGlobalObjectFromFrame() OVERRIDE;
@@ -76,6 +81,7 @@ private:
     virtual void unregisterWithDispatcher() OVERRIDE;
     virtual bool hasLastData() OVERRIDE;
     virtual void didUpdateData() OVERRIDE;
+    virtual void pageVisibilityChanged() OVERRIDE;
 
     // DOMWindowLifecycleObserver
     virtual void didAddEventListener(LocalDOMWindow*, const AtomicString&) OVERRIDE;
@@ -84,6 +90,8 @@ private:
 
     PersistentWillBeMember<GamepadList> m_gamepads;
     PersistentWillBeMember<WebKitGamepadList> m_webkitGamepads;
+    PersistentHeapDequeWillBeHeapDeque<Member<Gamepad> > m_pendingEvents;
+    AsyncMethodRunner<NavigatorGamepad> m_dispatchOneEventRunner;
 };
 
 } // namespace WebCore

@@ -245,7 +245,8 @@ public:
                                     unsigned inactiveForegroundColor) OVERRIDE;
     virtual void performCustomContextMenuAction(unsigned action) OVERRIDE;
     virtual void showContextMenu() OVERRIDE;
-    virtual WebString getSmartClipData(WebRect) OVERRIDE;
+    virtual void getSmartClipData(WebRect, WebString&, WebRect&) OVERRIDE;
+    virtual void extractSmartClipData(WebRect, WebString&, WebString&, WebRect&) OVERRIDE;
     virtual void hidePopups() OVERRIDE;
     virtual void addPageOverlay(WebPageOverlay*, int /* zOrder */) OVERRIDE;
     virtual void removePageOverlay(WebPageOverlay*) OVERRIDE;
@@ -314,6 +315,10 @@ public:
     // the page is shutting down, but will be valid at all other times.
     WebLocalFrameImpl* mainFrameImpl();
 
+    // FIXME: Temporary method to accommodate out-of-process frame ancestors;
+    // will be removed when there can be multiple WebWidgets for a single page.
+    WebLocalFrameImpl* localFrameRootTemporary() const;
+
     // Event related methods:
     void mouseContextMenu(const WebMouseEvent&);
     void mouseDoubleClick(const WebMouseEvent&);
@@ -333,6 +338,8 @@ public:
     // significant change in this function is the code to convert from a
     // Keyboard event to the Right Mouse button down event.
     bool sendContextMenuEvent(const WebKeyboardEvent&);
+
+    void showContextMenuAtPoint(float x, float y, PassRefPtr<WebCore::ContextMenuProvider>);
 
     // Notifies the WebView that a load has been committed. isNewNavigation
     // will be true if a new session history item should be created for that
@@ -385,10 +392,6 @@ public:
         WebDragOperationsMask mask,
         const WebImage& dragImage,
         const WebPoint& dragImageOffset);
-
-    // Tries to scroll the currently focused element and bubbles up through the
-    // DOM and frame hierarchies. Returns true if something was scrolled.
-    bool bubblingScroll(WebCore::ScrollDirection, WebCore::ScrollGranularity);
 
     // Notification that a popup was opened/closed.
     void popupOpened(PopupContainer*);
@@ -446,6 +449,8 @@ public:
     void enterFullScreenForElement(WebCore::Element*);
     void exitFullScreenForElement(WebCore::Element*);
 
+    void clearCompositedSelectionBounds();
+
     // Exposed for the purpose of overriding device metrics.
     void sendResizeEventAndRepaint();
 
@@ -498,6 +503,8 @@ private:
     void resetSavedScrollAndScaleState();
 
     void updateMainFrameScrollPosition(const WebCore::IntPoint& scrollPosition, bool programmaticScroll);
+
+    void performResize();
 
     friend class WebView;  // So WebView::Create can call our constructor
     friend class WTF::RefCounted<WebViewImpl>;
@@ -687,6 +694,7 @@ private:
     OwnPtr<WebCore::GraphicsLayerFactory> m_graphicsLayerFactory;
     bool m_isAcceleratedCompositingActive;
     bool m_layerTreeViewCommitsDeferred;
+    bool m_layerTreeViewClosed;
     bool m_matchesHeuristicsForGpuRasterization;
     // If true, the graphics context is being restored.
     bool m_recreatingGraphicsContext;

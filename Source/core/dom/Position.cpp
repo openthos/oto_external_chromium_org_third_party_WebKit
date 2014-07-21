@@ -53,11 +53,11 @@ using namespace HTMLNames;
 
 static Node* nextRenderedEditable(Node* node)
 {
-    while ((node = node->nextLeafNode())) {
+    for (node = node->nextLeafNode(); node; node = node->nextLeafNode()) {
         RenderObject* renderer = node->renderer();
         if (!renderer)
             continue;
-        if (!node->rendererIsEditable())
+        if (!node->hasEditableStyle())
             continue;
         if ((renderer->isBox() && toRenderBox(renderer)->inlineBoxWrapper()) || (renderer->isText() && toRenderText(renderer)->firstTextBox()))
             return node;
@@ -67,11 +67,11 @@ static Node* nextRenderedEditable(Node* node)
 
 static Node* previousRenderedEditable(Node* node)
 {
-    while ((node = node->previousLeafNode())) {
+    for (node = node->previousLeafNode(); node; node = node->previousLeafNode()) {
         RenderObject* renderer = node->renderer();
         if (!renderer)
             continue;
-        if (!node->rendererIsEditable())
+        if (!node->hasEditableStyle())
             continue;
         if ((renderer->isBox() && toRenderBox(renderer)->inlineBoxWrapper()) || (renderer->isText() && toRenderText(renderer)->firstTextBox()))
             return node;
@@ -409,15 +409,15 @@ bool Position::atLastEditingPositionForNode() const
 bool Position::atEditingBoundary() const
 {
     Position nextPosition = downstream(CanCrossEditingBoundary);
-    if (atFirstEditingPositionForNode() && nextPosition.isNotNull() && !nextPosition.deprecatedNode()->rendererIsEditable())
+    if (atFirstEditingPositionForNode() && nextPosition.isNotNull() && !nextPosition.deprecatedNode()->hasEditableStyle())
         return true;
 
     Position prevPosition = upstream(CanCrossEditingBoundary);
-    if (atLastEditingPositionForNode() && prevPosition.isNotNull() && !prevPosition.deprecatedNode()->rendererIsEditable())
+    if (atLastEditingPositionForNode() && prevPosition.isNotNull() && !prevPosition.deprecatedNode()->hasEditableStyle())
         return true;
 
-    return nextPosition.isNotNull() && !nextPosition.deprecatedNode()->rendererIsEditable()
-        && prevPosition.isNotNull() && !prevPosition.deprecatedNode()->rendererIsEditable();
+    return nextPosition.isNotNull() && !nextPosition.deprecatedNode()->hasEditableStyle()
+        && prevPosition.isNotNull() && !prevPosition.deprecatedNode()->hasEditableStyle();
 }
 
 Node* Position::parentEditingBoundary() const
@@ -430,7 +430,7 @@ Node* Position::parentEditingBoundary() const
         return 0;
 
     Node* boundary = m_anchorNode.get();
-    while (boundary != documentElement && boundary->nonShadowBoundaryParentNode() && m_anchorNode->rendererIsEditable() == boundary->parentNode()->rendererIsEditable())
+    while (boundary != documentElement && boundary->nonShadowBoundaryParentNode() && m_anchorNode->hasEditableStyle() == boundary->parentNode()->hasEditableStyle())
         boundary = boundary->nonShadowBoundaryParentNode();
 
     return boundary;
@@ -473,34 +473,6 @@ int Position::renderedOffset() const
         result += box->len();
     }
     return result;
-}
-
-// return first preceding DOM position rendered at a different location, or "this"
-Position Position::previousCharacterPosition(EAffinity affinity) const
-{
-    if (isNull())
-        return Position();
-
-    Node* fromRootEditableElement = deprecatedNode()->rootEditableElement();
-
-    bool atStartOfLine = isStartOfLine(VisiblePosition(*this, affinity));
-    bool rendered = isCandidate();
-
-    Position currentPos = *this;
-    while (!currentPos.atStartOfTree()) {
-        currentPos = currentPos.previous();
-
-        if (currentPos.deprecatedNode()->rootEditableElement() != fromRootEditableElement)
-            return *this;
-
-        if (atStartOfLine || !rendered) {
-            if (currentPos.isCandidate())
-                return currentPos;
-        } else if (rendersInDifferentPosition(currentPos))
-            return currentPos;
-    }
-
-    return *this;
 }
 
 // Whether or not [node, 0] and [node, lastOffsetForEditing(node)] are their own VisiblePositions.
@@ -566,17 +538,17 @@ Position Position::upstream(EditingBoundaryCrossingRule rule) const
     // FIXME: PositionIterator should respect Before and After positions.
     PositionIterator lastVisible = m_anchorType == PositionIsAfterAnchor ? createLegacyEditingPosition(m_anchorNode.get(), caretMaxOffset(m_anchorNode.get())) : *this;
     PositionIterator currentPos = lastVisible;
-    bool startEditable = startNode->rendererIsEditable();
+    bool startEditable = startNode->hasEditableStyle();
     Node* lastNode = startNode;
     bool boundaryCrossed = false;
     for (; !currentPos.atStart(); currentPos.decrement()) {
         Node* currentNode = currentPos.node();
 
         // Don't check for an editability change if we haven't moved to a different node,
-        // to avoid the expense of computing rendererIsEditable().
+        // to avoid the expense of computing hasEditableStyle().
         if (currentNode != lastNode) {
             // Don't change editability.
-            bool currentEditable = currentNode->rendererIsEditable();
+            bool currentEditable = currentNode->hasEditableStyle();
             if (startEditable != currentEditable) {
                 if (rule == CannotCrossEditingBoundary)
                     break;
@@ -689,17 +661,17 @@ Position Position::downstream(EditingBoundaryCrossingRule rule) const
     // FIXME: PositionIterator should respect Before and After positions.
     PositionIterator lastVisible = m_anchorType == PositionIsAfterAnchor ? createLegacyEditingPosition(m_anchorNode.get(), caretMaxOffset(m_anchorNode.get())) : *this;
     PositionIterator currentPos = lastVisible;
-    bool startEditable = startNode->rendererIsEditable();
+    bool startEditable = startNode->hasEditableStyle();
     Node* lastNode = startNode;
     bool boundaryCrossed = false;
     for (; !currentPos.atEnd(); currentPos.increment()) {
         Node* currentNode = currentPos.node();
 
         // Don't check for an editability change if we haven't moved to a different node,
-        // to avoid the expense of computing rendererIsEditable().
+        // to avoid the expense of computing hasEditableStyle().
         if (currentNode != lastNode) {
             // Don't change editability.
-            bool currentEditable = currentNode->rendererIsEditable();
+            bool currentEditable = currentNode->hasEditableStyle();
             if (startEditable != currentEditable) {
                 if (rule == CannotCrossEditingBoundary)
                     break;
@@ -880,12 +852,12 @@ bool Position::isCandidate() const
         if (toRenderBlock(renderer)->logicalHeight() || isHTMLBodyElement(*m_anchorNode)) {
             if (!Position::hasRenderedNonAnonymousDescendantsWithHeight(renderer))
                 return atFirstEditingPositionForNode() && !Position::nodeIsUserSelectNone(deprecatedNode());
-            return m_anchorNode->rendererIsEditable() && !Position::nodeIsUserSelectNone(deprecatedNode()) && atEditingBoundary();
+            return m_anchorNode->hasEditableStyle() && !Position::nodeIsUserSelectNone(deprecatedNode()) && atEditingBoundary();
         }
     } else {
         LocalFrame* frame = m_anchorNode->document().frame();
         bool caretBrowsing = frame->settings() && frame->settings()->caretBrowsingEnabled();
-        return (caretBrowsing || m_anchorNode->rendererIsEditable()) && !Position::nodeIsUserSelectNone(deprecatedNode()) && atEditingBoundary();
+        return (caretBrowsing || m_anchorNode->hasEditableStyle()) && !Position::nodeIsUserSelectNone(deprecatedNode()) && atEditingBoundary();
     }
 
     return false;
@@ -1026,45 +998,6 @@ bool Position::rendersInDifferentPosition(const Position &pos) const
     return true;
 }
 
-// This assumes that it starts in editable content.
-Position Position::leadingWhitespacePosition(EAffinity affinity, bool considerNonCollapsibleWhitespace) const
-{
-    ASSERT(isEditablePosition(*this, ContentIsEditable, DoNotUpdateStyle));
-    if (isNull())
-        return Position();
-
-    if (isHTMLBRElement(*upstream().deprecatedNode()))
-        return Position();
-
-    Position prev = previousCharacterPosition(affinity);
-    if (prev != *this && prev.deprecatedNode()->inSameContainingBlockFlowElement(deprecatedNode()) && prev.deprecatedNode()->isTextNode()) {
-        String string = toText(prev.deprecatedNode())->data();
-        UChar c = string[prev.deprecatedEditingOffset()];
-        if (considerNonCollapsibleWhitespace ? (isSpaceOrNewline(c) || c == noBreakSpace) : isCollapsibleWhitespace(c))
-            if (isEditablePosition(prev))
-                return prev;
-    }
-
-    return Position();
-}
-
-// This assumes that it starts in editable content.
-Position Position::trailingWhitespacePosition(EAffinity, bool considerNonCollapsibleWhitespace) const
-{
-    ASSERT(isEditablePosition(*this, ContentIsEditable, DoNotUpdateStyle));
-    if (isNull())
-        return Position();
-
-    VisiblePosition v(*this);
-    UChar c = v.characterAfter();
-    // The space must not be in another paragraph and it must be editable.
-    if (!isEndOfParagraph(v) && v.next(CannotCrossEditingBoundary).isNotNull())
-        if (considerNonCollapsibleWhitespace ? (isSpaceOrNewline(c) || c == noBreakSpace) : isCollapsibleWhitespace(c))
-            return *this;
-
-    return Position();
-}
-
 void Position::getInlineBoxAndOffset(EAffinity affinity, InlineBox*& inlineBox, int& caretOffset) const
 {
     getInlineBoxAndOffset(affinity, primaryDirection(), inlineBox, caretOffset);
@@ -1082,8 +1015,7 @@ static bool isNonTextLeafChild(RenderObject* object)
 static InlineTextBox* searchAheadForBetterMatch(RenderObject* renderer)
 {
     RenderBlock* container = renderer->containingBlock();
-    RenderObject* next = renderer;
-    while ((next = next->nextInPreOrder(container))) {
+    for (RenderObject* next = renderer->nextInPreOrder(container); next; next = next->nextInPreOrder(container)) {
         if (next->isRenderBlock())
             return 0;
         if (next->isBR())

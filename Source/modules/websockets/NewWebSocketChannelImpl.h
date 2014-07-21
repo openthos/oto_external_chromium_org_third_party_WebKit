@@ -99,6 +99,7 @@ private:
         MessageTypeBlob,
         MessageTypeArrayBuffer,
         MessageTypeVector,
+        MessageTypeClose,
     };
 
     struct Message {
@@ -106,6 +107,7 @@ private:
         explicit Message(PassRefPtr<BlobDataHandle>);
         explicit Message(PassRefPtr<ArrayBuffer>);
         explicit Message(PassOwnPtr<Vector<char> >);
+        Message(unsigned short code, const String& reason);
 
         MessageType type;
 
@@ -113,6 +115,8 @@ private:
         RefPtr<BlobDataHandle> blobDataHandle;
         RefPtr<ArrayBuffer> arrayBuffer;
         OwnPtr<Vector<char> > vectorData;
+        unsigned short code;
+        String reason;
     };
 
     struct ReceivedMessage {
@@ -145,8 +149,24 @@ private:
     void didFailLoadingBlob(FileError::ErrorCode);
 
     // LifecycleObserver functions.
-    // This object must be destroyed before the context.
-    virtual void contextDestroyed() OVERRIDE { ASSERT_NOT_REACHED(); }
+    virtual void contextDestroyed() OVERRIDE
+    {
+#if ENABLE(OILPAN)
+        // In oilpan we cannot assume this channel's finalizer has been called
+        // before the document it is observing is dead and finalized since there
+        // is no eager finalization. Instead the finalization happens at the
+        // next GC which could be long enough after the Peer::destroy call for
+        // the context (ie. Document) to be dead too. If the context's finalizer
+        // is run first this method gets called. Instead we assert the channel
+        // has been disconnected which happens in Peer::destroy.
+        ASSERT(!m_handle);
+        ASSERT(!m_client);
+        ASSERT(!m_identifier);
+#else
+        // This object must be destroyed before the context.
+        ASSERT_NOT_REACHED();
+#endif
+    }
 
     // m_handle is a handle of the connection.
     // m_handle == 0 means this channel is closed.
@@ -154,7 +174,7 @@ private:
 
     // m_client can be deleted while this channel is alive, but this class
     // expects that disconnect() is called before the deletion.
-    WebSocketChannelClient* m_client;
+    RawPtrWillBeMember<WebSocketChannelClient> m_client;
     KURL m_url;
     // m_identifier > 0 means calling scriptContextExecution() returns a Document.
     unsigned long m_identifier;

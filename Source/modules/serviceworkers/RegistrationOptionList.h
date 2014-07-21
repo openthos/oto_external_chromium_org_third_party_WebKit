@@ -5,7 +5,7 @@
 #ifndef RegistrationOptionList_h
 #define RegistrationOptionList_h
 
-#include "bindings/v8/Dictionary.h"
+#include "bindings/core/v8/Dictionary.h"
 
 namespace WebCore {
 
@@ -14,7 +14,7 @@ struct RegistrationOptionList  {
         : scope("/*")
     {
         // FIXME: Should be ScalarValueString. http://crbug.com/379009
-        options.get("scope", scope);
+        DictionaryHelper::get(options, "scope", scope);
     }
 
     String scope;

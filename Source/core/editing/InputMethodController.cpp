@@ -317,7 +317,7 @@ void InputMethodController::setComposition(const String& text, const Vector<Comp
 
 void InputMethodController::setCompositionFromExistingText(const Vector<CompositionUnderline>& underlines, unsigned compositionStart, unsigned compositionEnd)
 {
-    Node* editable = m_frame.selection().rootEditableElement();
+    Element* editable = m_frame.selection().rootEditableElement();
     Position base = m_frame.selection().base().downstream();
     Node* baseNode = base.anchorNode();
     if (editable->firstChild() == baseNode && editable->lastChild() == baseNode && baseNode->isTextNode()) {
@@ -330,13 +330,14 @@ void InputMethodController::setCompositionFromExistingText(const Vector<Composit
             return;
 
         m_compositionNode = toText(baseNode);
-        m_compositionStart = compositionStart;
-        m_compositionEnd = compositionEnd;
+        RefPtrWillBeRawPtr<Range> range = PlainTextRange(compositionStart, compositionEnd).createRange(*editable);
+        m_compositionStart = range->startOffset();
+        m_compositionEnd = range->endOffset();
         m_customCompositionUnderlines = underlines;
         size_t numUnderlines = m_customCompositionUnderlines.size();
         for (size_t i = 0; i < numUnderlines; ++i) {
-            m_customCompositionUnderlines[i].startOffset += compositionStart;
-            m_customCompositionUnderlines[i].endOffset += compositionStart;
+            m_customCompositionUnderlines[i].startOffset += m_compositionStart;
+            m_customCompositionUnderlines[i].endOffset += m_compositionStart;
         }
         if (baseNode->renderer())
             baseNode->renderer()->paintInvalidationForWholeRenderer();
@@ -379,7 +380,7 @@ bool InputMethodController::setSelectionOffsets(const PlainTextRange& selectionO
     if (!rootEditableElement)
         return false;
 
-    RefPtrWillBeRawPtr<Range> range = selectionOffsets.createRangeForInputMethod(*rootEditableElement);
+    RefPtrWillBeRawPtr<Range> range = selectionOffsets.createRange(*rootEditableElement);
     if (!range)
         return false;
 
@@ -400,7 +401,24 @@ void InputMethodController::extendSelectionAndDelete(int before, int after)
     PlainTextRange selectionOffsets(getSelectionOffsets());
     if (selectionOffsets.isNull())
         return;
-    setSelectionOffsets(PlainTextRange(std::max(static_cast<int>(selectionOffsets.start()) - before, 0), selectionOffsets.end() + after));
+
+    // A common call of before=1 and after=0 will fail if the last character
+    // is multi-code-word UTF-16, including both multi-16bit code-points and
+    // Unicode combining character sequences of multiple single-16bit code-
+    // points (officially called "compositions"). Try more until success.
+    // http://crbug.com/355995
+    //
+    // FIXME: Note that this is not an ideal solution when this function is
+    // called to implement "backspace". In that case, there should be some call
+    // that will not delete a full multi-code-point composition but rather
+    // only the last code-point so that it's possible for a user to correct
+    // a composition without starting it from the beginning.
+    // http://crbug.com/37993
+    do {
+        if (!setSelectionOffsets(PlainTextRange(std::max(static_cast<int>(selectionOffsets.start()) - before, 0), selectionOffsets.end() + after)))
+            return;
+        ++before;
+    } while (m_frame.selection().start() == m_frame.selection().end() && before <= static_cast<int>(selectionOffsets.start()));
     TypingCommand::deleteSelection(*m_frame.document());
 }
 

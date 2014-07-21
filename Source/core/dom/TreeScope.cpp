@@ -154,20 +154,20 @@ Element* TreeScope::getElementById(const AtomicString& elementId) const
     return m_elementsById->getElementById(elementId.impl(), this);
 }
 
-const Vector<Element*>& TreeScope::getAllElementsById(const AtomicString& elementId) const
+const WillBeHeapVector<RawPtrWillBeMember<Element> >& TreeScope::getAllElementsById(const AtomicString& elementId) const
 {
-    DEFINE_STATIC_LOCAL(Vector<Element*>, emptyVector, ());
+    DEFINE_STATIC_LOCAL(OwnPtrWillBePersistent<WillBeHeapVector<RawPtrWillBeMember<Element> > >, emptyVector, (adoptPtrWillBeNoop(new WillBeHeapVector<RawPtrWillBeMember<Element> >())));
     if (elementId.isEmpty())
-        return emptyVector;
+        return *emptyVector;
     if (!m_elementsById)
-        return emptyVector;
+        return *emptyVector;
     return m_elementsById->getAllElementsById(elementId.impl(), this);
 }
 
 void TreeScope::addElementById(const AtomicString& elementId, Element* element)
 {
     if (!m_elementsById)
-        m_elementsById = adoptPtr(new DocumentOrderedMap);
+        m_elementsById = DocumentOrderedMap::create();
     m_elementsById->add(elementId.impl(), element);
     m_idTargetObserverRegistry->notifyObservers(elementId);
 }
@@ -200,7 +200,7 @@ void TreeScope::addImageMap(HTMLMapElement* imageMap)
     if (!name)
         return;
     if (!m_imageMapsByName)
-        m_imageMapsByName = adoptPtr(new DocumentOrderedMap);
+        m_imageMapsByName = DocumentOrderedMap::create();
     m_imageMapsByName->add(name, imageMap);
 }
 
@@ -243,7 +243,7 @@ HitTestResult hitTestInDocument(const Document* document, int x, int y)
     if (!frameView->visibleContentRect().contains(point))
         return HitTestResult();
 
-    HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::ConfusingAndOftenMisusedDisallowShadowContent);
+    HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active);
     HitTestResult result(point);
     document->renderView()->hitTest(request, result);
     return result;
@@ -283,7 +283,7 @@ HTMLLabelElement* TreeScope::labelElementForId(const AtomicString& forAttributeV
 
     if (!m_labelsByForAttribute) {
         // Populate the map on first access.
-        m_labelsByForAttribute = adoptPtr(new DocumentOrderedMap);
+        m_labelsByForAttribute = DocumentOrderedMap::create();
         for (HTMLLabelElement* label = Traversal<HTMLLabelElement>::firstWithin(rootNode()); label; label = Traversal<HTMLLabelElement>::next(*label)) {
             const AtomicString& forValue = label->fastGetAttribute(forAttr);
             if (!forValue.isEmpty())
@@ -481,7 +481,7 @@ TreeScope* commonTreeScope(Node* nodeA, Node* nodeB)
     return treeScopesA[indexA] == treeScopesB[indexB] ? treeScopesA[indexA] : 0;
 }
 
-#if SECURITY_ASSERT_ENABLED && !ENABLE(OILPAN)
+#if ENABLE(SECURITY_ASSERT) && !ENABLE(OILPAN)
 bool TreeScope::deletionHasBegun()
 {
     return rootNode().m_deletionHasBegun;
@@ -544,6 +544,9 @@ void TreeScope::trace(Visitor* visitor)
     visitor->trace(m_parentTreeScope);
     visitor->trace(m_idTargetObserverRegistry);
     visitor->trace(m_selection);
+    visitor->trace(m_elementsById);
+    visitor->trace(m_imageMapsByName);
+    visitor->trace(m_labelsByForAttribute);
 }
 
 } // namespace WebCore

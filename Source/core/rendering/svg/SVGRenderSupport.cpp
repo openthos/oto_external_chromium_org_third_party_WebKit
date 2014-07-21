@@ -43,7 +43,7 @@
 
 namespace WebCore {
 
-LayoutRect SVGRenderSupport::clippedOverflowRectForRepaint(const RenderObject* object, const RenderLayerModelObject* repaintContainer)
+LayoutRect SVGRenderSupport::clippedOverflowRectForRepaint(const RenderObject* object, const RenderLayerModelObject* repaintContainer, const PaintInvalidationState* paintInvalidationState)
 {
     // Return early for any cases where we don't actually paint
     if (object->style()->visibility() != VISIBLE && !object->enclosingLayer()->hasVisibleContent())
@@ -52,20 +52,20 @@ LayoutRect SVGRenderSupport::clippedOverflowRectForRepaint(const RenderObject* o
     // Pass our local paint rect to computeRectForRepaint() which will
     // map to parent coords and recurse up the parent chain.
     FloatRect repaintRect = object->paintInvalidationRectInLocalCoordinates();
-    object->computeFloatRectForPaintInvalidation(repaintContainer, repaintRect);
+    object->computeFloatRectForPaintInvalidation(repaintContainer, repaintRect, paintInvalidationState);
     return enclosingLayoutRect(repaintRect);
 }
 
-void SVGRenderSupport::computeFloatRectForRepaint(const RenderObject* object, const RenderLayerModelObject* repaintContainer, FloatRect& repaintRect, bool fixed)
+void SVGRenderSupport::computeFloatRectForRepaint(const RenderObject* object, const RenderLayerModelObject* repaintContainer, FloatRect& repaintRect, bool fixed, const PaintInvalidationState* paintInvalidationState)
 {
     repaintRect.inflate(object->style()->outlineWidth());
 
     // Translate to coords in our parent renderer, and then call computeFloatRectForPaintInvalidation() on our parent.
     repaintRect = object->localToParentTransform().mapRect(repaintRect);
-    object->parent()->computeFloatRectForPaintInvalidation(repaintContainer, repaintRect, fixed);
+    object->parent()->computeFloatRectForPaintInvalidation(repaintContainer, repaintRect, fixed, paintInvalidationState);
 }
 
-void SVGRenderSupport::mapLocalToContainer(const RenderObject* object, const RenderLayerModelObject* repaintContainer, TransformState& transformState, bool* wasFixed)
+void SVGRenderSupport::mapLocalToContainer(const RenderObject* object, const RenderLayerModelObject* repaintContainer, TransformState& transformState, bool* wasFixed, const PaintInvalidationState* paintInvalidationState)
 {
     transformState.applyTransform(object->localToParentTransform());
 
@@ -78,7 +78,7 @@ void SVGRenderSupport::mapLocalToContainer(const RenderObject* object, const Ren
         transformState.applyTransform(toRenderSVGRoot(parent)->localToBorderBoxTransform());
 
     MapCoordinatesFlags mode = UseTransforms;
-    parent->mapLocalToContainer(repaintContainer, transformState, mode, wasFixed);
+    parent->mapLocalToContainer(repaintContainer, transformState, mode, wasFixed, paintInvalidationState);
 }
 
 const RenderObject* SVGRenderSupport::pushMappingToContainer(const RenderObject* object, const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap)
@@ -108,14 +108,6 @@ bool SVGRenderSupport::parentTransformDidChange(RenderObject* object)
     return !(parent && parent->isSVGContainer() && toRenderSVGContainer(parent)->didTransformToRootUpdate());
 }
 
-bool SVGRenderSupport::checkForSVGRepaintDuringLayout(RenderObject* object)
-{
-    if (!object->checkForPaintInvalidationDuringLayout())
-        return false;
-
-    return parentTransformDidChange(object);
-}
-
 // Update a bounding box taking into account the validity of the other bounding box.
 inline void SVGRenderSupport::updateObjectBoundingBox(FloatRect& objectBoundingBox, bool& objectBoundingBoxValid, RenderObject* other, FloatRect otherBoundingBox)
 {
@@ -143,6 +135,10 @@ void SVGRenderSupport::computeContainerBoundingBoxes(const RenderObject* contain
     // the children, and also improves inlining of SVG content, as the stroke bound is used in that situation also.
     for (RenderObject* current = container->slowFirstChild(); current; current = current->nextSibling()) {
         if (current->isSVGHiddenContainer())
+            continue;
+
+        // Don't include elements in the union that do not render.
+        if (current->isSVGShape() && toRenderSVGShape(current)->isShapeEmpty())
             continue;
 
         const AffineTransform& transform = current->localToParentTransform();
@@ -213,7 +209,6 @@ void SVGRenderSupport::layoutChildren(RenderObject* start, bool selfNeedsLayout)
 
     for (RenderObject* child = start->slowFirstChild(); child; child = child->nextSibling()) {
         bool needsLayout = selfNeedsLayout;
-        bool childEverHadLayout = child->everHadLayout();
 
         if (transformChanged) {
             // If the transform changed we need to update the text metrics (note: this also happens for layoutSizeChanged=true).
@@ -251,12 +246,6 @@ void SVGRenderSupport::layoutChildren(RenderObject* start, bool selfNeedsLayout)
 
         if (child->needsLayout()) {
             child->layout();
-            // Renderers are responsible for repainting themselves when changing, except
-            // for the initial paint to avoid potential double-painting caused by non-sensical "old" bounds.
-            // We could handle this in the individual objects, but for now it's easier to have
-            // parent containers call repaint().  (RenderBlock::layout* has similar logic.)
-            if (!childEverHadLayout && !RuntimeEnabledFeatures::repaintAfterLayoutEnabled())
-                child->paintInvalidationForWholeRenderer();
         } else if (layoutSizeChanged) {
             notlayoutedObjects.add(child);
         }
@@ -346,16 +335,15 @@ void SVGRenderSupport::applyStrokeStyleToContext(GraphicsContext* context, const
     ASSERT(object->node());
     ASSERT(object->node()->isSVGElement());
 
-    const SVGRenderStyle* svgStyle = style->svgStyle();
-    ASSERT(svgStyle);
+    const SVGRenderStyle& svgStyle = style->svgStyle();
 
     SVGLengthContext lengthContext(toSVGElement(object->node()));
-    context->setStrokeThickness(svgStyle->strokeWidth()->value(lengthContext));
-    context->setLineCap(svgStyle->capStyle());
-    context->setLineJoin(svgStyle->joinStyle());
-    context->setMiterLimit(svgStyle->strokeMiterLimit());
+    context->setStrokeThickness(svgStyle.strokeWidth()->value(lengthContext));
+    context->setLineCap(svgStyle.capStyle());
+    context->setLineJoin(svgStyle.joinStyle());
+    context->setMiterLimit(svgStyle.strokeMiterLimit());
 
-    RefPtr<SVGLengthList> dashes = svgStyle->strokeDashArray();
+    RefPtr<SVGLengthList> dashes = svgStyle.strokeDashArray();
     if (dashes->isEmpty())
         return;
 
@@ -365,7 +353,7 @@ void SVGRenderSupport::applyStrokeStyleToContext(GraphicsContext* context, const
     for (; it != itEnd; ++it)
         dashArray.append(it->value(lengthContext));
 
-    context->setLineDash(dashArray, svgStyle->strokeDashOffset()->value(lengthContext));
+    context->setLineDash(dashArray, svgStyle.strokeDashOffset()->value(lengthContext));
 }
 
 void SVGRenderSupport::applyStrokeStyleToStrokeData(StrokeData* strokeData, const RenderStyle* style, const RenderObject* object)
@@ -376,16 +364,15 @@ void SVGRenderSupport::applyStrokeStyleToStrokeData(StrokeData* strokeData, cons
     ASSERT(object->node());
     ASSERT(object->node()->isSVGElement());
 
-    const SVGRenderStyle* svgStyle = style->svgStyle();
-    ASSERT(svgStyle);
+    const SVGRenderStyle& svgStyle = style->svgStyle();
 
     SVGLengthContext lengthContext(toSVGElement(object->node()));
-    strokeData->setThickness(svgStyle->strokeWidth()->value(lengthContext));
-    strokeData->setLineCap(svgStyle->capStyle());
-    strokeData->setLineJoin(svgStyle->joinStyle());
-    strokeData->setMiterLimit(svgStyle->strokeMiterLimit());
+    strokeData->setThickness(svgStyle.strokeWidth()->value(lengthContext));
+    strokeData->setLineCap(svgStyle.capStyle());
+    strokeData->setLineJoin(svgStyle.joinStyle());
+    strokeData->setMiterLimit(svgStyle.strokeMiterLimit());
 
-    RefPtr<SVGLengthList> dashes = svgStyle->strokeDashArray();
+    RefPtr<SVGLengthList> dashes = svgStyle.strokeDashArray();
     if (dashes->isEmpty())
         return;
 
@@ -394,7 +381,7 @@ void SVGRenderSupport::applyStrokeStyleToStrokeData(StrokeData* strokeData, cons
     for (size_t i = 0; i < length; ++i)
         dashArray.append(dashes->at(i)->value(lengthContext));
 
-    strokeData->setLineDash(dashArray, svgStyle->strokeDashOffset()->value(lengthContext));
+    strokeData->setLineDash(dashArray, svgStyle.strokeDashOffset()->value(lengthContext));
 }
 
 bool SVGRenderSupport::isRenderableTextNode(const RenderObject* object)

@@ -46,10 +46,8 @@ class RenderBlock;
 class RenderListItem;
 class RenderListMarker;
 
-// Single-pass text autosizer (work in progress). Works in two stages:
-// (1) record information about page elements during style recalc
-// (2) inflate sizes during layout
-// See: http://tinyurl.com/chromium-fast-autosizer
+// Single-pass text autosizer. Documentation at:
+// http://tinyurl.com/fasttextautosizer
 
 class FastTextAutosizer FINAL {
     WTF_MAKE_NONCOPYABLE(FastTextAutosizer);
@@ -59,6 +57,7 @@ public:
     {
         return adoptPtr(new FastTextAutosizer(document));
     }
+    static float computeAutosizedFontSize(float specifiedSize, float multiplier);
 
     void updatePageInfoInAllFrames();
     void updatePageInfo();
@@ -221,7 +220,7 @@ private:
 
         FingerprintMap m_fingerprints;
         ReverseFingerprintMap m_blocksForFingerprint;
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
         void assertMapsAreConsistent();
 #endif
     };
@@ -290,7 +289,7 @@ private:
 
     const Document* m_document;
     const RenderBlock* m_firstBlockToBeginLayout;
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     BlockSet m_blocksThatHaveBegunLayout; // Used to ensure we don't compute properties of a block before beginLayout() is called on it.
 #endif
 

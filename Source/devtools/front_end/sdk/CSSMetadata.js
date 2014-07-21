@@ -76,7 +76,7 @@ WebInspector.CSSMetadata.cssPropertiesMetainfo = new WebInspector.CSSMetadata([]
  */
 WebInspector.CSSMetadata.isColorAwareProperty = function(propertyName)
 {
-    return WebInspector.CSSMetadata._colorAwareProperties[propertyName] === true;
+    return !!WebInspector.CSSMetadata._colorAwareProperties[propertyName.toLowerCase()];
 }
 
 /**
@@ -89,14 +89,27 @@ WebInspector.CSSMetadata.colors = function()
     return WebInspector.CSSMetadata._colorsKeySet;
 }
 
-// Taken from http://www.w3.org/TR/CSS21/propidx.html.
+/**
+ * @param {string} propertyName
+ * @return {boolean}
+ */
+WebInspector.CSSMetadata.isLengthProperty = function(propertyName)
+{
+    if (propertyName === "line-height")
+        return false;
+    if (!WebInspector.CSSMetadata._distancePropertiesKeySet)
+        WebInspector.CSSMetadata._distancePropertiesKeySet = WebInspector.CSSMetadata._distanceProperties.keySet();
+    return WebInspector.CSSMetadata._distancePropertiesKeySet[propertyName] || propertyName.startsWith("margin") || propertyName.startsWith("padding") || propertyName.indexOf("width") !== -1 || propertyName.indexOf("height") !== -1;
+}
+
+// Originally taken from http://www.w3.org/TR/CSS21/propidx.html and augmented.
 WebInspector.CSSMetadata.InheritedProperties = [
     "azimuth", "border-collapse", "border-spacing", "caption-side", "color", "cursor", "direction", "elevation",
     "empty-cells", "font-family", "font-size", "font-style", "font-variant", "font-weight", "font", "letter-spacing",
-    "line-height", "list-style-image", "list-style-position", "list-style-type", "list-style", "orphans", "pitch-range",
+    "line-height", "list-style-image", "list-style-position", "list-style-type", "list-style", "orphans", "overflow-wrap", "pitch-range",
     "pitch", "quotes", "resize", "richness", "speak-header", "speak-numeral", "speak-punctuation", "speak", "speech-rate", "stress",
     "text-align", "text-indent", "text-transform", "text-shadow", "visibility", "voice-family", "volume", "white-space", "widows",
-    "word-spacing", "zoom"
+    "word-spacing", "word-wrap", "zoom"
 ].keySet();
 
 // These non-standard Blink-specific properties augment the InheritedProperties.
@@ -149,6 +162,11 @@ WebInspector.CSSMetadata._colors = [
     "royalblue", "saddlebrown", "salmon", "sandybrown", "seagreen", "seashell", "sienna", "skyblue", "slateblue",
     "slategray", "slategrey", "snow", "springgreen", "steelblue", "tan", "thistle", "tomato", "turquoise", "violet",
     "wheat", "whitesmoke", "yellowgreen"
+];
+
+WebInspector.CSSMetadata._distanceProperties = [
+    'background-position', 'border-spacing', 'bottom', 'font-size', 'height', 'left', 'letter-spacing', 'max-height', 'max-width', 'min-height',
+    'min-width', 'right', 'text-indent', 'top', 'width', 'word-spacing'
 ];
 
 WebInspector.CSSMetadata._colorAwareProperties = [
@@ -711,7 +729,7 @@ WebInspector.CSSMetadata.keywordsForProperty = function(propertyName)
     var descriptor = WebInspector.CSSMetadata.descriptor(propertyName);
     if (descriptor && descriptor.values)
         acceptedKeywords.push.apply(acceptedKeywords, descriptor.values);
-    if (propertyName in WebInspector.CSSMetadata._colorAwareProperties)
+    if (WebInspector.CSSMetadata.isColorAwareProperty(propertyName))
         acceptedKeywords.push.apply(acceptedKeywords, WebInspector.CSSMetadata._colors);
     return new WebInspector.CSSMetadata(acceptedKeywords);
 }
@@ -725,6 +743,7 @@ WebInspector.CSSMetadata.descriptor = function(propertyName)
     if (!propertyName)
         return null;
     var unprefixedName = propertyName.replace(/^-webkit-/, "");
+    propertyName = propertyName.toLowerCase();
     var entry = WebInspector.CSSMetadata._propertyDataMap[propertyName];
     if (!entry && unprefixedName !== propertyName)
         entry = WebInspector.CSSMetadata._propertyDataMap[unprefixedName];

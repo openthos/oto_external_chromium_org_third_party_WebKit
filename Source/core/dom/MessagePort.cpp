@@ -27,10 +27,10 @@
 #include "config.h"
 #include "core/dom/MessagePort.h"
 
-#include "bindings/v8/ExceptionState.h"
-#include "bindings/v8/ExceptionStatePlaceholder.h"
-#include "bindings/v8/SerializedScriptValue.h"
-#include "core/dom/Document.h"
+#include "bindings/core/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionStatePlaceholder.h"
+#include "bindings/core/v8/SerializedScriptValue.h"
+#include "core/dom/CrossThreadTask.h"
 #include "core/dom/ExceptionCode.h"
 #include "core/dom/ExecutionContext.h"
 #include "core/events/MessageEvent.h"
@@ -63,7 +63,7 @@ MessagePort::~MessagePort()
     close();
 }
 
-void MessagePort::postMessage(PassRefPtr<SerializedScriptValue> message, const MessagePortArray* ports, ExceptionState& exceptionState)
+void MessagePort::postMessage(ExecutionContext*, PassRefPtr<SerializedScriptValue> message, const MessagePortArray* ports, ExceptionState& exceptionState)
 {
     if (!isEntangled())
         return;
@@ -103,9 +103,9 @@ PassOwnPtr<blink::WebMessagePortChannelArray> MessagePort::toWebMessagePortChann
 }
 
 // static
-PassOwnPtr<MessagePortArray> MessagePort::toMessagePortArray(ExecutionContext* context, const blink::WebMessagePortChannelArray& webChannels)
+PassOwnPtrWillBeRawPtr<MessagePortArray> MessagePort::toMessagePortArray(ExecutionContext* context, const blink::WebMessagePortChannelArray& webChannels)
 {
-    OwnPtr<MessagePortArray> ports;
+    OwnPtrWillBeRawPtr<MessagePortArray> ports = nullptr;
     if (!webChannels.isEmpty()) {
         OwnPtr<MessagePortChannelArray> channels = adoptPtr(new MessagePortChannelArray(webChannels.size()));
         for (size_t i = 0; i < webChannels.size(); ++i)
@@ -127,7 +127,7 @@ PassOwnPtr<blink::WebMessagePortChannel> MessagePort::disentangle()
 void MessagePort::messageAvailable()
 {
     ASSERT(executionContext());
-    executionContext()->postTask(bind(&MessagePort::dispatchMessages, m_weakFactory.createWeakPtr()));
+    executionContext()->postTask(createCrossThreadTask(&MessagePort::dispatchMessages, m_weakFactory.createWeakPtr()));
 }
 
 void MessagePort::start()
@@ -196,7 +196,7 @@ void MessagePort::dispatchMessages()
         if (executionContext()->isWorkerGlobalScope() && toWorkerGlobalScope(executionContext())->isClosing())
             return;
 
-        OwnPtr<MessagePortArray> ports = MessagePort::entanglePorts(*executionContext(), channels.release());
+        OwnPtrWillBeRawPtr<MessagePortArray> ports = MessagePort::entanglePorts(*executionContext(), channels.release());
         RefPtrWillBeRawPtr<Event> evt = MessageEvent::create(ports.release(), message.release());
 
         dispatchEvent(evt.release(), ASSERT_NO_EXCEPTION);
@@ -242,14 +242,14 @@ PassOwnPtr<MessagePortChannelArray> MessagePort::disentanglePorts(const MessageP
     return portArray.release();
 }
 
-PassOwnPtr<MessagePortArray> MessagePort::entanglePorts(ExecutionContext& context, PassOwnPtr<MessagePortChannelArray> channels)
+PassOwnPtrWillBeRawPtr<MessagePortArray> MessagePort::entanglePorts(ExecutionContext& context, PassOwnPtr<MessagePortChannelArray> channels)
 {
     if (!channels || !channels->size())
         return nullptr;
 
-    OwnPtr<MessagePortArray> portArray = adoptPtr(new MessagePortArray(channels->size()));
+    OwnPtrWillBeRawPtr<MessagePortArray> portArray = adoptPtrWillBeNoop(new MessagePortArray(channels->size()));
     for (unsigned i = 0; i < channels->size(); ++i) {
-        RefPtr<MessagePort> port = MessagePort::create(context);
+        RefPtrWillBeRawPtr<MessagePort> port = MessagePort::create(context);
         port->entangle((*channels)[i].release());
         (*portArray)[i] = port.release();
     }

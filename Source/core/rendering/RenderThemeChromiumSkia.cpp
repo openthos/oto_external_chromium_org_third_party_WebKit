@@ -70,14 +70,14 @@ RenderThemeChromiumSkia::~RenderThemeChromiumSkia()
 String RenderThemeChromiumSkia::extraDefaultStyleSheet()
 {
     return RenderTheme::extraDefaultStyleSheet() +
-        String(themeWinUserAgentStyleSheet, sizeof(themeWinUserAgentStyleSheet)) +
-        String(themeChromiumSkiaUserAgentStyleSheet, sizeof(themeChromiumSkiaUserAgentStyleSheet)) +
-        String(themeChromiumUserAgentStyleSheet, sizeof(themeChromiumUserAgentStyleSheet));
+        String(themeWinCss, sizeof(themeWinCss)) +
+        String(themeChromiumSkiaCss, sizeof(themeChromiumSkiaCss)) +
+        String(themeChromiumCss, sizeof(themeChromiumCss));
 }
 
 String RenderThemeChromiumSkia::extraQuirksStyleSheet()
 {
-    return String(themeWinQuirksUserAgentStyleSheet, sizeof(themeWinQuirksUserAgentStyleSheet));
+    return String(themeWinQuirksCss, sizeof(themeWinQuirksCss));
 }
 
 bool RenderThemeChromiumSkia::supportsHover(const RenderStyle* style) const
@@ -121,7 +121,7 @@ double RenderThemeChromiumSkia::caretBlinkInterval() const
 {
     // Disable the blinking caret in layout test mode, as it introduces
     // a race condition for the pixel tests. http://b/1198440
-    if (isRunningLayoutTest())
+    if (LayoutTestSupport::isRunningLayoutTest())
         return 0;
 
     return caretBlinkIntervalInternal();

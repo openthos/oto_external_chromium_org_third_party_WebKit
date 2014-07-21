@@ -128,7 +128,7 @@ public:
 
     virtual void invalidateContentsAndRootView(const IntRect&) OVERRIDE { }
     virtual void invalidateContentsForSlowScroll(const IntRect&) OVERRIDE { }
-    virtual void scroll(const IntSize&, const IntRect&, const IntRect&) OVERRIDE { }
+    virtual void scroll() OVERRIDE { }
     virtual void scheduleAnimation() OVERRIDE { }
 
     virtual IntRect rootViewToScreen(const IntRect& r) const OVERRIDE { return r; }
@@ -161,9 +161,6 @@ public:
     virtual void annotatedRegionsChanged() OVERRIDE { }
     virtual bool paintCustomOverhangArea(GraphicsContext*, const IntRect&, const IntRect&, const IntRect&) OVERRIDE { return false; }
     virtual String acceptLanguages() OVERRIDE;
-
-    virtual bool usesGpuRasterization() OVERRIDE { return false; }
-
 };
 
 class EmptyFrameLoaderClient FINAL : public FrameLoaderClient {
@@ -193,7 +190,7 @@ public:
     virtual void dispatchDidHandleOnloadEvents() OVERRIDE { }
     virtual void dispatchDidReceiveServerRedirectForProvisionalLoad() OVERRIDE { }
     virtual void dispatchWillClose() OVERRIDE { }
-    virtual void dispatchDidStartProvisionalLoad() OVERRIDE { }
+    virtual void dispatchDidStartProvisionalLoad(bool isTransitionNavigation) OVERRIDE { }
     virtual void dispatchDidReceiveTitle(const String&) OVERRIDE { }
     virtual void dispatchDidChangeIcons(IconType) OVERRIDE { }
     virtual void dispatchDidCommitLoad(LocalFrame*, HistoryItem*, HistoryCommitType) OVERRIDE { }
@@ -202,9 +199,9 @@ public:
     virtual void dispatchDidFinishDocumentLoad() OVERRIDE { }
     virtual void dispatchDidFinishLoad() OVERRIDE { }
     virtual void dispatchDidFirstVisuallyNonEmptyLayout() OVERRIDE { }
-    virtual void dispatchDidChangeBrandColor() OVERRIDE { };
+    virtual void dispatchDidChangeThemeColor() OVERRIDE { };
 
-    virtual NavigationPolicy decidePolicyForNavigation(const ResourceRequest&, DocumentLoader*, NavigationPolicy) OVERRIDE;
+    virtual NavigationPolicy decidePolicyForNavigation(const ResourceRequest&, DocumentLoader*, NavigationPolicy, bool isTransitionNavigation) OVERRIDE;
 
     virtual void dispatchWillSendSubmitEvent(HTMLFormElement*) OVERRIDE;
     virtual void dispatchWillSubmitForm(HTMLFormElement*) OVERRIDE;
@@ -251,8 +248,10 @@ public:
     virtual PassOwnPtr<blink::WebApplicationCacheHost> createApplicationCacheHost(blink::WebApplicationCacheHostClient*) OVERRIDE;
 };
 
-class EmptyTextCheckerClient FINAL : public TextCheckerClient {
+class EmptyTextCheckerClient : public TextCheckerClient {
 public:
+    ~EmptyTextCheckerClient() { }
+
     virtual bool shouldEraseMarkersAfterChangeSelection(TextCheckingType) const OVERRIDE { return true; }
     virtual void checkSpellingOfString(const String&, int*, int*) OVERRIDE { }
     virtual String getAutoCorrectSuggestionForMisspelledWord(const String&) OVERRIDE { return String(); }
@@ -260,7 +259,7 @@ public:
     virtual void requestCheckingOfString(PassRefPtr<TextCheckingRequest>) OVERRIDE;
 };
 
-class EmptySpellCheckerClient FINAL : public SpellCheckerClient {
+class EmptySpellCheckerClient : public SpellCheckerClient {
     WTF_MAKE_NONCOPYABLE(EmptySpellCheckerClient); WTF_MAKE_FAST_ALLOCATED;
 public:
     EmptySpellCheckerClient() { }
@@ -310,7 +309,7 @@ public:
     EmptyDragClient() { }
     virtual ~EmptyDragClient() {}
     virtual DragDestinationAction actionMaskForDrag(DragData*) OVERRIDE { return DragDestinationActionNone; }
-    virtual void startDrag(DragImage*, const IntPoint&, const IntPoint&, Clipboard*, LocalFrame*, bool) OVERRIDE { }
+    virtual void startDrag(DragImage*, const IntPoint&, const IntPoint&, DataTransfer*, LocalFrame*, bool) OVERRIDE { }
 };
 
 class EmptyInspectorClient FINAL : public InspectorClient {

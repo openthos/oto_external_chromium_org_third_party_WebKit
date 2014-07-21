@@ -5,7 +5,7 @@
 #ifndef AudioTrack_h
 #define AudioTrack_h
 
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "core/html/track/TrackBase.h"
 
 namespace WebCore {
@@ -38,6 +38,8 @@ private:
 
     bool m_enabled;
 };
+
+DEFINE_TRACK_TYPE_CASTS(AudioTrack, TrackBase::AudioTrack);
 
 }
 

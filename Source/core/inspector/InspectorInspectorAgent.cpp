@@ -31,8 +31,8 @@
 #include "config.h"
 #include "core/inspector/InspectorInspectorAgent.h"
 
-#include "bindings/v8/DOMWrapperWorld.h"
-#include "bindings/v8/ScriptController.h"
+#include "bindings/core/v8/DOMWrapperWorld.h"
+#include "bindings/core/v8/ScriptController.h"
 #include "core/InspectorFrontend.h"
 #include "core/dom/Document.h"
 #include "core/frame/LocalFrame.h"
@@ -135,10 +135,12 @@ void InspectorInspectorAgent::domContentLoadedEventFired(LocalFrame* frame)
 
 void InspectorInspectorAgent::evaluateForTestInFrontend(long callId, const String& script)
 {
-    if (m_state->getBoolean(InspectorAgentState::inspectorAgentEnabled))
+    if (m_state->getBoolean(InspectorAgentState::inspectorAgentEnabled)) {
         m_frontend->inspector()->evaluateForTestInFrontend(static_cast<int>(callId), script);
-    else
+        m_frontend->inspector()->flush();
+    } else {
         m_pendingEvaluateTestCommands.append(pair<long, String>(callId, script));
+    }
 }
 
 void InspectorInspectorAgent::setInjectedScriptForOrigin(const String& origin, const String& source)

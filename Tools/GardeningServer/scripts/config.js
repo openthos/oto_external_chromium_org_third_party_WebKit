@@ -28,7 +28,6 @@ var config = config || {};
 (function() {
 
 config = {
-    kRelativeTimeUpdateFrequency: 1000 * 60,
     kTreeStatusUpdateFrequency: 1000 * 30,
     kUpdateFrequency: 10 * 60 * 1000,
 
@@ -48,6 +47,7 @@ config = {
 //            'WebKit Linux ASAN': {version: 'lucid', is64bit: true},
         'WebKit Linux 32': {version: 'lucid'},
         'WebKit Linux (dbg)': {version: 'lucid', is64bit: true, debug: true},
+        'WebKit Linux Leak': {version: 'leak', is64bit: true},
         'WebKit Mac10.6': {version: 'snowleopard'},
         'WebKit Mac10.6 (dbg)': {version: 'snowleopard', debug: true},
         'WebKit Mac10.7': {version: 'lion'},

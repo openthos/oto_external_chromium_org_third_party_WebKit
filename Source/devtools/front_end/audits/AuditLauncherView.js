@@ -255,7 +255,7 @@ WebInspector.AuditLauncherView.prototype = {
         this._contentElement.appendChild(this._headerElement);
 
         /**
-         * @param {?Event} event
+         * @param {!Event} event
          * @this {WebInspector.AuditLauncherView}
          */
         function handleSelectAllClick(event)
@@ -330,7 +330,7 @@ WebInspector.AuditLauncherView.prototype = {
         var enable = this._auditRunning || (this._currentCategoriesCount && !target.profilingLock.isAcquired());
         this._launchButton.textContent = this._auditRunning ? WebInspector.UIString("Stop") : WebInspector.UIString("Run");
         this._launchButton.disabled = !enable;
-        this._launchButton.title = enable ? "" : WebInspector.UIString("Another profiler is already active");
+        this._launchButton.title = enable ? "" : WebInspector.anotherProfilerActiveLabel();
     },
 
     __proto__: WebInspector.VBox.prototype

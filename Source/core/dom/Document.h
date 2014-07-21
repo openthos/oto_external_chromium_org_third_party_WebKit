@@ -28,8 +28,8 @@
 #ifndef Document_h
 #define Document_h
 
-#include "bindings/v8/ExceptionStatePlaceholder.h"
-#include "bindings/v8/ScriptValue.h"
+#include "bindings/core/v8/ExceptionStatePlaceholder.h"
+#include "bindings/core/v8/ScriptValue.h"
 #include "core/animation/AnimationClock.h"
 #include "core/animation/CompositorPendingAnimations.h"
 #include "core/dom/ContainerNode.h"
@@ -39,9 +39,7 @@
 #include "core/dom/DocumentSupplementable.h"
 #include "core/dom/DocumentTiming.h"
 #include "core/dom/ExecutionContext.h"
-#include "core/dom/IconURL.h"
 #include "core/dom/MutationObserver.h"
-#include "core/dom/QualifiedName.h"
 #include "core/dom/TextLinkColors.h"
 #include "core/dom/TreeScope.h"
 #include "core/dom/UserActionElementSet.h"
@@ -50,7 +48,6 @@
 #include "core/html/CollectionType.h"
 #include "core/page/FocusType.h"
 #include "core/page/PageVisibilityState.h"
-#include "core/rendering/HitTestRequest.h"
 #include "platform/Length.h"
 #include "platform/Timer.h"
 #include "platform/heap/Handle.h"
@@ -64,44 +61,38 @@
 
 namespace WebCore {
 
+class AnimationTimeline;
 class AXObjectCache;
 class Attr;
 class CDATASection;
-class CSSFontSelector;
 class CSSStyleDeclaration;
 class CSSStyleSheet;
-class CSSStyleSheetResource;
 class CanvasRenderingContext2D;
-class CharacterData;
 class Chrome;
 class Comment;
 class ContentSecurityPolicyResponseHeaders;
 class ContextFeatures;
+class CustomElementMicrotaskRunQueue;
 class CustomElementRegistrationContext;
 class DOMImplementation;
-class DOMSelection;
-class LocalDOMWindow;
-class Database;
-class DatabaseThread;
 class DocumentFragment;
 class DocumentLifecycleNotifier;
-class DocumentLifecycleObserver;
 class DocumentLoader;
 class DocumentMarkerController;
 class DocumentParser;
 class DocumentState;
-class AnimationTimeline;
 class DocumentType;
 class Element;
 class ElementDataCache;
 class Event;
 class EventFactoryBase;
 class EventListener;
+template <typename EventType>
+class EventWithHitTestResults;
 class ExceptionState;
 class FastTextAutosizer;
 class FloatQuad;
 class FloatRect;
-class FontFaceSet;
 class FormController;
 class Frame;
 class FrameHost;
@@ -110,46 +101,35 @@ class HTMLAllCollection;
 class HTMLCanvasElement;
 class HTMLCollection;
 class HTMLDialogElement;
-class HTMLDocument;
 class HTMLElement;
 class HTMLFrameOwnerElement;
 class HTMLHeadElement;
-class HTMLIFrameElement;
-class HTMLImport;
 class HTMLImportLoader;
 class HTMLImportsController;
 class HTMLLinkElement;
-class HTMLMapElement;
-class HTMLNameCollection;
 class HTMLScriptElement;
 class HitTestRequest;
-class HitTestResult;
-class IntPoint;
-class JSNode;
 class LayoutPoint;
-class LayoutRect;
 class LiveNodeListBase;
 class Locale;
+class LocalDOMWindow;
 class LocalFrame;
 class Location;
 class MainThreadTaskRunner;
-class MediaQueryList;
+class MediaQueryListListener;
 class MediaQueryMatcher;
-class MouseEventWithHitTestResults;
 class NodeFilter;
 class NodeIterator;
 class Page;
 class PlatformMouseEvent;
 class ProcessingInstruction;
+class QualifiedName;
 class Range;
-class RegisteredEventListener;
 class RenderView;
 class RequestAnimationFrameCallback;
 class ResourceFetcher;
 class SVGDocumentExtensions;
 class SVGUseElement;
-class ScriptElementData;
-class ScriptResource;
 class ScriptRunner;
 class ScriptableDocumentParser;
 class ScriptedAnimationController;
@@ -161,7 +141,6 @@ class Settings;
 class StyleEngine;
 class StyleResolver;
 class StyleSheet;
-class StyleSheetContents;
 class StyleSheetList;
 class Text;
 class TextAutosizer;
@@ -171,10 +150,11 @@ class TransformSource;
 class TreeWalker;
 class VisitedLinkState;
 class WebGLRenderingContext;
-class XMLHttpRequest;
 
 struct AnnotatedRegionValue;
+struct IconURL;
 
+typedef EventWithHitTestResults<PlatformMouseEvent> MouseEventWithHitTestResults;
 typedef int ExceptionCode;
 
 enum StyleResolverUpdateMode {
@@ -297,9 +277,6 @@ public:
     const ViewportDescription& viewportDescription() const { return m_viewportDescription; }
     Length viewportDefaultMinWidth() const { return m_viewportDefaultMinWidth; }
 
-#ifndef NDEBUG
-    bool didDispatchViewportPropertiesChanged() const { return m_didDispatchViewportPropertiesChanged; }
-#endif
     bool hasLegacyViewportTag() const { return m_legacyViewportDescription.isLegacyViewportType(); }
 
     void setReferrerPolicy(ReferrerPolicy);
@@ -413,6 +390,13 @@ public:
     bool isTransitionDocument() const { return m_isTransitionDocument; }
     void setIsTransitionDocument() { m_isTransitionDocument = true; }
 
+    struct TransitionElementData {
+        String scope;
+        String selector;
+        String markup;
+    };
+    void getTransitionElementData(Vector<TransitionElementData>&);
+
     StyleResolver* styleResolver() const;
     StyleResolver& ensureStyleResolver() const;
 
@@ -467,12 +451,7 @@ public:
 
     PassRefPtrWillBeRawPtr<Range> createRange();
 
-    PassRefPtrWillBeRawPtr<NodeIterator> createNodeIterator(Node* root, ExceptionState&);
-    PassRefPtrWillBeRawPtr<NodeIterator> createNodeIterator(Node* root, unsigned whatToShow, ExceptionState&);
     PassRefPtrWillBeRawPtr<NodeIterator> createNodeIterator(Node* root, unsigned whatToShow, PassRefPtrWillBeRawPtr<NodeFilter>, ExceptionState&);
-
-    PassRefPtrWillBeRawPtr<TreeWalker> createTreeWalker(Node* root, ExceptionState&);
-    PassRefPtrWillBeRawPtr<TreeWalker> createTreeWalker(Node* root, unsigned whatToShow, ExceptionState&);
     PassRefPtrWillBeRawPtr<TreeWalker> createTreeWalker(Node* root, unsigned whatToShow, PassRefPtrWillBeRawPtr<NodeFilter>, ExceptionState&);
 
     // Special support for editing
@@ -480,6 +459,7 @@ public:
 
     void setupFontBuilder(RenderStyle* documentStyle);
 
+    bool needsRenderTreeUpdate() const;
     void updateRenderTreeIfNeeded() { updateRenderTree(NoChange); }
     void updateRenderTreeForNodeIfNeeded(Node*);
     void updateLayout();
@@ -849,7 +829,7 @@ public:
 
     Vector<IconURL> iconURLs(int iconTypesMask);
 
-    Color brandColor() const;
+    Color themeColor() const;
 
     // Returns the HTMLLinkElement currently in use for the Web Manifest.
     // Returns null if there is no such element.
@@ -870,6 +850,7 @@ public:
 
     // FIXME(crbug.com/305497): This should be removed once LocalDOMWindow is an ExecutionContext.
     virtual void postTask(PassOwnPtr<ExecutionContextTask>) OVERRIDE; // Executes the task on context's thread asynchronously.
+    void postInspectorTask(PassOwnPtr<ExecutionContextTask>);
 
     virtual void tasksWereSuspended() OVERRIDE FINAL;
     virtual void tasksWereResumed() OVERRIDE FINAL;
@@ -934,6 +915,7 @@ public:
     void enqueueResizeEvent();
     void enqueueScrollEventForNode(Node*);
     void enqueueAnimationFrameEvent(PassRefPtrWillBeRawPtr<Event>);
+    void enqueueMediaQueryChangeListeners(WillBeHeapVector<RefPtrWillBeMember<MediaQueryListListener> >&);
 
     bool hasFullscreenElementStack() const { return m_hasFullscreenElementStack; }
     void setHasFullscreenElementStack() { m_hasFullscreenElementStack = true; }
@@ -991,6 +973,7 @@ public:
     ScriptValue registerElement(WebCore::ScriptState*, const AtomicString& name, ExceptionState&);
     ScriptValue registerElement(WebCore::ScriptState*, const AtomicString& name, const Dictionary& options, ExceptionState&, CustomElement::NameSet validNames = CustomElement::StandardNames);
     CustomElementRegistrationContext* registrationContext() { return m_registrationContext.get(); }
+    CustomElementMicrotaskRunQueue* customElementMicrotaskRunQueue();
 
     void setImportsController(HTMLImportsController*);
     HTMLImportsController* importsController() const { return m_importsController; }
@@ -1102,7 +1085,6 @@ private:
     void scheduleRenderTreeUpdate();
 
     bool needsFullRenderTreeUpdate() const;
-    bool needsRenderTreeUpdate() const;
 
     void inheritHtmlAndBodyElementStyles(StyleRecalcChange);
 
@@ -1120,7 +1102,7 @@ private:
 
     virtual bool isDocument() const OVERRIDE FINAL { return true; }
 
-    virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0) OVERRIDE;
+    virtual void childrenChanged(const ChildrenChange&) OVERRIDE;
 
     virtual String nodeName() const OVERRIDE FINAL;
     virtual NodeType nodeType() const OVERRIDE FINAL;
@@ -1377,15 +1359,12 @@ private:
     OwnPtr<FastTextAutosizer> m_fastTextAutosizer;
 
     RefPtrWillBeMember<CustomElementRegistrationContext> m_registrationContext;
+    RefPtrWillBeMember<CustomElementMicrotaskRunQueue> m_customElementMicrotaskRunQueue;
 
     void elementDataCacheClearTimerFired(Timer<Document>*);
     Timer<Document> m_elementDataCacheClearTimer;
 
-    OwnPtr<ElementDataCache> m_elementDataCache;
-
-#ifndef NDEBUG
-    bool m_didDispatchViewportPropertiesChanged;
-#endif
+    OwnPtrWillBeMember<ElementDataCache> m_elementDataCache;
 
     typedef HashMap<AtomicString, OwnPtr<Locale> > LocaleIdentifierToLocaleMap;
     LocaleIdentifierToLocaleMap m_localeCache;
@@ -1438,13 +1417,8 @@ DEFINE_NODE_TYPE_CASTS(Document, isDocumentNode());
 #define DEFINE_DOCUMENT_TYPE_CASTS(thisType) \
     DEFINE_TYPE_CASTS(thisType, Document, document, document->is##thisType(), document.is##thisType())
 
-// All these varations are needed to avoid ambiguous overloads with the Node and TreeScope versions.
-inline bool operator==(const Document& a, const Document& b) { return &a == &b; }
-inline bool operator==(const Document& a, const Document* b) { return &a == b; }
-inline bool operator==(const Document* a, const Document& b) { return a == &b; }
-inline bool operator!=(const Document& a, const Document& b) { return !(a == b); }
-inline bool operator!=(const Document& a, const Document* b) { return !(a == b); }
-inline bool operator!=(const Document* a, const Document& b) { return !(a == b); }
+// This is needed to avoid ambiguous overloads with the Node and TreeScope versions.
+DEFINE_COMPARISON_OPERATORS_WITH_REFERENCES(Document)
 
 // Put these methods here, because they require the Document definition, but we really want to inline them.
 
@@ -1456,5 +1430,10 @@ inline bool Node::isDocumentNode() const
 Node* eventTargetNodeForDocument(Document*);
 
 } // namespace WebCore
+
+#ifndef NDEBUG
+// Outside the WebCore namespace for ease of invocation from gdb.
+void showLiveDocumentInstances();
+#endif
 
 #endif // Document_h

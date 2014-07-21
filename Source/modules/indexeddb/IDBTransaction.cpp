@@ -26,8 +26,8 @@
 #include "config.h"
 #include "modules/indexeddb/IDBTransaction.h"
 
-#include "bindings/v8/ExceptionState.h"
-#include "bindings/v8/ExceptionStatePlaceholder.h"
+#include "bindings/core/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionStatePlaceholder.h"
 #include "core/dom/ExecutionContext.h"
 #include "core/events/EventQueue.h"
 #include "core/inspector/ScriptCallStack.h"
@@ -301,8 +301,7 @@ bool IDBTransaction::hasPendingActivity() const
 
 blink::WebIDBTransactionMode IDBTransaction::stringToMode(const String& modeString, ExceptionState& exceptionState)
 {
-    if (modeString.isNull()
-        || modeString == IDBTransaction::modeReadOnly())
+    if (modeString == IDBTransaction::modeReadOnly())
         return blink::WebIDBTransactionModeReadOnly;
     if (modeString == IDBTransaction::modeReadWrite())
         return blink::WebIDBTransactionModeReadWrite;

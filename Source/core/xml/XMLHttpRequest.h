@@ -22,14 +22,12 @@
 #ifndef XMLHttpRequest_h
 #define XMLHttpRequest_h
 
-#include "bindings/v8/ScriptString.h"
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/ScriptString.h"
 #include "core/dom/ActiveDOMObject.h"
 #include "core/events/EventListener.h"
 #include "core/loader/ThreadableLoaderClient.h"
 #include "core/xml/XMLHttpRequestEventTarget.h"
 #include "core/xml/XMLHttpRequestProgressEventThrottle.h"
-#include "platform/AsyncMethodRunner.h"
 #include "platform/heap/Handle.h"
 #include "platform/network/FormData.h"
 #include "platform/network/ResourceResponse.h"
@@ -55,7 +53,6 @@ typedef int ExceptionCode;
 
 class XMLHttpRequest FINAL
     : public RefCountedWillBeRefCountedGarbageCollected<XMLHttpRequest>
-    , public ScriptWrappable
     , public XMLHttpRequestEventTarget
     , private ThreadableLoaderClient
     , public ActiveDOMObject {
@@ -85,15 +82,11 @@ public:
         ResponseTypeStream
     };
 
-    enum DropProtection {
-        DropProtectionSync,
-        DropProtectionAsync,
-    };
-
     virtual void contextDestroyed() OVERRIDE;
     virtual void suspend() OVERRIDE;
     virtual void resume() OVERRIDE;
     virtual void stop() OVERRIDE;
+    virtual bool hasPendingActivity() const OVERRIDE;
 
     virtual const AtomicString& interfaceName() const OVERRIDE;
     virtual ExecutionContext* executionContext() const OVERRIDE;
@@ -186,12 +179,10 @@ private:
     void changeState(State newState);
     void dispatchReadyStateChangeEvent();
 
-    void dropProtectionSoon();
-    void dropProtection();
     // Clears variables used only while the resource is being loaded.
     void clearVariablesForLoading();
     // Returns false iff reentry happened and a new load is started.
-    bool internalAbort(DropProtection = DropProtectionSync);
+    bool internalAbort();
     // Clears variables holding response header and body data.
     void clearResponse();
     void clearRequest();
@@ -221,8 +212,6 @@ private:
     AtomicString m_method;
     HTTPHeaderMap m_requestHeaders;
     AtomicString m_mimeTypeOverride;
-    bool m_async;
-    bool m_includeCredentials;
     unsigned long m_timeoutMilliseconds;
     RefPtrWillBeMember<Blob> m_responseBlob;
     RefPtrWillBeMember<Stream> m_responseStream;
@@ -236,22 +225,12 @@ private:
     OwnPtr<TextResourceDecoder> m_decoder;
 
     ScriptString m_responseText;
-    // Used to skip m_responseDocument creation if it's done previously. We need
-    // this separate flag since m_responseDocument can be 0 for some cases.
-    bool m_createdDocument;
     RefPtrWillBeMember<Document> m_responseDocument;
 
     RefPtr<SharedBuffer> m_binaryResponseBuilder;
     long long m_downloadedBlobLength;
 
     RefPtr<ArrayBuffer> m_responseArrayBuffer;
-
-    bool m_error;
-
-    bool m_uploadEventsAllowed;
-    bool m_uploadComplete;
-
-    bool m_sameOriginRequest;
 
     // Used for onprogress tracking
     long long m_receivedLength;
@@ -267,8 +246,17 @@ private:
 
     // An enum corresponding to the allowed string values for the responseType attribute.
     ResponseTypeCode m_responseTypeCode;
-    AsyncMethodRunner<XMLHttpRequest> m_dropProtectionRunner;
     RefPtr<SecurityOrigin> m_securityOrigin;
+
+    bool m_async;
+    bool m_includeCredentials;
+    // Used to skip m_responseDocument creation if it's done previously. We need
+    // this separate flag since m_responseDocument can be 0 for some cases.
+    bool m_createdDocument;
+    bool m_error;
+    bool m_uploadEventsAllowed;
+    bool m_uploadComplete;
+    bool m_sameOriginRequest;
 };
 
 } // namespace WebCore

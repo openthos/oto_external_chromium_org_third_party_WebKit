@@ -5,14 +5,14 @@
 #include "config.h"
 #include "modules/screen_orientation/LockOrientationCallback.h"
 
-#include "bindings/v8/ScriptPromiseResolverWithContext.h"
+#include "bindings/core/v8/ScriptPromiseResolver.h"
 #include "core/dom/DOMException.h"
 #include "core/dom/ExceptionCode.h"
 #include "modules/screen_orientation/ScreenOrientation.h"
 
 namespace WebCore {
 
-LockOrientationCallback::LockOrientationCallback(PassRefPtr<ScriptPromiseResolverWithContext> resolver)
+LockOrientationCallback::LockOrientationCallback(PassRefPtr<ScriptPromiseResolver> resolver)
     : m_resolver(resolver)
 {
 }
@@ -27,29 +27,6 @@ void LockOrientationCallback::onSuccess(unsigned angle, blink::WebScreenOrientat
     // convert it to the appropriate type if the type == 'undefined' when the
     // method will be implemented in ScreenOrientationController.
     m_resolver->resolve(ScreenOrientation::orientationTypeToString(type));
-}
-
-void LockOrientationCallback::onError(ErrorType error)
-{
-    ExceptionCode code = 0;
-    String msg = "";
-
-    switch (error) {
-    case ErrorTypeNotAvailable:
-        code = NotSupportedError;
-        msg = "lockOrientation() is not available on this device.";
-        break;
-    case ErrorTypeFullScreenRequired:
-        code = SecurityError;
-        msg = "The page needs to be fullscreen in order to call lockOrientation().";
-        break;
-    case ErrorTypeCanceled:
-        code = AbortError;
-        msg = "A call to lockOrientation() or unlockOrientation() canceled this call.";
-        break;
-    }
-
-    m_resolver->reject(DOMException::create(code, msg));
 }
 
 void LockOrientationCallback::onError(blink::WebLockOrientationError error)

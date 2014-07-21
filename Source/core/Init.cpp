@@ -108,6 +108,7 @@ void CoreInitializer::init()
     Partitions::init();
     EventTracer::initialize();
 
+    initBindings();
     registerEventFactory();
 
     // Ensure that the main thread's thread-local data is initialized before
@@ -120,7 +121,7 @@ void CoreInitializer::init()
     HTMLParserThread::init();
 }
 
-void shutdown()
+void CoreInitializer::shutdown()
 {
     // Make sure we stop the HTMLParserThread before Platform::current() is cleared.
     HTMLParserThread::shutdown();

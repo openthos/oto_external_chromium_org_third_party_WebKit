@@ -28,7 +28,8 @@
 
 #include "modules/webaudio/ScriptProcessorNode.h"
 
-#include "core/dom/Document.h"
+#include "core/dom/CrossThreadTask.h"
+#include "core/dom/ExecutionContext.h"
 #include "modules/webaudio/AudioBuffer.h"
 #include "modules/webaudio/AudioContext.h"
 #include "modules/webaudio/AudioNodeInput.h"
@@ -36,9 +37,15 @@
 #include "modules/webaudio/AudioProcessingEvent.h"
 #include "public/platform/Platform.h"
 #include "wtf/Float32Array.h"
-#include "wtf/MainThread.h"
 
 namespace WebCore {
+
+#if !ENABLE(OILPAN)
+// We need a dedicated specialization for ScriptProcessorNode because it doesn't
+// inherit from RefCounted.
+template<> struct CrossThreadCopierBase<false, false, false, PassRefPtr<ScriptProcessorNode> > : public CrossThreadCopierPassThrough<PassRefPtr<ScriptProcessorNode> > {
+};
+#endif
 
 static size_t chooseBufferSize()
 {
@@ -104,8 +111,8 @@ ScriptProcessorNode::ScriptProcessorNode(AudioContext* context, float sampleRate
 
     ASSERT(numberOfInputChannels <= AudioContext::maxNumberOfChannels());
 
-    addInput(adoptPtr(new AudioNodeInput(this)));
-    addOutput(adoptPtr(new AudioNodeOutput(this, numberOfOutputChannels)));
+    addInput();
+    addOutput(AudioNodeOutput::create(this, numberOfOutputChannels));
 
     setNodeType(NodeTypeJavaScript);
 
@@ -219,30 +226,14 @@ void ScriptProcessorNode::process(size_t framesToProcess)
             // We're late in handling the previous request. The main thread must be very busy.
             // The best we can do is clear out the buffer ourself here.
             outputBuffer->zero();
-        } else {
-            // Reference ourself so we don't accidentally get deleted before fireProcessEvent() gets called.
-            ref();
-
+        } else if (context()->executionContext()) {
             // Fire the event on the main thread, not this one (which is the realtime audio thread).
             m_doubleBufferIndexForEvent = m_doubleBufferIndex;
-            callOnMainThread(fireProcessEventDispatch, this);
+            context()->executionContext()->postTask(createCrossThreadTask(&ScriptProcessorNode::fireProcessEvent, PassRefPtrWillBeRawPtr<ScriptProcessorNode>(this)));
         }
 
         swapBuffers();
     }
-}
-
-void ScriptProcessorNode::fireProcessEventDispatch(void* userData)
-{
-    ScriptProcessorNode* jsAudioNode = static_cast<ScriptProcessorNode*>(userData);
-    ASSERT(jsAudioNode);
-    if (!jsAudioNode)
-        return;
-
-    jsAudioNode->fireProcessEvent();
-
-    // De-reference to match the ref() call in process().
-    jsAudioNode->deref();
 }
 
 void ScriptProcessorNode::fireProcessEvent()

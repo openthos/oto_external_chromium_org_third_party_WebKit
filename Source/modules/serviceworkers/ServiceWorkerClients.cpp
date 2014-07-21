@@ -5,9 +5,8 @@
 #include "config.h"
 #include "modules/serviceworkers/ServiceWorkerClients.h"
 
-#include "bindings/v8/CallbackPromiseAdapter.h"
-#include "bindings/v8/ScriptPromiseResolver.h"
-#include "bindings/v8/ScriptPromiseResolverWithContext.h"
+#include "bindings/core/v8/CallbackPromiseAdapter.h"
+#include "bindings/core/v8/ScriptPromiseResolver.h"
 #include "modules/serviceworkers/Client.h"
 #include "modules/serviceworkers/ServiceWorkerError.h"
 #include "modules/serviceworkers/ServiceWorkerGlobalScopeClient.h"
@@ -22,10 +21,10 @@ namespace {
     class ClientArray {
     public:
         typedef blink::WebServiceWorkerClientsInfo WebType;
-        static Vector<RefPtr<Client> > from(ScriptPromiseResolverWithContext*, WebType* webClientsRaw)
+        static WillBeHeapVector<RefPtrWillBeMember<Client> > from(ScriptPromiseResolver*, WebType* webClientsRaw)
         {
             OwnPtr<WebType> webClients = adoptPtr(webClientsRaw);
-            Vector<RefPtr<Client> > clients;
+            WillBeHeapVector<RefPtrWillBeMember<Client> > clients;
             for (size_t i = 0; i < webClients->clientIDs.size(); ++i) {
                 clients.append(Client::create(webClients->clientIDs[i]));
             }
@@ -39,9 +38,9 @@ namespace {
 
 } // namespace
 
-PassRefPtr<ServiceWorkerClients> ServiceWorkerClients::create()
+PassRefPtrWillBeRawPtr<ServiceWorkerClients> ServiceWorkerClients::create()
 {
-    return adoptRef(new ServiceWorkerClients());
+    return adoptRefWillBeNoop(new ServiceWorkerClients());
 }
 
 ServiceWorkerClients::ServiceWorkerClients()
@@ -49,13 +48,11 @@ ServiceWorkerClients::ServiceWorkerClients()
     ScriptWrappable::init(this);
 }
 
-ServiceWorkerClients::~ServiceWorkerClients()
-{
-}
+DEFINE_EMPTY_DESTRUCTOR_WILL_BE_REMOVED(ServiceWorkerClients);
 
 ScriptPromise ServiceWorkerClients::getServiced(ScriptState* scriptState)
 {
-    RefPtr<ScriptPromiseResolverWithContext> resolver = ScriptPromiseResolverWithContext::create(scriptState);
+    RefPtr<ScriptPromiseResolver> resolver = ScriptPromiseResolver::create(scriptState);
     ServiceWorkerGlobalScopeClient::from(scriptState->executionContext())->getClients(new CallbackPromiseAdapter<ClientArray, ServiceWorkerError>(resolver));
     return resolver->promise();
 }

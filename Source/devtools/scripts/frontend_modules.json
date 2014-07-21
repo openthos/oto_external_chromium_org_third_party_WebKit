@@ -5,27 +5,24 @@
         "sources": [
             "common/modules.js",
             "common/Color.js",
-            "common/CompletionDictionary.js",
-            "common/DOMExtension.js",
             "common/Geometry.js",
-            "common/MessageSink.js",
+            "common/Console.js",
             "common/ModuleManager.js",
+            "common/NotificationService.js",
             "common/Object.js",
             "common/ParsedURL.js",
-            "common/Platform.js",
             "common/Progress.js",
             "common/Settings.js",
             "common/TextRange.js",
             "common/Throttler.js",
             "common/UIString.js",
-            "common/UserMetrics.js",
             "common/utilities.js",
             "common/WebInspector.js"
         ]
     },
     {
         "name": "sdk",
-        "dependencies": ["common"],
+        "dependencies": ["common", "host"],
         "sources": [
             "sdk/Target.js",
             "sdk/ApplicationCacheModel.js",
@@ -35,7 +32,7 @@
             "sdk/ContentProviderBasedProjectDelegate.js",
             "sdk/ContentProviders.js",
             "sdk/CookieParser.js",
-            "sdk/CPUProfileModel.js",
+            "sdk/CPUProfileDataModel.js",
             "sdk/CPUProfilerModel.js",
             "sdk/CSSMetadata.js",
             "sdk/CSSParser.js",
@@ -60,7 +57,6 @@
             "sdk/Linkifier.js",
             "sdk/NetworkLog.js",
             "sdk/NetworkUISourceCodeProvider.js",
-            "sdk/NotificationService.js",
             "sdk/OverridesSupport.js",
             "sdk/PowerProfiler.js",
             "sdk/PresentationConsoleMessageHelper.js",
@@ -91,21 +87,25 @@
             "sdk/UISourceCode.js",
             "sdk/Workspace.js",
             "sdk/WorkspaceController.js",
-            "sdk/PaintProfiler.js"
+            "sdk/PaintProfiler.js",
+            "sdk/HeapProfilerModel.js"
         ]
     },
     {
         "name": "ui",
-        "dependencies": ["common"],
+        "dependencies": ["common", "host"],
         "sources": [
             "ui/ActionRegistry.js",
             "ui/Checkbox.js",
+            "ui/CompletionDictionary.js",
             "ui/Context.js",
             "ui/ContextMenu.js",
             "ui/DataGrid.js",
             "ui/Dialog.js",
+            "ui/DOMExtension.js",
             "ui/DropDownMenu.js",
             "ui/EmptyView.js",
+            "ui/ForwardedInputEventHandler.js",
             "ui/InplaceEditor.js",
             "ui/KeyboardShortcut.js",
             "ui/PieChart.js",
@@ -150,7 +150,6 @@
             "components/HandlerRegistry.js",
             "components/HelpScreen.js",
             "components/InspectElementModeController.js",
-            "components/InspectedPagePlaceholder.js",
             "components/InspectorView.js",
             "components/NativeBreakpointsSidebarPane.js",
             "components/ObjectPopoverHelper.js",
@@ -173,11 +172,13 @@
         ]
     },
     {
-        "name": "responsive_design",
-        "dependencies": ["components"],
+        "name": "toolbox",
+        "dependencies": ["ui", "sdk"],
         "sources": [
-            "MediaQueryInspector.js",
-            "ResponsiveDesignView.js"
+            "toolbox/InspectedPagePlaceholder.js",
+            "toolbox/MediaQueryInspector.js",
+            "toolbox/OverridesUI.js",
+            "toolbox/ResponsiveDesignView.js"
         ]
     },
     {
@@ -202,12 +203,10 @@
             "elements/ElementsTreeOutline.js",
             "elements/EventListenersSidebarPane.js",
             "elements/MetricsSidebarPane.js",
-            "elements/OverridesView.js",
             "elements/PlatformFontsSidebarPane.js",
             "elements/PropertiesSidebarPane.js",
             "elements/Spectrum.js",
-            "elements/StylesSidebarPane.js",
-            "elements/RenderingOptionsView.js"
+            "elements/StylesSidebarPane.js"
         ]
     },
     {
@@ -254,15 +253,6 @@
         ]
     },
     {
-        "name": "search",
-        "dependencies": ["components"],
-        "sources": [
-            "search/AdvancedSearchView.js",
-            "search/FileBasedSearchResultsPane.js",
-            "search/SourcesSearchScope.js"
-        ]
-    },
-    {
         "name": "devices",
         "dependencies": ["sdk", "ui"],
         "sources": [
@@ -273,10 +263,13 @@
         "name": "sources",
         "dependencies": ["components", "source_frame"],
         "sources": [
+            "sources/AddSourceMapURLDialog.js",
+            "sources/AdvancedSearchView.js",
             "sources/BreakpointsSidebarPane.js",
             "sources/CSSSourceFrame.js",
             "sources/CallStackSidebarPane.js",
             "sources/EditingLocationHistoryManager.js",
+            "sources/FileBasedSearchResultsPane.js",
             "sources/FilePathScoreFunction.js",
             "sources/FilteredItemSelectionDialog.js",
             "sources/JavaScriptSourceFrame.js",
@@ -286,9 +279,10 @@
             "sources/ScopeChainSidebarPane.js",
             "sources/ScriptFormatter.js",
             "sources/SimpleHistoryManager.js",
-            "sources/SourcesView.js",
             "sources/SourcesNavigator.js",
+            "sources/SourcesSearchScope.js",
             "sources/SourcesPanel.js",
+            "sources/SourcesView.js",
             "sources/StyleSheetOutlineDialog.js",
             "sources/TabbedEditorContainer.js",
             "sources/UISourceCodeFrame.js",
@@ -311,6 +305,7 @@
         "sources": [
             "timeline/CountersGraph.js",
             "timeline/Layers3DView.js",
+            "timeline/PaintProfilerView.js",
             "timeline/MemoryCountersGraph.js",
             "timeline/TimelineEventOverview.js",
             "timeline/TracingTimelineModel.js",
@@ -329,7 +324,7 @@
             "timeline/TimelineUIUtils.js",
             "timeline/TimelineUIUtilsImpl.js",
             "timeline/TimelineView.js",
-            "timeline/TimelineTracingView.js",
+            "timeline/TimelinePaintProfilerView.js",
             "timeline/TimelineLayersView.js",
             "timeline/TracingModel.js",
             "timeline/TracingTimelineUIUtils.js",
@@ -357,7 +352,6 @@
             "layers/LayersPanel.js",
             "layers/LayerTreeOutline.js",
             "layers/LayerDetailsView.js",
-            "layers/PaintProfilerView.js",
             "layers/LayerPaintProfilerView.js"
         ]
     },
@@ -378,7 +372,8 @@
         "dependencies": ["components"],
         "sources": [
             "settings/SettingsScreen.js",
-            "settings/EditFileSystemDialog.js"
+            "settings/EditFileSystemDialog.js",
+            "settings/FrameworkBlackboxDialog.js"
         ]
     },
     {
@@ -434,19 +429,12 @@
         ]
     },
     {
-        "name": "input",
-        "dependencies": ["sources"],
+        "name": "host",
+        "dependencies": ["common"],
         "sources": [
-            "ForwardedInputEventHandler.js"
-        ]
-    },
-    {
-        "name": "host_stub",
-        "dependencies": ["components", "profiler", "timeline", "sources", "input"],
-        "sources": [
-            "InspectorFrontendAPI.js",
-            "InspectorFrontendEventSink.js",
-            "InspectorFrontendHostStub.js"
+            "host/InspectorFrontendHost.js",
+            "host/Platform.js",
+            "host/UserMetrics.js"
         ]
     },
     {
@@ -464,17 +452,19 @@
         "name": "main",
         "dependencies": [
             "elements",
-            "host_stub",
-            "responsive_design",
+            "host",
             "screencast",
             "settings",
             "sources",
-            "sdk"
+            "sdk",
+            "toolbox"
         ],
         "sources": [
             "main/AdvancedApp.js",
             "main/App.js",
             "main/HelpScreenUntilReload.js",
+            "main/OverridesView.js",
+            "main/RenderingOptions.js",
             "main/ScreencastApp.js",
             "main/SimpleApp.js",
             "main/Main.js"
@@ -501,7 +491,7 @@
             "settings",
             "tests",
             "profiler",
-            "host_stub",
+            "host",
             "screencast",
             "main"
         ],

@@ -35,8 +35,9 @@
 #include "SkBitmap.h"
 #include "SkCanvas.h"
 #include "core/UserAgentStyleSheets.h"
-#include "core/clipboard/Clipboard.h"
+#include "core/clipboard/DataTransfer.h"
 #include "core/css/StyleSheetContents.h"
+#include "core/css/resolver/StyleResolver.h"
 #include "core/css/resolver/ViewportStyleResolver.h"
 #include "core/dom/DocumentMarkerController.h"
 #include "core/dom/FullscreenElementStack.h"
@@ -49,9 +50,14 @@
 #include "core/frame/FrameView.h"
 #include "core/frame/LocalFrame.h"
 #include "core/frame/Settings.h"
+#include "core/html/HTMLDocument.h"
 #include "core/html/HTMLFormElement.h"
+#include "core/loader/DocumentThreadableLoader.h"
+#include "core/loader/DocumentThreadableLoaderClient.h"
 #include "core/loader/FrameLoadRequest.h"
+#include "core/loader/ThreadableLoader.h"
 #include "core/page/EventHandler.h"
+#include "core/page/Page.h"
 #include "core/rendering/HitTestResult.h"
 #include "core/rendering/RenderView.h"
 #include "core/rendering/TextAutosizer.h"
@@ -62,8 +68,10 @@
 #include "platform/geometry/FloatRect.h"
 #include "platform/network/ResourceError.h"
 #include "platform/scroll/ScrollbarTheme.h"
+#include "platform/weborigin/SchemeRegistry.h"
 #include "public/platform/Platform.h"
 #include "public/platform/WebFloatRect.h"
+#include "public/platform/WebSelectionBound.h"
 #include "public/platform/WebThread.h"
 #include "public/platform/WebURL.h"
 #include "public/platform/WebURLResponse.h"
@@ -75,6 +83,7 @@
 #include "public/web/WebFrameClient.h"
 #include "public/web/WebHistoryItem.h"
 #include "public/web/WebRange.h"
+#include "public/web/WebRemoteFrame.h"
 #include "public/web/WebScriptSource.h"
 #include "public/web/WebSearchableFormData.h"
 #include "public/web/WebSecurityOrigin.h"
@@ -146,7 +155,7 @@ protected:
     void applyViewportStyleOverride(FrameTestHelpers::WebViewHelper* webViewHelper)
     {
         RefPtrWillBeRawPtr<WebCore::StyleSheetContents> styleSheet = WebCore::StyleSheetContents::create(WebCore::CSSParserContext(WebCore::UASheetMode, 0));
-        styleSheet->parseString(String(WebCore::viewportAndroidUserAgentStyleSheet, sizeof(WebCore::viewportAndroidUserAgentStyleSheet)));
+        styleSheet->parseString(String(WebCore::viewportAndroidCss, sizeof(WebCore::viewportAndroidCss)));
         OwnPtrWillBeRawPtr<WebCore::RuleSet> ruleSet = WebCore::RuleSet::create();
         ruleSet->addRulesFromSheet(styleSheet.get(), WebCore::MediaQueryEvaluator("screen"));
 
@@ -2002,7 +2011,7 @@ protected:
             webViewHelper.webViewImpl()->mainFrame()->setScrollOffset(scrollOffset);
 
             WebCore::IntPoint anchorPoint = WebCore::IntPoint(scrollOffset) + WebCore::IntPoint(viewportSize.width / 2, 0);
-            RefPtrWillBeRawPtr<WebCore::Node> anchorNode = webViewHelper.webViewImpl()->mainFrameImpl()->frame()->eventHandler().hitTestResultAtPoint(anchorPoint, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::ConfusingAndOftenMisusedDisallowShadowContent).innerNode();
+            RefPtrWillBeRawPtr<WebCore::Node> anchorNode = webViewHelper.webViewImpl()->mainFrameImpl()->frame()->eventHandler().hitTestResultAtPoint(anchorPoint, HitTestRequest::ReadOnly | HitTestRequest::Active).innerNode();
             ASSERT(anchorNode);
 
             pageScaleFactor = webViewHelper.webViewImpl()->pageScaleFactor();
@@ -2641,11 +2650,9 @@ TEST_F(WebFrameTest, DivScrollIntoEditableTest)
 
 class TestReloadDoesntRedirectWebFrameClient : public FrameTestHelpers::TestWebFrameClient {
 public:
-    virtual WebNavigationPolicy decidePolicyForNavigation(
-        WebLocalFrame*, WebDataSource::ExtraData*, const WebURLRequest&, WebNavigationType,
-        WebNavigationPolicy defaultPolicy, bool isRedirect) OVERRIDE
+    virtual WebNavigationPolicy decidePolicyForNavigation(const NavigationPolicyInfo& info) OVERRIDE
     {
-        EXPECT_FALSE(isRedirect);
+        EXPECT_FALSE(info.isRedirect);
         return WebNavigationPolicyCurrentTab;
     }
 };
@@ -3856,6 +3863,124 @@ TEST_F(WebFrameTest, MoveCaretStaysHorizontallyAlignedWhenMoved)
 }
 #endif
 
+class CompositedSelectionBoundsTestLayerTreeView : public WebLayerTreeView {
+public:
+    CompositedSelectionBoundsTestLayerTreeView() : m_selectionCleared(false) { }
+    virtual ~CompositedSelectionBoundsTestLayerTreeView() { }
+
+    virtual void setSurfaceReady()  OVERRIDE { }
+    virtual void setRootLayer(const WebLayer&)  OVERRIDE { }
+    virtual void clearRootLayer()  OVERRIDE { }
+    virtual void setViewportSize(const WebSize& deviceViewportSize)  OVERRIDE { }
+    virtual WebSize deviceViewportSize() const  OVERRIDE { return WebSize(); }
+    virtual void setDeviceScaleFactor(float) OVERRIDE { }
+    virtual float deviceScaleFactor() const  OVERRIDE { return 1.f; }
+    virtual void setBackgroundColor(WebColor)  OVERRIDE { }
+    virtual void setHasTransparentBackground(bool)  OVERRIDE { }
+    virtual void setVisible(bool)  OVERRIDE { }
+    virtual void setPageScaleFactorAndLimits(float pageScaleFactor, float minimum, float maximum)  OVERRIDE { }
+    virtual void startPageScaleAnimation(const WebPoint& destination, bool useAnchor, float newPageScale, double durationSec)  OVERRIDE { }
+    virtual void setNeedsAnimate()  OVERRIDE { }
+    virtual bool commitRequested() const  OVERRIDE { return false; }
+    virtual void finishAllRendering()  OVERRIDE { }
+    virtual void registerSelection(const WebSelectionBound& start, const WebSelectionBound& end) OVERRIDE
+    {
+        m_start = adoptPtr(new WebSelectionBound(start));
+        m_end = adoptPtr(new WebSelectionBound(end));
+    }
+    virtual void clearSelection() OVERRIDE
+    {
+        m_selectionCleared = true;
+        m_start.clear();
+        m_end.clear();
+    }
+
+    bool getAndResetSelectionCleared()
+    {
+        bool selectionCleared  = m_selectionCleared;
+        m_selectionCleared = false;
+        return selectionCleared;
+    }
+
+    const WebSelectionBound* start() const { return m_start.get(); }
+    const WebSelectionBound* end() const { return m_start.get(); }
+
+private:
+    bool m_selectionCleared;
+    OwnPtr<WebSelectionBound> m_start;
+    OwnPtr<WebSelectionBound> m_end;
+};
+
+class CompositedSelectionBoundsTestWebViewClient : public FrameTestHelpers::TestWebViewClient {
+public:
+    virtual ~CompositedSelectionBoundsTestWebViewClient() { }
+    virtual WebLayerTreeView* layerTreeView() OVERRIDE { return &m_testLayerTreeView; }
+
+    CompositedSelectionBoundsTestLayerTreeView& selectionLayerTreeView() { return m_testLayerTreeView; }
+
+private:
+    CompositedSelectionBoundsTestLayerTreeView m_testLayerTreeView;
+};
+
+TEST_F(WebFrameTest, CompositedSelectionBoundsCleared)
+{
+    WebCore::RuntimeEnabledFeatures::setCompositedSelectionUpdatesEnabled(true);
+
+    registerMockedHttpURLLoad("select_range_basic.html");
+    registerMockedHttpURLLoad("select_range_scroll.html");
+
+    int viewWidth = 500;
+    int viewHeight = 500;
+
+    CompositedSelectionBoundsTestWebViewClient fakeSelectionWebViewClient;
+    CompositedSelectionBoundsTestLayerTreeView& fakeSelectionLayerTreeView = fakeSelectionWebViewClient.selectionLayerTreeView();
+
+    FrameTestHelpers::WebViewHelper webViewHelper;
+    webViewHelper.initialize(true, 0, &fakeSelectionWebViewClient);
+    webViewHelper.webView()->settings()->setDefaultFontSize(12);
+    webViewHelper.webView()->setPageScaleFactorLimits(1, 1);
+    webViewHelper.webView()->resize(WebSize(viewWidth, viewHeight));
+    FrameTestHelpers::loadFrame(webViewHelper.webView()->mainFrame(), m_baseURL + "select_range_basic.html");
+
+    // The frame starts with a non-empty selection.
+    WebFrame* frame = webViewHelper.webView()->mainFrame();
+    ASSERT_TRUE(frame->hasSelection());
+    EXPECT_FALSE(fakeSelectionLayerTreeView.getAndResetSelectionCleared());
+
+    // The selection cleared notification should be triggered upon layout.
+    frame->executeCommand(WebString::fromUTF8("Unselect"));
+    ASSERT_FALSE(frame->hasSelection());
+    EXPECT_FALSE(fakeSelectionLayerTreeView.getAndResetSelectionCleared());
+    webViewHelper.webView()->layout();
+    EXPECT_TRUE(fakeSelectionLayerTreeView.getAndResetSelectionCleared());
+
+    frame->executeCommand(WebString::fromUTF8("SelectAll"));
+    webViewHelper.webView()->layout();
+    ASSERT_TRUE(frame->hasSelection());
+    EXPECT_FALSE(fakeSelectionLayerTreeView.getAndResetSelectionCleared());
+
+    FrameTestHelpers::loadFrame(webViewHelper.webView()->mainFrame(), m_baseURL + "select_range_scroll.html");
+    ASSERT_TRUE(frame->hasSelection());
+    EXPECT_FALSE(fakeSelectionLayerTreeView.getAndResetSelectionCleared());
+
+    // Transitions between non-empty selections should not trigger a clearing.
+    WebRect startWebRect;
+    WebRect endWebRect;
+    webViewHelper.webViewImpl()->selectionBounds(startWebRect, endWebRect);
+    WebPoint movedEnd(bottomRightMinusOne(endWebRect));
+    endWebRect.x -= 20;
+    frame->selectRange(topLeft(startWebRect), movedEnd);
+    webViewHelper.webView()->layout();
+    ASSERT_TRUE(frame->hasSelection());
+    EXPECT_FALSE(fakeSelectionLayerTreeView.getAndResetSelectionCleared());
+
+    frame = webViewHelper.webView()->mainFrame();
+    frame->executeCommand(WebString::fromUTF8("Unselect"));
+    webViewHelper.webView()->layout();
+    ASSERT_FALSE(frame->hasSelection());
+    EXPECT_TRUE(fakeSelectionLayerTreeView.getAndResetSelectionCleared());
+}
+
 class DisambiguationPopupTestWebViewClient : public FrameTestHelpers::TestWebViewClient {
 public:
     virtual bool didTapMultipleTargets(const WebGestureEvent&, const WebVector<WebRect>& targetRects) OVERRIDE
@@ -4817,11 +4942,10 @@ public:
     {
     }
 
-    virtual WebNavigationPolicy decidePolicyForNavigation(WebLocalFrame*, WebDataSource::ExtraData*, const WebURLRequest&,
-        WebNavigationType, WebNavigationPolicy policy, bool) OVERRIDE
+    virtual WebNavigationPolicy decidePolicyForNavigation(const NavigationPolicyInfo& info) OVERRIDE
     {
         m_decidePolicyCallCount++;
-        return policy;
+        return info.defaultPolicy;
     }
 
     int decidePolicyCallCount() const { return m_decidePolicyCallCount; }
@@ -5171,7 +5295,8 @@ public:
         m_replacesCurrentHistoryItem = false;
         m_frame = 0;
     }
-    void didStartProvisionalLoad(WebLocalFrame* frame)
+
+    void didStartProvisionalLoad(WebLocalFrame* frame, bool isTransitionNavigation)
     {
         WebDataSource* ds = frame->provisionalDataSource();
         m_replacesCurrentHistoryItem = ds->replacesCurrentHistoryItem();
@@ -5508,22 +5633,28 @@ TEST_F(WebFrameTest, ReloadBypassingCache)
     EXPECT_EQ(WebURLRequest::ReloadBypassingCache, frame->dataSource()->request().cachePolicy());
 }
 
+static void nodeImageTestValidation(const WebCore::IntSize& referenceBitmapSize, WebCore::DragImage* dragImage)
+{
+    // Prepare the reference bitmap.
+    SkBitmap bitmap;
+    ASSERT_TRUE(bitmap.allocN32Pixels(referenceBitmapSize.width(), referenceBitmapSize.height()));
+    SkCanvas canvas(bitmap);
+    canvas.drawColor(SK_ColorGREEN);
+
+    EXPECT_EQ(referenceBitmapSize.width(), dragImage->size().width());
+    EXPECT_EQ(referenceBitmapSize.height(), dragImage->size().height());
+    const SkBitmap& dragBitmap = dragImage->bitmap();
+    SkAutoLockPixels lockPixel(dragBitmap);
+    EXPECT_EQ(0, memcmp(bitmap.getPixels(), dragBitmap.getPixels(), bitmap.getSize()));
+}
+
 TEST_F(WebFrameTest, NodeImageTestCSSTransform)
 {
     FrameTestHelpers::WebViewHelper webViewHelper;
     OwnPtr<WebCore::DragImage> dragImage = nodeImageTestSetup(&webViewHelper, std::string("case-css-transform"));
     EXPECT_TRUE(dragImage);
 
-    SkBitmap bitmap;
-    ASSERT_TRUE(bitmap.allocN32Pixels(40, 40));
-    SkCanvas canvas(bitmap);
-    canvas.drawColor(SK_ColorGREEN);
-
-    EXPECT_EQ(40, dragImage->size().width());
-    EXPECT_EQ(40, dragImage->size().height());
-    const SkBitmap& dragBitmap = dragImage->bitmap();
-    SkAutoLockPixels lockPixel(dragBitmap);
-    EXPECT_EQ(0, memcmp(bitmap.getPixels(), dragBitmap.getPixels(), bitmap.getSize()));
+    nodeImageTestValidation(WebCore::IntSize(40, 40), dragImage.get());
 }
 
 TEST_F(WebFrameTest, NodeImageTestCSS3DTransform)
@@ -5532,23 +5663,37 @@ TEST_F(WebFrameTest, NodeImageTestCSS3DTransform)
     OwnPtr<WebCore::DragImage> dragImage = nodeImageTestSetup(&webViewHelper, std::string("case-css-3dtransform"));
     EXPECT_TRUE(dragImage);
 
-    SkBitmap bitmap;
-    ASSERT_TRUE(bitmap.allocN32Pixels(20, 40));
-    SkCanvas canvas(bitmap);
-    canvas.drawColor(SK_ColorGREEN);
-
-    EXPECT_EQ(20, dragImage->size().width());
-    EXPECT_EQ(40, dragImage->size().height());
-    const SkBitmap& dragBitmap = dragImage->bitmap();
-    SkAutoLockPixels lockPixel(dragBitmap);
-    EXPECT_EQ(0, memcmp(bitmap.getPixels(), dragBitmap.getPixels(), bitmap.getSize()));
+    nodeImageTestValidation(WebCore::IntSize(20, 40), dragImage.get());
 }
 
-class BrandColorTestWebFrameClient : public FrameTestHelpers::TestWebFrameClient {
+TEST_F(WebFrameTest, NodeImageTestInlineBlock)
+{
+    FrameTestHelpers::WebViewHelper webViewHelper;
+    OwnPtr<WebCore::DragImage> dragImage = nodeImageTestSetup(&webViewHelper, std::string("case-inlineblock"));
+    EXPECT_TRUE(dragImage);
+
+    nodeImageTestValidation(WebCore::IntSize(40, 40), dragImage.get());
+}
+
+TEST_F(WebFrameTest, NodeImageTestFloatLeft)
+{
+    FrameTestHelpers::WebViewHelper webViewHelper;
+    OwnPtr<WebCore::DragImage> dragImage = nodeImageTestSetup(&webViewHelper, std::string("case-float-left-overflow-hidden"));
+    EXPECT_TRUE(dragImage);
+
+    nodeImageTestValidation(WebCore::IntSize(40, 40), dragImage.get());
+}
+
+class ThemeColorTestWebFrameClient : public FrameTestHelpers::TestWebFrameClient {
 public:
-    BrandColorTestWebFrameClient()
+    ThemeColorTestWebFrameClient()
         : m_didNotify(false)
     {
+    }
+
+    void reset()
+    {
+        m_didNotify = false;
     }
 
     bool didNotify() const
@@ -5557,7 +5702,7 @@ public:
     }
 
 private:
-    virtual void didChangeBrandColor()
+    virtual void didChangeThemeColor()
     {
         m_didNotify = true;
     }
@@ -5565,14 +5710,206 @@ private:
     bool m_didNotify;
 };
 
-TEST_F(WebFrameTest, BrandColor)
+TEST_F(WebFrameTest, ThemeColor)
 {
-    registerMockedHttpURLLoad("brand_color_test.html");
+    registerMockedHttpURLLoad("theme_color_test.html");
     FrameTestHelpers::WebViewHelper webViewHelper;
-    BrandColorTestWebFrameClient client;
-    webViewHelper.initializeAndLoad(m_baseURL + "brand_color_test.html", false, &client);
+    ThemeColorTestWebFrameClient client;
+    webViewHelper.initializeAndLoad(m_baseURL + "theme_color_test.html", true, &client);
     EXPECT_TRUE(client.didNotify());
-    EXPECT_EQ(0xff0000ff, webViewHelper.webViewImpl()->mainFrameImpl()->document().brandColor());
+    WebLocalFrameImpl* frame = webViewHelper.webViewImpl()->mainFrameImpl();
+    EXPECT_EQ(0xff0000ff, frame->document().themeColor());
+    // Change color by rgb.
+    client.reset();
+    frame->executeScript(WebScriptSource("document.getElementById('tc1').setAttribute('content', 'rgb(0, 0, 0)');"));
+    EXPECT_TRUE(client.didNotify());
+    EXPECT_EQ(0xff000000, frame->document().themeColor());
+    // Change color by hsl.
+    client.reset();
+    frame->executeScript(WebScriptSource("document.getElementById('tc1').setAttribute('content', 'hsl(240,100%, 50%)');"));
+    EXPECT_TRUE(client.didNotify());
+    EXPECT_EQ(0xff0000ff, frame->document().themeColor());
+    // Change of second theme-color meta tag will not change frame's theme
+    // color.
+    client.reset();
+    frame->executeScript(WebScriptSource("document.getElementById('tc2').setAttribute('content', '#00FF00');"));
+    EXPECT_TRUE(client.didNotify());
+    EXPECT_EQ(0xff0000ff, frame->document().themeColor());
+}
+
+class WebFrameSwapTest : public WebFrameTest {
+protected:
+    WebFrameSwapTest()
+    {
+        registerMockedHttpURLLoad("frame-a-b-c.html");
+        registerMockedHttpURLLoad("subframe-a.html");
+        registerMockedHttpURLLoad("subframe-b.html");
+        registerMockedHttpURLLoad("subframe-c.html");
+        registerMockedHttpURLLoad("subframe-hello.html");
+
+        m_webViewHelper.initializeAndLoad(m_baseURL + "frame-a-b-c.html");
+    }
+
+    void reset() { m_webViewHelper.reset(); }
+    WebFrame* mainFrame() const { return m_webViewHelper.webView()->mainFrame(); }
+
+private:
+    FrameTestHelpers::WebViewHelper m_webViewHelper;
+};
+
+// FIXME: We should have tests for main frame swaps, but it interacts poorly
+// with the geolocation inspector agent, since the lifetime of the inspector
+// agent is tied to the Page, but the inspector agent is created by the
+// instantiation of the main frame.
+
+void swapAndVerifyFirstChildConsistency(const char* const message, WebFrame* parent, WebFrame* newChild)
+{
+    SCOPED_TRACE(message);
+    parent->firstChild()->swap(newChild);
+
+    EXPECT_EQ(newChild, parent->firstChild());
+    EXPECT_EQ(newChild->parent(), parent);
+    EXPECT_EQ(newChild, parent->lastChild()->previousSibling()->previousSibling());
+    EXPECT_EQ(newChild->nextSibling(), parent->lastChild()->previousSibling());
+}
+
+TEST_F(WebFrameSwapTest, SwapFirstChild)
+{
+    WebFrame* remoteFrame = WebRemoteFrame::create(0);
+    swapAndVerifyFirstChildConsistency("local->remote", mainFrame(), remoteFrame);
+
+    FrameTestHelpers::TestWebFrameClient client;
+    WebFrame* localFrame = WebLocalFrame::create(&client);
+    swapAndVerifyFirstChildConsistency("remote->local", mainFrame(), localFrame);
+
+    // FIXME: This almost certainly fires more load events on the iframe element
+    // than it should.
+    // Finally, make sure an embedder triggered load in the local frame swapped
+    // back in works.
+    FrameTestHelpers::loadFrame(localFrame, m_baseURL + "subframe-hello.html");
+    std::string content = localFrame->contentAsText(1024).utf8();
+    EXPECT_EQ("hello", content);
+
+    // Manually reset to break WebViewHelper's dependency on the stack allocated
+    // TestWebFrameClient.
+    reset();
+    remoteFrame->close();
+}
+
+void swapAndVerifyMiddleChildConsistency(const char* const message, WebFrame* parent, WebFrame* newChild)
+{
+    SCOPED_TRACE(message);
+    parent->firstChild()->nextSibling()->swap(newChild);
+
+    EXPECT_EQ(newChild, parent->firstChild()->nextSibling());
+    EXPECT_EQ(newChild, parent->lastChild()->previousSibling());
+    EXPECT_EQ(newChild->parent(), parent);
+    EXPECT_EQ(newChild, parent->firstChild()->nextSibling());
+    EXPECT_EQ(newChild->previousSibling(), parent->firstChild());
+    EXPECT_EQ(newChild, parent->lastChild()->previousSibling());
+    EXPECT_EQ(newChild->nextSibling(), parent->lastChild());
+}
+
+TEST_F(WebFrameSwapTest, SwapMiddleChild)
+{
+    WebFrame* remoteFrame = WebRemoteFrame::create(0);
+    swapAndVerifyMiddleChildConsistency("local->remote", mainFrame(), remoteFrame);
+
+    FrameTestHelpers::TestWebFrameClient client;
+    WebFrame* localFrame = WebLocalFrame::create(&client);
+    swapAndVerifyMiddleChildConsistency("remote->local", mainFrame(), localFrame);
+
+    // FIXME: This almost certainly fires more load events on the iframe element
+    // than it should.
+    // Finally, make sure an embedder triggered load in the local frame swapped
+    // back in works.
+    FrameTestHelpers::loadFrame(localFrame, m_baseURL + "subframe-hello.html");
+    std::string content = localFrame->contentAsText(1024).utf8();
+    EXPECT_EQ("hello", content);
+
+    // Manually reset to break WebViewHelper's dependency on the stack allocated
+    // TestWebFrameClient.
+    reset();
+    remoteFrame->close();
+}
+
+void swapAndVerifyLastChildConsistency(const char* const message, WebFrame* parent, WebFrame* newChild)
+{
+    SCOPED_TRACE(message);
+    parent->lastChild()->swap(newChild);
+
+    EXPECT_EQ(newChild, parent->lastChild());
+    EXPECT_EQ(newChild->parent(), parent);
+    EXPECT_EQ(newChild, parent->firstChild()->nextSibling()->nextSibling());
+    EXPECT_EQ(newChild->previousSibling(), parent->firstChild()->nextSibling());
+}
+
+TEST_F(WebFrameSwapTest, SwapLastChild)
+{
+    WebFrame* remoteFrame = WebRemoteFrame::create(0);
+    swapAndVerifyLastChildConsistency("local->remote", mainFrame(), remoteFrame);
+
+    FrameTestHelpers::TestWebFrameClient client;
+    WebFrame* localFrame = WebLocalFrame::create(&client);
+    swapAndVerifyLastChildConsistency("remote->local", mainFrame(), localFrame);
+
+    // FIXME: This almost certainly fires more load events on the iframe element
+    // than it should.
+    // Finally, make sure an embedder triggered load in the local frame swapped
+    // back in works.
+    FrameTestHelpers::loadFrame(localFrame, m_baseURL + "subframe-hello.html");
+    std::string content = localFrame->contentAsText(1024).utf8();
+    EXPECT_EQ("hello", content);
+
+    // Manually reset to break WebViewHelper's dependency on the stack allocated
+    // TestWebFrameClient.
+    reset();
+    remoteFrame->close();
+}
+
+class MockDocumentThreadableLoaderClient : public WebCore::DocumentThreadableLoaderClient {
+public:
+    MockDocumentThreadableLoaderClient() : m_failed(false) { }
+    virtual void didFail(const WebCore::ResourceError&) OVERRIDE { m_failed = true;}
+
+    void reset() { m_failed = false; }
+    bool failed() { return m_failed; }
+
+    bool m_failed;
+};
+
+// FIXME: This would be better as a unittest on DocumentThreadableLoader but it
+// requires spin-up of a frame. It may be possible to remove that requirement
+// and convert it to a unittest.
+TEST_F(WebFrameTest, LoaderOriginAccess)
+{
+    FrameTestHelpers::WebViewHelper webViewHelper;
+    webViewHelper.initializeAndLoad("about:blank");
+
+    WebCore::SchemeRegistry::registerURLSchemeAsDisplayIsolated("chrome");
+
+    // Cross-origin request.
+    WebCore::KURL resourceUrl(WebCore::ParsedURLString, "chrome://test.pdf");
+    registerMockedChromeURLLoad("test.pdf");
+
+    RefPtr<WebCore::LocalFrame> frame = toLocalFrame(webViewHelper.webViewImpl()->page()->mainFrame());
+
+    MockDocumentThreadableLoaderClient client;
+    WebCore::ThreadableLoaderOptions options;
+
+    // First try to load the request with regular access. Should fail.
+    options.crossOriginRequestPolicy = WebCore::UseAccessControl;
+    WebCore::ResourceLoaderOptions resourceLoaderOptions;
+    WebCore::DocumentThreadableLoader::loadResourceSynchronously(
+        *frame->document(), WebCore::ResourceRequest(resourceUrl), client, options, resourceLoaderOptions);
+    EXPECT_TRUE(client.failed());
+
+    client.reset();
+    // Try to load the request with cross origin access. Should succeed.
+    options.crossOriginRequestPolicy = WebCore::AllowCrossOriginRequests;
+    WebCore::DocumentThreadableLoader::loadResourceSynchronously(
+        *frame->document(), WebCore::ResourceRequest(resourceUrl), client, options, resourceLoaderOptions);
+    EXPECT_FALSE(client.failed());
 }
 
 } // namespace

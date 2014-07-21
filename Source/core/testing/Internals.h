@@ -27,9 +27,9 @@
 #ifndef Internals_h
 #define Internals_h
 
-#include "bindings/v8/ExceptionStatePlaceholder.h"
-#include "bindings/v8/ScriptPromise.h"
-#include "bindings/v8/ScriptValue.h"
+#include "bindings/core/v8/ExceptionStatePlaceholder.h"
+#include "bindings/core/v8/ScriptPromise.h"
+#include "bindings/core/v8/ScriptValue.h"
 #include "core/css/CSSComputedStyleDeclaration.h"
 #include "core/dom/ContextLifecycleObserver.h"
 #include "core/page/scrolling/ScrollingCoordinator.h"
@@ -41,6 +41,7 @@
 
 namespace WebCore {
 
+class CanvasRenderingContext2D;
 class ClientRect;
 class ClientRectList;
 class DOMPoint;
@@ -62,6 +63,7 @@ class MallocStatistics;
 class Node;
 class Page;
 class PagePopupController;
+class PrivateScriptTest;
 class Range;
 class SerializedScriptValue;
 class StaticNodeList;
@@ -127,6 +129,7 @@ public:
 
     unsigned updateStyleAndReturnAffectedElementCount(ExceptionState&) const;
     unsigned needsLayoutCount(ExceptionState&) const;
+    unsigned hitTestCount(Document*, ExceptionState&) const;
 
     String visiblePlaceholder(Element*);
     void selectColorInColorChooser(Element*, const String& colorValue);
@@ -187,7 +190,7 @@ public:
 
     // This is used to test rect based hit testing like what's done on touch screens.
     PassRefPtrWillBeRawPtr<StaticNodeList> nodesFromRect(Document*, int x, int y, unsigned topPadding, unsigned rightPadding,
-        unsigned bottomPadding, unsigned leftPadding, bool ignoreClipping, bool allowShadowContent, bool allowChildFrameContent, ExceptionState&) const;
+        unsigned bottomPadding, unsigned leftPadding, bool ignoreClipping, bool allowChildFrameContent, ExceptionState&) const;
 
     void emitInspectorDidBeginFrame(int frameId = 0);
     void emitInspectorDidCancelFrame();
@@ -220,17 +223,12 @@ public:
     bool scrollsWithRespectTo(Element*, Element*, ExceptionState&);
     bool isUnclippedDescendant(Element*, ExceptionState&);
 
-    String repaintRectsAsText(Document*, ExceptionState&) const;
-    PassRefPtrWillBeRawPtr<ClientRectList> repaintRects(Element*, ExceptionState&) const;
-
     String scrollingStateTreeAsText(Document*, ExceptionState&) const;
     String mainThreadScrollingReasons(Document*, ExceptionState&) const;
     PassRefPtrWillBeRawPtr<ClientRectList> nonFastScrollableRects(Document*, ExceptionState&) const;
 
     void garbageCollectDocumentResources(Document*, ExceptionState&) const;
     void evictAllResources() const;
-
-    void allowRoundingHacks() const;
 
     unsigned numberOfLiveNodes() const;
     unsigned numberOfLiveDocuments() const;
@@ -255,11 +253,6 @@ public:
 
     void setIsCursorVisible(Document*, bool, ExceptionState&);
 
-    void webkitWillEnterFullScreenForElement(Document*, Element*);
-    void webkitDidEnterFullScreenForElement(Document*, Element*);
-    void webkitWillExitFullScreenForElement(Document*, Element*);
-    void webkitDidExitFullScreenForElement(Document*, Element*);
-
     void mediaPlayerRequestFullscreen(HTMLMediaElement*);
 
     void registerURLSchemeAsBypassingContentSecurityPolicy(const String& scheme);
@@ -267,6 +260,7 @@ public:
 
     PassRefPtrWillBeRawPtr<MallocStatistics> mallocStatistics() const;
     PassRefPtrWillBeRawPtr<TypeConversions> typeConversions() const;
+    PrivateScriptTest* privateScriptTest() const;
 
     Vector<String> getReferencedFilePaths() const;
 
@@ -303,7 +297,6 @@ public:
 
     void setShouldRevealPassword(Element*, bool, ExceptionState&);
 
-    ScriptPromise createPromise(ScriptState*);
     ScriptPromise createResolvedPromise(ScriptState*, ScriptValue);
     ScriptPromise createRejectedPromise(ScriptState*, ScriptValue);
     ScriptPromise addOneToPromise(ExecutionContext*, ScriptPromise);
@@ -321,6 +314,9 @@ public:
     void setNetworkStateNotifierTestOnly(bool);
     // Test must call setNetworkStateNotifierTestOnly(true) before calling setNetworkConnectionInfo.
     void setNetworkConnectionInfo(const String&, ExceptionState&);
+    String serializeNavigationMarkup(Document*);
+
+    unsigned countHitRegions(CanvasRenderingContext2D*);
 
 private:
     explicit Internals(Document*);

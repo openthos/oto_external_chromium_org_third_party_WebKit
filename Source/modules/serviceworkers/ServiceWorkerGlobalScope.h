@@ -53,7 +53,7 @@ public:
     virtual void stopFetch() OVERRIDE;
 
     // ServiceWorkerGlobalScope.idl
-    PassRefPtr<ServiceWorkerClients> clients();
+    PassRefPtrWillBeRawPtr<ServiceWorkerClients> clients();
     String scope(ExecutionContext*);
     ScriptPromise fetch(ScriptState*, Request*);
     ScriptPromise fetch(ScriptState*, const String&);
@@ -71,8 +71,9 @@ public:
 
 private:
     ServiceWorkerGlobalScope(const KURL&, const String& userAgent, ServiceWorkerThread*, double timeOrigin, PassOwnPtrWillBeRawPtr<WorkerClients>);
+    virtual void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtrWillBeRawPtr<ScriptCallStack>) OVERRIDE;
 
-    RefPtr<ServiceWorkerClients> m_clients;
+    RefPtrWillBeMember<ServiceWorkerClients> m_clients;
     OwnPtr<FetchManager> m_fetchManager;
 };
 

@@ -25,7 +25,7 @@
 #include "config.h"
 #include "core/dom/Range.h"
 
-#include "bindings/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionState.h"
 #include "core/dom/ClientRect.h"
 #include "core/dom/ClientRectList.h"
 #include "core/dom/DocumentFragment.h"
@@ -40,9 +40,11 @@
 #include "core/editing/VisibleUnits.h"
 #include "core/editing/markup.h"
 #include "core/events/ScopedEventQueue.h"
+#include "core/html/HTMLBodyElement.h"
 #include "core/html/HTMLElement.h"
 #include "core/rendering/RenderBoxModelObject.h"
 #include "core/rendering/RenderText.h"
+#include "core/svg/SVGSVGElement.h"
 #include "platform/geometry/FloatQuad.h"
 #include "wtf/RefCountedLeakCounter.h"
 #include "wtf/text/CString.h"
@@ -52,8 +54,6 @@
 #endif
 
 namespace WebCore {
-
-using namespace HTMLNames;
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, rangeCounter, ("Range"));
 
@@ -950,22 +950,47 @@ String Range::toHTML() const
 
 String Range::text() const
 {
-    // We need to update layout, since plainText uses line boxes in the render tree.
-    // FIXME: As with innerText, we'd like this to work even if there are no render objects.
-    m_start.container()->document().updateLayout();
-
-    return plainText(this);
+    return plainText(this, TextIteratorEmitsObjectReplacementCharacter);
 }
 
 PassRefPtrWillBeRawPtr<DocumentFragment> Range::createContextualFragment(const String& markup, ExceptionState& exceptionState)
 {
-    Node* element = m_start.container()->isElementNode() ? m_start.container() : m_start.container()->parentNode();
-    if (!element || !element->isHTMLElement()) {
-        exceptionState.throwDOMException(NotSupportedError, "The range's container must be an HTML element.");
+    // Algorithm: http://domparsing.spec.whatwg.org/#extensions-to-the-range-interface
+
+    Node* node = m_start.container();
+
+    // Step 1.
+    RefPtrWillBeRawPtr<Element> element;
+    if (!m_start.offset() && (node->isDocumentNode() || node->isDocumentFragment()))
+        element = nullptr;
+    else if (node->isElementNode())
+        element = toElement(node);
+    else
+        element = node->parentElement();
+
+    // Step 2.
+    if (!element || isHTMLHtmlElement(element)) {
+        Document& document = node->document();
+
+        if (document.isHTMLDocument() || document.isXHTMLDocument()) {
+            // Optimization over spec: try to reuse the existing <body> element, if it is available.
+            element = document.body();
+            if (!element)
+                element = HTMLBodyElement::create(document);
+        } else if (document.isSVGDocument()) {
+            element = document.documentElement();
+            if (!element)
+                element = SVGSVGElement::create(document);
+        }
+    }
+
+    if (!element || (!element->isHTMLElement() && !element->isSVGElement())) {
+        exceptionState.throwDOMException(NotSupportedError, "The range's container must be an HTML or SVG Element, Document, or DocumentFragment.");
         return nullptr;
     }
 
-    RefPtrWillBeRawPtr<DocumentFragment> fragment = WebCore::createContextualFragment(markup, toHTMLElement(element), AllowScriptingContentAndDoNotMarkAlreadyStarted, exceptionState);
+    // Steps 3, 4, 5.
+    RefPtrWillBeRawPtr<DocumentFragment> fragment = WebCore::createContextualFragment(markup, element.get(), AllowScriptingContentAndDoNotMarkAlreadyStarted, exceptionState);
     if (!fragment)
         return nullptr;
 
@@ -1622,7 +1647,7 @@ void Range::getBorderAndTextQuads(Vector<FloatQuad>& quads) const
     Node* endContainer = m_end.container();
     Node* stopNode = pastLastNode();
 
-    HashSet<Node*> nodeSet;
+    WillBeHeapHashSet<RawPtrWillBeMember<Node> > nodeSet;
     for (Node* node = firstNode(); node != stopNode; node = NodeTraversal::next(*node)) {
         if (node->isElementNode())
             nodeSet.add(node);

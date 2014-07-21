@@ -31,9 +31,9 @@
 #ifndef ImageBitmapFactories_h
 #define ImageBitmapFactories_h
 
-#include "bindings/v8/ScriptPromise.h"
-#include "bindings/v8/ScriptPromiseResolverWithContext.h"
-#include "bindings/v8/ScriptState.h"
+#include "bindings/core/v8/ScriptPromise.h"
+#include "bindings/core/v8/ScriptPromiseResolver.h"
+#include "bindings/core/v8/ScriptState.h"
 #include "core/fileapi/FileReaderLoader.h"
 #include "core/fileapi/FileReaderLoaderClient.h"
 #include "platform/Supplementable.h"
@@ -108,7 +108,7 @@ private:
 
         FileReaderLoader m_loader;
         RawPtrWillBeMember<ImageBitmapFactories> m_factory;
-        RefPtr<ScriptPromiseResolverWithContext> m_resolver;
+        RefPtr<ScriptPromiseResolver> m_resolver;
         IntRect m_cropRect;
     };
 

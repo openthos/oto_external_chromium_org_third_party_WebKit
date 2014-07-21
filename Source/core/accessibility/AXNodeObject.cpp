@@ -52,7 +52,7 @@ AXNodeObject::AXNodeObject(Node* node)
     : AXObject()
     , m_ariaRole(UnknownRole)
     , m_childrenDirty(false)
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     , m_initialized(false)
 #endif
     , m_node(node)
@@ -91,7 +91,7 @@ static String accessibleNameForNode(Node* node)
     return String();
 }
 
-String AXNodeObject::accessibilityDescriptionForElements(Vector<Element*> &elements) const
+String AXNodeObject::accessibilityDescriptionForElements(WillBeHeapVector<RawPtrWillBeMember<Element> > &elements) const
 {
     StringBuilder builder;
     unsigned size = elements.size();
@@ -133,7 +133,7 @@ String AXNodeObject::ariaAccessibilityDescription() const
 }
 
 
-void AXNodeObject::ariaLabeledByElements(Vector<Element*>& elements) const
+void AXNodeObject::ariaLabeledByElements(WillBeHeapVector<RawPtrWillBeMember<Element> >& elements) const
 {
     elementsFromAttribute(elements, aria_labeledbyAttr);
     if (!elements.size())
@@ -154,7 +154,7 @@ void AXNodeObject::changeValueByStep(bool increase)
 
 bool AXNodeObject::computeAccessibilityIsIgnored() const
 {
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     // Double-check that an AXObject is never accessed before
     // it's been initialized.
     ASSERT(m_initialized);
@@ -258,7 +258,7 @@ AccessibilityRole AXNodeObject::determineAriaRoleAttribute() const
     return UnknownRole;
 }
 
-void AXNodeObject::elementsFromAttribute(Vector<Element*>& elements, const QualifiedName& attribute) const
+void AXNodeObject::elementsFromAttribute(WillBeHeapVector<RawPtrWillBeMember<Element> >& elements, const QualifiedName& attribute) const
 {
     Node* node = this->node();
     if (!node || !node->isElementNode())
@@ -283,7 +283,7 @@ void AXNodeObject::elementsFromAttribute(Vector<Element*>& elements, const Quali
     }
 }
 
-// If you call node->rendererIsEditable() since that will return true if an ancestor is editable.
+// If you call node->hasEditableStyle() since that will return true if an ancestor is editable.
 // This only returns true if this is the element that actually has the contentEditable attribute set.
 bool AXNodeObject::hasContentEditableAttributeSet() const
 {
@@ -446,7 +446,7 @@ AccessibilityRole AXNodeObject::remapAriaRoleDueToParent(AccessibilityRole role)
 
 void AXNodeObject::init()
 {
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     ASSERT(!m_initialized);
     m_initialized = true;
 #endif
@@ -718,7 +718,7 @@ bool AXNodeObject::isReadOnly() const
             return input.isReadOnly();
     }
 
-    return !node->rendererIsEditable();
+    return !node->hasEditableStyle();
 }
 
 bool AXNodeObject::isRequired() const
@@ -1036,7 +1036,7 @@ String AXNodeObject::stringValue() const
 
 String AXNodeObject::ariaDescribedByAttribute() const
 {
-    Vector<Element*> elements;
+    WillBeHeapVector<RawPtrWillBeMember<Element> > elements;
     elementsFromAttribute(elements, aria_describedbyAttr);
 
     return accessibilityDescriptionForElements(elements);
@@ -1045,7 +1045,7 @@ String AXNodeObject::ariaDescribedByAttribute() const
 
 String AXNodeObject::ariaLabeledByAttribute() const
 {
-    Vector<Element*> elements;
+    WillBeHeapVector<RawPtrWillBeMember<Element> > elements;
     ariaLabeledByElements(elements);
 
     return accessibilityDescriptionForElements(elements);
@@ -1247,8 +1247,28 @@ LayoutRect AXNodeObject::elementRect() const
     if (!m_explicitElementRect.isEmpty())
         return m_explicitElementRect;
 
-    // AXNodeObjects have no mechanism yet to return a size or position.
-    // For now, let's return the position of the ancestor that does have a position,
+    // FIXME: If there are a lot of elements in the canvas, it will be inefficient.
+    // We can avoid the inefficient calculations by using AXComputedObjectAttributeCache.
+    if (node()->parentElement()->isInCanvasSubtree()) {
+        LayoutRect rect;
+
+        for (Node* child = node()->firstChild(); child; child = child->nextSibling()) {
+            if (child->isHTMLElement()) {
+                if (AXObject* obj = axObjectCache()->get(child)) {
+                    if (rect.isEmpty())
+                        rect = obj->elementRect();
+                    else
+                        rect.unite(obj->elementRect());
+                }
+            }
+        }
+
+        if (!rect.isEmpty())
+            return rect;
+    }
+
+    // If this object doesn't have an explicit element rect or computable from its children,
+    // for now, let's return the position of the ancestor that does have a position,
     // and make it the width of that parent, and about the height of a line of text, so that it's clear the object is a child of the parent.
 
     LayoutRect boundingBox;
@@ -1665,7 +1685,7 @@ void AXNodeObject::ariaLabeledByText(Vector<AccessibilityText>& textOrder) const
 {
     String ariaLabeledBy = ariaLabeledByAttribute();
     if (!ariaLabeledBy.isEmpty()) {
-        Vector<Element*> elements;
+        WillBeHeapVector<RawPtrWillBeMember<Element> > elements;
         ariaLabeledByElements(elements);
 
         unsigned length = elements.size();

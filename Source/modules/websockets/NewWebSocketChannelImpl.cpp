@@ -125,7 +125,7 @@ NewWebSocketChannelImpl::NewWebSocketChannelImpl(ExecutionContext* context, WebS
 
 NewWebSocketChannelImpl::~NewWebSocketChannelImpl()
 {
-    abortAsyncOperations();
+    ASSERT(!m_blobLoader);
 }
 
 bool NewWebSocketChannelImpl::connect(const KURL& url, const String& protocol)
@@ -134,8 +134,10 @@ bool NewWebSocketChannelImpl::connect(const KURL& url, const String& protocol)
     if (!m_handle)
         return false;
 
-    if (executionContext()->isDocument() && document()->frame() && !document()->frame()->loader().mixedContentChecker()->canConnectInsecureWebSocket(document()->securityOrigin(), url))
-        return false;
+    if (executionContext()->isDocument() && document()->frame()) {
+        if (!document()->frame()->loader().mixedContentChecker()->canConnectInsecureWebSocket(document()->securityOrigin(), url))
+            return false;
+    }
     if (MixedContentChecker::isMixedContent(document()->securityOrigin(), url)) {
         String message = "Connecting to a non-secure WebSocket server from a secure origin is deprecated.";
         document()->addConsoleMessage(JSMessageSource, WarningMessageLevel, message);
@@ -233,7 +235,8 @@ void NewWebSocketChannelImpl::close(int code, const String& reason)
     WTF_LOG(Network, "NewWebSocketChannelImpl %p close(%d, %s)", this, code, reason.utf8().data());
     ASSERT(m_handle);
     unsigned short codeToSend = static_cast<unsigned short>(code == CloseEventCodeNotSpecified ? CloseEventCodeNoStatusRcvd : code);
-    m_handle->close(codeToSend, reason);
+    m_messages.append(adoptPtr(new Message(codeToSend, reason)));
+    sendInternal();
 }
 
 void NewWebSocketChannelImpl::fail(const String& reason, MessageLevel level, const String& sourceURL, unsigned lineNumber)
@@ -265,7 +268,7 @@ void NewWebSocketChannelImpl::disconnect()
     }
     abortAsyncOperations();
     m_handle.clear();
-    m_client = 0;
+    m_client = nullptr;
     m_identifier = 0;
 }
 
@@ -294,6 +297,11 @@ NewWebSocketChannelImpl::Message::Message(PassRefPtr<ArrayBuffer> arrayBuffer)
 NewWebSocketChannelImpl::Message::Message(PassOwnPtr<Vector<char> > vectorData)
     : type(MessageTypeVector)
     , vectorData(vectorData) { }
+
+NewWebSocketChannelImpl::Message::Message(unsigned short code, const String& reason)
+    : type(MessageTypeClose)
+    , code(code)
+    , reason(reason) { }
 
 void NewWebSocketChannelImpl::sendInternal()
 {
@@ -340,6 +348,13 @@ void NewWebSocketChannelImpl::sendInternal()
             consumedBufferedAmount += size;
             break;
         }
+        case MessageTypeClose: {
+            // No message should be sent from now on.
+            ASSERT(m_messages.size() == 1);
+            m_handle->close(message->code, message->reason);
+            final = true;
+            break;
+        }
         }
         if (final) {
             m_messages.removeFirst();
@@ -375,7 +390,7 @@ void NewWebSocketChannelImpl::handleDidClose(bool wasClean, unsigned short code,
         return;
     }
     WebSocketChannelClient* client = m_client;
-    m_client = 0;
+    m_client = nullptr;
     WebSocketChannelClient::ClosingHandshakeCompletionStatus status =
         wasClean ? WebSocketChannelClient::ClosingHandshakeComplete : WebSocketChannelClient::ClosingHandshakeIncomplete;
     client->didClose(status, code, reason);
@@ -546,6 +561,7 @@ void NewWebSocketChannelImpl::didFailLoadingBlob(FileError::ErrorCode errorCode)
 void NewWebSocketChannelImpl::trace(Visitor* visitor)
 {
     visitor->trace(m_blobLoader);
+    visitor->trace(m_client);
     WebSocketChannel::trace(visitor);
 }
 

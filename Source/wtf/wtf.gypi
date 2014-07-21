@@ -3,6 +3,8 @@
     'variables': {
         'wtf_files': [
             'ASCIICType.h',
+            'AddressSpaceRandomization.cpp',
+            'AddressSpaceRandomization.h',
             'Alignment.h',
             'ArrayBuffer.cpp',
             'ArrayBuffer.h',
@@ -135,6 +137,7 @@
             'WTFThreadData.cpp',
             'WTFThreadData.h',
             'WeakPtr.h',
+            'asm/SaturatedArithmeticARM.h',
             'dtoa.cpp',
             'dtoa.h',
             'dtoa/bignum-dtoa.cc',
@@ -214,6 +217,7 @@
             'ListHashSetTest.cpp',
             'MathExtrasTest.cpp',
             'PartitionAllocTest.cpp',
+            'RefPtrTest.cpp',
             'SaturatedArithmeticTest.cpp',
             'StringExtrasTest.cpp',
             'StringHasherTest.cpp',

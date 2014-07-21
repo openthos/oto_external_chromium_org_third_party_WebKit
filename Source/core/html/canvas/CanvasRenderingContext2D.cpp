@@ -33,16 +33,17 @@
 #include "config.h"
 #include "core/html/canvas/CanvasRenderingContext2D.h"
 
-#include "bindings/v8/ExceptionMessages.h"
-#include "bindings/v8/ExceptionState.h"
-#include "bindings/v8/ExceptionStatePlaceholder.h"
+#include "bindings/core/v8/ExceptionMessages.h"
+#include "bindings/core/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionStatePlaceholder.h"
 #include "core/CSSPropertyNames.h"
-#include "core/accessibility/AXObjectCache.h"
 #include "core/css/CSSFontSelector.h"
 #include "core/css/parser/BisonCSSParser.h"
 #include "core/css/StylePropertySet.h"
 #include "core/css/resolver/StyleResolver.h"
 #include "core/dom/ExceptionCode.h"
+#include "core/dom/StyleEngine.h"
+#include "core/events/Event.h"
 #include "core/fetch/ImageResource.h"
 #include "core/frame/ImageBitmap.h"
 #include "core/html/HTMLCanvasElement.h"
@@ -114,7 +115,7 @@ CanvasRenderingContext2D::~CanvasRenderingContext2D()
 
 void CanvasRenderingContext2D::validateStateStack()
 {
-#if ASSERT_ENABLED
+#if ENABLE(ASSERT)
     GraphicsContext* context = canvas()->existingDrawingContext();
     if (context && !context->contextDisabled())
         ASSERT(context->saveCount() == m_stateStack.size());
@@ -166,6 +167,7 @@ void CanvasRenderingContext2D::trace(Visitor* visitor)
 #if ENABLE(OILPAN)
     visitor->trace(m_stateStack);
     visitor->trace(m_fetchedFonts);
+    visitor->trace(m_hitRegionManager);
 #endif
     CanvasRenderingContext::trace(visitor);
 }
@@ -257,6 +259,7 @@ CanvasRenderingContext2D::State::State()
     , m_textBaseline(AlphabeticTextBaseline)
     , m_unparsedFont(defaultFont)
     , m_realizedFont(false)
+    , m_hasClip(false)
 {
 }
 
@@ -286,6 +289,7 @@ CanvasRenderingContext2D::State::State(const State& other)
     , m_unparsedFont(other.m_unparsedFont)
     , m_font(other.m_font)
     , m_realizedFont(other.m_realizedFont)
+    , m_hasClip(other.m_hasClip)
 {
     if (m_realizedFont)
         static_cast<CSSFontSelector*>(m_font.fontSelector())->registerForInvalidationCallbacks(this);
@@ -324,6 +328,7 @@ CanvasRenderingContext2D::State& CanvasRenderingContext2D::State::operator=(cons
     m_unparsedFont = other.m_unparsedFont;
     m_font = other.m_font;
     m_realizedFont = other.m_realizedFont;
+    m_hasClip = other.m_hasClip;
 
     if (m_realizedFont)
         static_cast<CSSFontSelector*>(m_font.fontSelector())->registerForInvalidationCallbacks(this);
@@ -1095,6 +1100,7 @@ void CanvasRenderingContext2D::clipInternal(const Path& path, const String& wind
 
     realizeSaves();
     c->canvasClip(path, parseWinding(windingRuleString));
+    modifiableState().m_hasClip = true;
 }
 
 void CanvasRenderingContext2D::clip(const String& windingRuleString)
@@ -1179,7 +1185,9 @@ void CanvasRenderingContext2D::scrollPathIntoView(Path2D* path2d)
 
 void CanvasRenderingContext2D::scrollPathIntoViewInternal(const Path& path)
 {
-    if (!state().m_invertibleCTM || path.isEmpty())
+    RenderObject* renderer = canvas()->renderer();
+    RenderBox* renderBox = canvas()->renderBox();
+    if (!renderer || !renderBox || !state().m_invertibleCTM || path.isEmpty())
         return;
 
     canvas()->document().updateLayoutIgnorePendingStylesheets();
@@ -1189,18 +1197,13 @@ void CanvasRenderingContext2D::scrollPathIntoViewInternal(const Path& path)
     transformedPath.transform(state().m_transform);
     FloatRect boundingRect = transformedPath.boundingRect();
 
-    // Offset by the canvas rect (We should take border and padding into account).
-    RenderBoxModelObject* rbmo = canvas()->renderBoxModelObject();
-    IntRect canvasRect = canvas()->renderer()->absoluteBoundingBoxRect();
-    canvasRect.move(rbmo->borderLeft() + rbmo->paddingLeft(),
-        rbmo->borderTop() + rbmo->paddingTop());
-    LayoutRect pathRect = enclosingLayoutRect(boundingRect);
-    pathRect.moveBy(canvasRect.location());
+    // Offset by the canvas rect
+    LayoutRect pathRect(boundingRect);
+    IntRect canvasRect = renderBox->absoluteContentBox();
+    pathRect.move(canvasRect.x(), canvasRect.y());
 
-    if (canvas()->renderer()) {
-        canvas()->renderer()->scrollRectToVisible(
-            pathRect, ScrollAlignment::alignCenterAlways, ScrollAlignment::alignTopAlways);
-    }
+    renderer->scrollRectToVisible(
+        pathRect, ScrollAlignment::alignCenterAlways, ScrollAlignment::alignTopAlways);
 
     // TODO: should implement "inform the user" that the caret and/or
     // selection the specified rectangle of the canvas. See http://crbug.com/357987
@@ -1242,6 +1245,8 @@ void CanvasRenderingContext2D::clearRect(float x, float y, float width, float he
         context->setCompositeOperation(CompositeSourceOver);
     }
     context->clearRect(rect);
+    if (m_hitRegionManager)
+        m_hitRegionManager->removeHitRegionsInRect(rect, state().m_transform);
     if (saved)
         context->restore();
 
@@ -1467,7 +1472,7 @@ void CanvasRenderingContext2D::drawImageInternal(CanvasImageSource* imageSource,
     CompositeOperator op, blink::WebBlendMode blendMode)
 {
     RefPtr<Image> image;
-    SourceImageStatus sourceImageStatus;
+    SourceImageStatus sourceImageStatus = InvalidSourceImageStatus;
     if (!imageSource->isVideoElement()) {
         SourceImageMode mode = canvas() == imageSource ? CopySourceImageIfVolatile : DontCopySourceImage; // Thunking for ==
         image = imageSource->getSourceImageForCanvas(mode, &sourceImageStatus);
@@ -1740,17 +1745,6 @@ void CanvasRenderingContext2D::didDraw(const FloatRect& dirtyRect)
     if (dirtyRect.isEmpty())
         return;
 
-    // If we are drawing to hardware and we have a composited layer, just call contentChanged().
-    if (isAccelerated()) {
-        RenderBox* renderBox = canvas()->renderBox();
-        if (renderBox && renderBox->hasAcceleratedCompositing()) {
-            renderBox->contentChanged(CanvasPixelsChanged);
-            canvas()->clearCopiedImage();
-            canvas()->notifyObserversCanvasChanged(dirtyRect);
-            return;
-        }
-    }
-
     canvas()->didDraw(dirtyRect);
 }
 
@@ -1828,7 +1822,7 @@ PassRefPtrWillBeRawPtr<ImageData> CanvasRenderingContext2D::getImageData(float s
     if (!buffer || isContextLost())
         return createEmptyImageData(imageDataRect.size());
 
-    RefPtr<Uint8ClampedArray> byteArray = buffer->getUnmultipliedImageData(imageDataRect);
+    RefPtr<Uint8ClampedArray> byteArray = buffer->getImageData(Unmultiplied, imageDataRect);
     if (!byteArray)
         return nullptr;
 
@@ -2147,7 +2141,7 @@ void CanvasRenderingContext2D::drawTextInternal(const String& text, float x, flo
     bool isRTL = direction == RTL;
     bool override = computedStyle ? isOverride(computedStyle->unicodeBidi()) : false;
 
-    TextRun textRun(normalizedText, 0, 0, TextRun::AllowTrailingExpansion, direction, override, true, TextRun::NoRounding);
+    TextRun textRun(normalizedText, 0, 0, TextRun::AllowTrailingExpansion, direction, override, true);
     // Draw the item text at the correct point.
     FloatPoint location(x, y + getFontBaseline(fontMetrics));
 
@@ -2355,6 +2349,99 @@ void CanvasRenderingContext2D::drawFocusRing(const Path& path)
     c->restore();
     validateStateStack();
     didDraw(dirtyRect);
+}
+
+void CanvasRenderingContext2D::addHitRegion(ExceptionState& exceptionState)
+{
+    addHitRegion(Dictionary(), exceptionState);
+}
+
+void CanvasRenderingContext2D::addHitRegion(const Dictionary& options, ExceptionState& exceptionState)
+{
+    HitRegionOptions passOptions;
+
+    options.getWithUndefinedOrNullCheck("id", passOptions.id);
+    options.getWithUndefinedOrNullCheck("control", passOptions.control);
+    if (passOptions.id.isEmpty() && !passOptions.control) {
+        exceptionState.throwDOMException(NotSupportedError, "Both id and control are null.");
+        return;
+    }
+
+    RefPtr<Path2D> path2d;
+    options.getWithUndefinedOrNullCheck("path", path2d);
+    Path hitRegionPath = path2d ? path2d->path() : m_path;
+
+    FloatRect clipBounds;
+    GraphicsContext* context = drawingContext();
+
+    if (hitRegionPath.isEmpty() || !context || !state().m_invertibleCTM
+        || !context->getTransformedClipBounds(&clipBounds)) {
+        exceptionState.throwDOMException(NotSupportedError, "The specified path has no pixels.");
+        return;
+    }
+
+    hitRegionPath.transform(state().m_transform);
+
+    if (hasClip()) {
+        // FIXME: The hit regions should take clipping region into account.
+        // However, we have no way to get the region from canvas state stack by now.
+        // See http://crbug.com/387057
+        exceptionState.throwDOMException(NotSupportedError, "The specified path has no pixels.");
+        return;
+    }
+
+    passOptions.path = hitRegionPath;
+
+    String fillRuleString;
+    options.getWithUndefinedOrNullCheck("fillRule", fillRuleString);
+    if (fillRuleString.isEmpty() || fillRuleString != "evenodd")
+        passOptions.fillRule = RULE_NONZERO;
+    else
+        passOptions.fillRule = RULE_EVENODD;
+
+    addHitRegionInternal(passOptions, exceptionState);
+}
+
+void CanvasRenderingContext2D::addHitRegionInternal(const HitRegionOptions& options, ExceptionState& exceptionState)
+{
+    if (!m_hitRegionManager)
+        m_hitRegionManager = HitRegionManager::create();
+
+    // Remove previous region (with id or control)
+    m_hitRegionManager->removeHitRegionById(options.id);
+    m_hitRegionManager->removeHitRegionByControl(options.control.get());
+
+    RefPtrWillBeRawPtr<HitRegion> hitRegion = HitRegion::create(options);
+    hitRegion->updateAccessibility(canvas());
+    m_hitRegionManager->addHitRegion(hitRegion.release());
+}
+
+void CanvasRenderingContext2D::removeHitRegion(const String& id)
+{
+    if (m_hitRegionManager)
+        m_hitRegionManager->removeHitRegionById(id);
+}
+
+void CanvasRenderingContext2D::clearHitRegions()
+{
+    if (m_hitRegionManager)
+        m_hitRegionManager->removeAllHitRegions();
+}
+
+HitRegion* CanvasRenderingContext2D::hitRegionAtPoint(const LayoutPoint& point)
+{
+    if (m_hitRegionManager)
+        return m_hitRegionManager->getHitRegionAtPoint(point);
+
+    return 0;
+}
+
+unsigned CanvasRenderingContext2D::hitRegionsCount() const
+{
+    if (m_hitRegionManager)
+        return m_hitRegionManager->getHitRegionsCount();
+
+    return 0;
 }
 
 } // namespace WebCore

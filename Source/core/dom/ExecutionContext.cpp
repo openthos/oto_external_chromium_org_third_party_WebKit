@@ -31,6 +31,7 @@
 #include "core/dom/AddConsoleMessageTask.h"
 #include "core/dom/ContextLifecycleNotifier.h"
 #include "core/dom/ExecutionContextTask.h"
+#include "core/events/ErrorEvent.h"
 #include "core/events/EventTarget.h"
 #include "core/html/PublicURLManager.h"
 #include "core/inspector/InspectorInstrumentation.h"
@@ -300,13 +301,6 @@ void ExecutionContext::postTask(PassOwnPtr<ExecutionContextTask> task)
     if (!m_client)
         return;
     m_client->postTask(task);
-}
-
-void ExecutionContext::postTask(const Closure& closure)
-{
-    if (!m_client)
-        return;
-    m_client->postTask(CallClosureTask::create(closure));
 }
 
 PassOwnPtr<LifecycleNotifier<ExecutionContext> > ExecutionContext::createLifecycleNotifier()

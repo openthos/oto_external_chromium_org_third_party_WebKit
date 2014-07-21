@@ -5,14 +5,17 @@
 #include "config.h"
 #include "FetchManager.h"
 
-#include "bindings/v8/ScriptPromiseResolverWithContext.h"
-#include "bindings/v8/ScriptState.h"
-#include "bindings/v8/V8ThrowException.h"
+#include "bindings/core/v8/ExceptionState.h"
+#include "bindings/core/v8/ScriptPromiseResolver.h"
+#include "bindings/core/v8/ScriptState.h"
+#include "bindings/core/v8/V8ThrowException.h"
 #include "core/dom/ExceptionCode.h"
 #include "core/fileapi/Blob.h"
 #include "core/loader/ThreadableLoader.h"
 #include "core/loader/ThreadableLoaderClient.h"
+#include "core/xml/XMLHttpRequest.h"
 #include "modules/serviceworkers/Response.h"
+#include "modules/serviceworkers/ResponseInit.h"
 #include "platform/network/ResourceRequest.h"
 #include "wtf/HashSet.h"
 
@@ -20,7 +23,7 @@ namespace WebCore {
 
 class FetchManager::Loader : public ThreadableLoaderClient {
 public:
-    Loader(ExecutionContext*, FetchManager*, PassRefPtr<ScriptPromiseResolverWithContext>, PassOwnPtr<ResourceRequest>);
+    Loader(ExecutionContext*, FetchManager*, PassRefPtr<ScriptPromiseResolver>, PassOwnPtr<ResourceRequest>);
     ~Loader();
     virtual void didReceiveResponse(unsigned long, const ResourceResponse&);
     virtual void didFinishLoading(unsigned long, double);
@@ -38,7 +41,7 @@ private:
 
     ExecutionContext* m_executionContext;
     FetchManager* m_fetchManager;
-    RefPtr<ScriptPromiseResolverWithContext> m_resolver;
+    RefPtr<ScriptPromiseResolver> m_resolver;
     OwnPtr<ResourceRequest> m_request;
     RefPtr<ThreadableLoader> m_loader;
     ResourceResponse m_response;
@@ -46,7 +49,7 @@ private:
     bool m_failed;
 };
 
-FetchManager::Loader::Loader(ExecutionContext* executionContext, FetchManager* fetchManager, PassRefPtr<ScriptPromiseResolverWithContext> resolver, PassOwnPtr<ResourceRequest> request)
+FetchManager::Loader::Loader(ExecutionContext* executionContext, FetchManager* fetchManager, PassRefPtr<ScriptPromiseResolver> resolver, PassOwnPtr<ResourceRequest> request)
     : m_executionContext(executionContext)
     , m_fetchManager(fetchManager)
     , m_resolver(resolver)
@@ -73,13 +76,18 @@ void FetchManager::Loader::didFinishLoading(unsigned long, double)
     String filePath = m_response.downloadedFilePath();
     if (!filePath.isEmpty() && m_downloadedBlobLength) {
         blobData->appendFile(filePath);
-        // FIXME: Set the ContentType correctly.
+        blobData->setContentType(m_response.mimeType());
     }
-    Dictionary options;
+    ResponseInit responseInit;
+    // FIXME: We may have to filter the status when we support CORS.
+    // http://fetch.spec.whatwg.org/#concept-filtered-response-opaque
+    responseInit.status = m_response.httpStatusCode();
+    responseInit.statusText = m_response.httpStatusText();
     // FIXME: fill options.
     RefPtrWillBeRawPtr<Blob> blob = Blob::create(BlobDataHandle::create(blobData.release(), m_downloadedBlobLength));
     // FIXME: Handle response status correctly.
-    m_resolver->resolve(Response::create(blob.get(), options));
+    NonThrowableExceptionState exceptionState;
+    m_resolver->resolve(Response::create(blob.get(), responseInit, exceptionState));
     notifyFinished();
 }
 
@@ -156,7 +164,7 @@ FetchManager::~FetchManager()
 
 ScriptPromise FetchManager::fetch(ScriptState* scriptState, PassOwnPtr<ResourceRequest> request)
 {
-    RefPtr<ScriptPromiseResolverWithContext> resolver = ScriptPromiseResolverWithContext::create(scriptState);
+    RefPtr<ScriptPromiseResolver> resolver = ScriptPromiseResolver::create(scriptState);
     ScriptPromise promise = resolver->promise();
 
     OwnPtr<Loader> loader(adoptPtr(new Loader(m_executionContext, this, resolver.release(), request)));
@@ -167,6 +175,25 @@ ScriptPromise FetchManager::fetch(ScriptState* scriptState, PassOwnPtr<ResourceR
 void FetchManager::onLoaderFinished(Loader* loader)
 {
     m_loaders.remove(loader);
+}
+
+bool FetchManager::isSimpleMethod(const String& method)
+{
+    // "A simple method is a method that is `GET`, `HEAD`, or `POST`."
+    return isOnAccessControlSimpleRequestMethodWhitelist(method);
+}
+
+bool FetchManager::isForbiddenMethod(const String& method)
+{
+    // "A forbidden method is a method that is a byte case-insensitive match for one of `CONNECT`, `TRACE`, and `TRACK`."
+    return !XMLHttpRequest::isAllowedHTTPMethod(method);
+}
+
+bool FetchManager::isUsefulMethod(const String& method)
+{
+    // "A useful method is a method that is not a forbidden method."
+    // "A forbidden method is a method that is a byte case-insensitive match for one of `CONNECT`, `TRACE`, and `TRACK`."
+    return XMLHttpRequest::isAllowedHTTPMethod(method);
 }
 
 } // namespace WebCore

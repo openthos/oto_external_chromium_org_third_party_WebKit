@@ -24,6 +24,7 @@
 #include "core/rendering/RenderInline.h"
 
 #include "core/dom/FullscreenElementStack.h"
+#include "core/dom/StyleEngine.h"
 #include "core/page/Chrome.h"
 #include "core/page/Page.h"
 #include "core/rendering/GraphicsContextAnnotator.h"
@@ -40,8 +41,6 @@
 #include "platform/geometry/FloatQuad.h"
 #include "platform/geometry/TransformState.h"
 #include "platform/graphics/GraphicsContext.h"
-
-using namespace std;
 
 namespace WebCore {
 
@@ -61,7 +60,7 @@ RenderInline* RenderInline::createAnonymous(Document* document)
 
 void RenderInline::willBeDestroyed()
 {
-#if ASSERT_ENABLED
+#if ENABLE(ASSERT)
     // Make sure we do not retain "this" in the continuation outline table map of our containing blocks.
     if (parent() && style()->visibility() == VISIBLE && hasOutline()) {
         bool containingBlockPaintsContinuationOutline = continuation() || isInlineElementContinuation();
@@ -137,7 +136,7 @@ void RenderInline::updateFromStyle()
 static RenderObject* inFlowPositionedInlineAncestor(RenderObject* p)
 {
     while (p && p->isRenderInline()) {
-        if (p->isInFlowPositioned())
+        if (p->isRelPositioned())
             return p;
         p = p->parent();
     }
@@ -190,7 +189,7 @@ void RenderInline::styleDidChange(StyleDifference diff, const RenderStyle* oldSt
     }
 
     if (!m_alwaysCreateLineBoxes) {
-        bool alwaysCreateLineBoxes = hasSelfPaintingLayer() || hasBoxDecorations() || newStyle->hasPadding() || newStyle->hasMargin() || hasOutline();
+        bool alwaysCreateLineBoxes = hasSelfPaintingLayer() || hasBoxDecorationBackground() || newStyle->hasPadding() || newStyle->hasMargin() || hasOutline();
         if (oldStyle && alwaysCreateLineBoxes) {
             dirtyLineBoxes(false);
             setNeedsLayoutAndFullPaintInvalidation();
@@ -692,7 +691,7 @@ static LayoutUnit computeMargin(const RenderInline* renderer, const Length& marg
     if (margin.isFixed())
         return margin.value();
     if (margin.isPercent())
-        return minimumValueForLength(margin, max<LayoutUnit>(0, renderer->containingBlock()->availableLogicalWidth()));
+        return minimumValueForLength(margin, std::max<LayoutUnit>(0, renderer->containingBlock()->availableLogicalWidth()));
     return 0;
 }
 
@@ -740,8 +739,6 @@ const char* RenderInline::renderName() const
 {
     if (isRelPositioned())
         return "RenderInline (relative positioned)";
-    if (isStickyPositioned())
-        return "RenderInline (sticky positioned)";
     // FIXME: Temporary hack while the new generated content system is being implemented.
     if (isPseudoElement())
         return "RenderInline (generated)";
@@ -799,7 +796,7 @@ bool RenderInline::hitTestCulledInline(const HitTestRequest& request, HitTestRes
 
 PositionWithAffinity RenderInline::positionForPoint(const LayoutPoint& point)
 {
-    // FIXME: Does not deal with relative or sticky positioned inlines (should it?)
+    // FIXME: Does not deal with relative positioned inlines (should it?)
     RenderBlock* cb = containingBlock();
     if (firstLineBox()) {
         // This inline actually has a line box.  We must have clicked in the border/padding of one of these boxes.  We
@@ -975,8 +972,8 @@ LayoutRect RenderInline::linesVisualOverflowBoundingBox() const
     LayoutUnit logicalLeftSide = LayoutUnit::max();
     LayoutUnit logicalRightSide = LayoutUnit::min();
     for (InlineFlowBox* curr = firstLineBox(); curr; curr = curr->nextLineBox()) {
-        logicalLeftSide = min(logicalLeftSide, curr->logicalLeftVisualOverflow());
-        logicalRightSide = max(logicalRightSide, curr->logicalRightVisualOverflow());
+        logicalLeftSide = std::min(logicalLeftSide, curr->logicalLeftVisualOverflow());
+        logicalRightSide = std::max(logicalRightSide, curr->logicalRightVisualOverflow());
     }
 
     RootInlineBox& firstRootBox = firstLineBox()->root();
@@ -992,10 +989,8 @@ LayoutRect RenderInline::linesVisualOverflowBoundingBox() const
     return rect;
 }
 
-LayoutRect RenderInline::clippedOverflowRectForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer) const
+LayoutRect RenderInline::clippedOverflowRectForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer, const PaintInvalidationState* paintInvalidationState) const
 {
-    ASSERT(!view() || !view()->layoutStateCachedOffsetsEnabled());
-
     if (!firstLineBoxIncludingCulling() && !continuation())
         return LayoutRect();
 
@@ -1027,7 +1022,7 @@ LayoutRect RenderInline::clippedOverflowRectForPaintInvalidation(const RenderLay
     if (cb->hasOverflowClip())
         cb->applyCachedClipAndScrollOffsetForRepaint(repaintRect);
 
-    cb->mapRectToPaintInvalidationBacking(paintInvalidationContainer, repaintRect);
+    cb->mapRectToPaintInvalidationBacking(paintInvalidationContainer, repaintRect, paintInvalidationState);
 
     if (outlineSize) {
         for (RenderObject* curr = firstChild(); curr; curr = curr->nextSibling()) {
@@ -1042,29 +1037,25 @@ LayoutRect RenderInline::clippedOverflowRectForPaintInvalidation(const RenderLay
     return repaintRect;
 }
 
-LayoutRect RenderInline::rectWithOutlineForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer, LayoutUnit outlineWidth) const
+LayoutRect RenderInline::rectWithOutlineForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer, LayoutUnit outlineWidth, const PaintInvalidationState* paintInvalidationState) const
 {
-    LayoutRect r(RenderBoxModelObject::rectWithOutlineForPaintInvalidation(paintInvalidationContainer, outlineWidth));
+    LayoutRect r(RenderBoxModelObject::rectWithOutlineForPaintInvalidation(paintInvalidationContainer, outlineWidth, paintInvalidationState));
     for (RenderObject* curr = firstChild(); curr; curr = curr->nextSibling()) {
         if (!curr->isText())
-            r.unite(curr->rectWithOutlineForPaintInvalidation(paintInvalidationContainer, outlineWidth));
+            r.unite(curr->rectWithOutlineForPaintInvalidation(paintInvalidationContainer, outlineWidth, paintInvalidationState));
     }
     return r;
 }
 
-void RenderInline::mapRectToPaintInvalidationBacking(const RenderLayerModelObject* paintInvalidationContainer, LayoutRect& rect, bool fixed) const
+void RenderInline::mapRectToPaintInvalidationBacking(const RenderLayerModelObject* paintInvalidationContainer, LayoutRect& rect, bool fixed, const PaintInvalidationState* paintInvalidationState) const
 {
-    if (RenderView* v = view()) {
-        // LayoutState is only valid for root-relative repainting
-        if (v->canMapUsingLayoutStateForContainer(paintInvalidationContainer)) {
-            LayoutState* layoutState = v->layoutState();
-            if (style()->hasInFlowPosition() && layer())
-                rect.move(layer()->offsetForInFlowPosition());
-            rect.move(layoutState->paintOffset());
-            if (layoutState->isClipped())
-                rect.intersect(layoutState->clipRect());
-            return;
-        }
+    if (paintInvalidationState && paintInvalidationState->canMapToContainer(paintInvalidationContainer)) {
+        if (style()->hasInFlowPosition() && layer())
+            rect.move(layer()->offsetForInFlowPosition());
+        rect.move(paintInvalidationState->paintOffset());
+        if (paintInvalidationState->isClipped())
+            rect.intersect(paintInvalidationState->clipRect());
+        return;
     }
 
     if (paintInvalidationContainer == this)
@@ -1090,7 +1081,7 @@ void RenderInline::mapRectToPaintInvalidationBacking(const RenderLayerModelObjec
     if (style()->hasInFlowPosition() && layer()) {
         // Apply the in-flow position offset when invalidating a rectangle. The layer
         // is translated, but the render box isn't, so we need to do this to get the
-        // right dirty rect. Since this is called from RenderObject::setStyle, the relative or sticky position
+        // right dirty rect. Since this is called from RenderObject::setStyle, the relative position
         // flag on the RenderObject has been cleared, so use the one on the style().
         topLeft += layer()->offsetForInFlowPosition();
     }
@@ -1112,7 +1103,7 @@ void RenderInline::mapRectToPaintInvalidationBacking(const RenderLayerModelObjec
         return;
     }
 
-    o->mapRectToPaintInvalidationBacking(paintInvalidationContainer, rect, fixed);
+    o->mapRectToPaintInvalidationBacking(paintInvalidationContainer, rect, fixed, paintInvalidationState);
 }
 
 LayoutSize RenderInline::offsetFromContainer(const RenderObject* container, const LayoutPoint& point, bool* offsetDependsOnPoint) const
@@ -1120,7 +1111,7 @@ LayoutSize RenderInline::offsetFromContainer(const RenderObject* container, cons
     ASSERT(container == this->container());
 
     LayoutSize offset;
-    if (isInFlowPositioned())
+    if (isRelPositioned())
         offset += offsetForInFlowPosition();
 
     offset += container->columnOffset(point);
@@ -1137,20 +1128,17 @@ LayoutSize RenderInline::offsetFromContainer(const RenderObject* container, cons
     return offset;
 }
 
-void RenderInline::mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState& transformState, MapCoordinatesFlags mode, bool* wasFixed) const
+void RenderInline::mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState& transformState, MapCoordinatesFlags mode, bool* wasFixed, const PaintInvalidationState* paintInvalidationState) const
 {
     if (repaintContainer == this)
         return;
 
-    if (RenderView *v = view()) {
-        if (v->canMapUsingLayoutStateForContainer(repaintContainer)) {
-            LayoutState* layoutState = v->layoutState();
-            LayoutSize offset = layoutState->paintOffset();
-            if (style()->hasInFlowPosition() && layer())
-                offset += layer()->offsetForInFlowPosition();
-            transformState.move(offset);
-            return;
-        }
+    if (paintInvalidationState && paintInvalidationState->canMapToContainer(repaintContainer)) {
+        LayoutSize offset = paintInvalidationState->paintOffset();
+        if (style()->hasInFlowPosition() && layer())
+            offset += layer()->offsetForInFlowPosition();
+        transformState.move(offset);
+        return;
     }
 
     bool containerSkipped;
@@ -1184,7 +1172,7 @@ void RenderInline::mapLocalToContainer(const RenderLayerModelObject* repaintCont
         return;
     }
 
-    o->mapLocalToContainer(repaintContainer, transformState, mode, wasFixed);
+    o->mapLocalToContainer(repaintContainer, transformState, mode, wasFixed, paintInvalidationState);
 }
 
 void RenderInline::updateDragState(bool dragOn)
@@ -1302,8 +1290,8 @@ LayoutSize RenderInline::offsetForInFlowPositionedInline(const RenderBox& child)
 {
     // FIXME: This function isn't right with mixed writing modes.
 
-    ASSERT(isInFlowPositioned());
-    if (!isInFlowPositioned())
+    ASSERT(isRelPositioned());
+    if (!isRelPositioned())
         return LayoutSize();
 
     // When we have an enclosing relpositioned inline, we need to add in the offset of the first line
@@ -1417,8 +1405,8 @@ void RenderInline::paintOutline(PaintInfo& paintInfo, const LayoutPoint& paintOf
     rects.append(LayoutRect());
     for (InlineFlowBox* curr = firstLineBox(); curr; curr = curr->nextLineBox()) {
         RootInlineBox& root = curr->root();
-        LayoutUnit top = max<LayoutUnit>(root.lineTop(), curr->logicalTop());
-        LayoutUnit bottom = min<LayoutUnit>(root.lineBottom(), curr->logicalBottom());
+        LayoutUnit top = std::max<LayoutUnit>(root.lineTop(), curr->logicalTop());
+        LayoutUnit bottom = std::min<LayoutUnit>(root.lineBottom(), curr->logicalBottom());
         rects.append(LayoutRect(curr->x(), top, curr->logicalWidth(), bottom - top));
     }
     rects.append(LayoutRect());
@@ -1486,7 +1474,7 @@ void RenderInline::paintOutlineForLine(GraphicsContext* graphicsContext, const L
         drawLineForBoxSide(graphicsContext,
             pixelSnappedBox.x() - outlineWidth,
             pixelSnappedBox.y() - outlineWidth,
-            min(pixelSnappedBox.maxX() + outlineWidth, (lastline.isEmpty() ? 1000000 : pixelSnappedLastLine.x())),
+            std::min(pixelSnappedBox.maxX() + outlineWidth, (lastline.isEmpty() ? 1000000 : pixelSnappedLastLine.x())),
             pixelSnappedBox.y(),
             BSTop, outlineColor, outlineStyle,
             outlineWidth,
@@ -1495,7 +1483,7 @@ void RenderInline::paintOutlineForLine(GraphicsContext* graphicsContext, const L
 
     if (lastline.maxX() < thisline.maxX())
         drawLineForBoxSide(graphicsContext,
-            max(lastline.isEmpty() ? -1000000 : pixelSnappedLastLine.maxX(), pixelSnappedBox.x() - outlineWidth),
+            std::max(lastline.isEmpty() ? -1000000 : pixelSnappedLastLine.maxX(), pixelSnappedBox.x() - outlineWidth),
             pixelSnappedBox.y() - outlineWidth,
             pixelSnappedBox.maxX() + outlineWidth,
             pixelSnappedBox.y(),
@@ -1519,7 +1507,7 @@ void RenderInline::paintOutlineForLine(GraphicsContext* graphicsContext, const L
         drawLineForBoxSide(graphicsContext,
             pixelSnappedBox.x() - outlineWidth,
             pixelSnappedBox.maxY(),
-            min(pixelSnappedBox.maxX() + outlineWidth, !nextline.isEmpty() ? pixelSnappedNextLine.x() + 1 : 1000000),
+            std::min(pixelSnappedBox.maxX() + outlineWidth, !nextline.isEmpty() ? pixelSnappedNextLine.x() + 1 : 1000000),
             pixelSnappedBox.maxY() + outlineWidth,
             BSBottom, outlineColor, outlineStyle,
             outlineWidth,
@@ -1528,7 +1516,7 @@ void RenderInline::paintOutlineForLine(GraphicsContext* graphicsContext, const L
 
     if (nextline.maxX() < thisline.maxX())
         drawLineForBoxSide(graphicsContext,
-            max(!nextline.isEmpty() ? pixelSnappedNextLine.maxX() : -1000000, pixelSnappedBox.x() - outlineWidth),
+            std::max(!nextline.isEmpty() ? pixelSnappedNextLine.maxX() : -1000000, pixelSnappedBox.x() - outlineWidth),
             pixelSnappedBox.maxY(),
             pixelSnappedBox.maxX() + outlineWidth,
             pixelSnappedBox.maxY() + outlineWidth,
@@ -1570,6 +1558,14 @@ void RenderInline::addAnnotatedRegions(Vector<AnnotatedRegionValue>& regions)
     region.bounds.setY(absPos.y() + region.bounds.y());
 
     regions.append(region);
+}
+
+void RenderInline::invalidateTreeIfNeeded(const PaintInvalidationState& paintInvalidationState)
+{
+    bool establishesNewPaintInvalidationContainer = isPaintInvalidationContainer();
+    const RenderLayerModelObject& newPaintInvalidationContainer = *adjustCompositedContainerForSpecialAncestors(establishesNewPaintInvalidationContainer ? this : &paintInvalidationState.paintInvalidationContainer());
+    PaintInvalidationState childPaintInvalidationState(paintInvalidationState, *this, newPaintInvalidationContainer);
+    RenderObject::invalidateTreeIfNeeded(childPaintInvalidationState);
 }
 
 } // namespace WebCore

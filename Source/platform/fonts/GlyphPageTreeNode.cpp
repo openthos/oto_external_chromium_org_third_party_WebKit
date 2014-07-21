@@ -61,7 +61,7 @@ GlyphPageTreeNode* GlyphPageTreeNode::getRoot(unsigned pageNumber)
         return foundNode;
 
     GlyphPageTreeNode* node = new GlyphPageTreeNode;
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     node->m_pageNumber = pageNumber;
 #endif
     roots->set(pageNumber, node);
@@ -207,13 +207,13 @@ void GlyphPageTreeNode::initializePage(const FontData* fontData, unsigned pageNu
             // for only 128 out of 256 characters.
             bool haveGlyphs;
             if (!fontData->isSegmented()) {
-                m_page = GlyphPage::createForSingleFontData(this, static_cast<const SimpleFontData*>(fontData));
-                haveGlyphs = fill(m_page.get(), 0, GlyphPage::size, buffer, bufferLength, static_cast<const SimpleFontData*>(fontData));
+                m_page = GlyphPage::createForSingleFontData(this, toSimpleFontData(fontData));
+                haveGlyphs = fill(m_page.get(), 0, GlyphPage::size, buffer, bufferLength, toSimpleFontData(fontData));
             } else {
                 m_page = GlyphPage::createForMixedFontData(this);
                 haveGlyphs = false;
 
-                const SegmentedFontData* segmentedFontData = static_cast<const SegmentedFontData*>(fontData);
+                const SegmentedFontData* segmentedFontData = toSegmentedFontData(fontData);
                 for (int i = segmentedFontData->numRanges() - 1; i >= 0; i--) {
                     const FontDataRange& range = segmentedFontData->rangeAt(i);
                     // all this casting is to ensure all the parameters to min and max have the same type,
@@ -322,7 +322,7 @@ GlyphPageTreeNode* GlyphPageTreeNode::getChild(const FontData* fontData, unsigne
             curr->m_customFontCount++;
     }
 
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     child->m_pageNumber = m_pageNumber;
 #endif
     if (fontData) {

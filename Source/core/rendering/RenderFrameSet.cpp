@@ -153,6 +153,13 @@ void RenderFrameSet::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
     }
 }
 
+void RenderFrameSet::computePreferredLogicalWidths()
+{
+    m_minPreferredLogicalWidth = 0;
+    m_maxPreferredLogicalWidth = 0;
+    clearPreferredLogicalWidthsDirty();
+}
+
 void RenderFrameSet::GridAxis::resize(int size)
 {
     m_sizes.resize(size);
@@ -439,14 +446,6 @@ void RenderFrameSet::layout()
 {
     ASSERT(needsLayout());
 
-    bool doFullRepaint = selfNeedsLayout() && checkForPaintInvalidationDuringLayout();
-    LayoutRect oldBounds;
-    const RenderLayerModelObject* repaintContainer = 0;
-    if (doFullRepaint) {
-        repaintContainer = containerForPaintInvalidation();
-        oldBounds = boundsRectForPaintInvalidation(repaintContainer);
-    }
-
     if (!parent()->isFrameSet() && !document().printing()) {
         setWidth(view()->viewWidth());
         setHeight(view()->viewHeight());
@@ -471,13 +470,6 @@ void RenderFrameSet::layout()
     computeEdgeInfo();
 
     updateLayerTransformAfterLayout();
-
-    if (doFullRepaint) {
-        invalidatePaintUsingContainer(repaintContainer, pixelSnappedIntRect(oldBounds), InvalidationSelfLayout);
-        LayoutRect newBounds = boundsRectForPaintInvalidation(repaintContainer);
-        if (newBounds != oldBounds)
-            invalidatePaintUsingContainer(repaintContainer, pixelSnappedIntRect(newBounds), InvalidationSelfLayout);
-    }
 
     clearNeedsLayout();
 }

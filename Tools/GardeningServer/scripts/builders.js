@@ -27,11 +27,7 @@ var builders = builders || {};
 
 (function() {
 
-var kUpdateStepName = 'update';
-var kUpdateScriptsStepName = 'update_scripts';
-var kCompileStepName = 'compile';
 var kWebKitTestsStepNames = ['webkit_tests', 'layout-test'];
-
 var kCrashedOrHungOutputMarker = 'crashed or hung';
 
 function urlForBuildInfo(builderName, buildNumber)
@@ -110,7 +106,7 @@ builders.buildersFailingNonLayoutTests = function()
 {
     return fetchMostRecentBuildInfoByBuilder().then(function(buildInfoByBuilder) {
         var failureList = {};
-        $.each(buildInfoByBuilder, function(builderName, buildInfo) {
+        Object.keys(buildInfoByBuilder, function(builderName, buildInfo) {
             if (!buildInfo)
                 return;
             var failures = failingSteps(buildInfo);

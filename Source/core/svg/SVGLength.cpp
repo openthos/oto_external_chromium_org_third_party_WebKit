@@ -23,7 +23,7 @@
 
 #include "core/svg/SVGLength.h"
 
-#include "bindings/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionState.h"
 #include "core/SVGNames.h"
 #include "core/css/CSSPrimitiveValue.h"
 #include "core/dom/ExceptionCode.h"
@@ -37,7 +37,7 @@ namespace WebCore {
 
 namespace {
 
-inline String lengthTypeToString(SVGLengthType type)
+inline const char* lengthTypeToString(SVGLengthType type)
 {
     switch (type) {
     case LengthTypeUnknown:
@@ -64,7 +64,7 @@ inline String lengthTypeToString(SVGLengthType type)
     }
 
     ASSERT_NOT_REACHED();
-    return String();
+    return "";
 }
 
 template<typename CharType>

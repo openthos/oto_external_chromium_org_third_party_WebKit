@@ -115,6 +115,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/html/HTMLTableRowElement.cpp \
 	third_party/WebKit/Source/core/html/HTMLTableRowsCollection.cpp \
 	third_party/WebKit/Source/core/html/HTMLTableSectionElement.cpp \
+	third_party/WebKit/Source/core/html/HTMLTagCollection.cpp \
 	third_party/WebKit/Source/core/html/HTMLTemplateElement.cpp \
 	third_party/WebKit/Source/core/html/HTMLTextAreaElement.cpp \
 	third_party/WebKit/Source/core/html/HTMLTextFormControlElement.cpp \
@@ -156,6 +157,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/html/canvas/EXTFragDepth.cpp \
 	third_party/WebKit/Source/core/html/canvas/EXTShaderTextureLOD.cpp \
 	third_party/WebKit/Source/core/html/canvas/EXTTextureFilterAnisotropic.cpp \
+	third_party/WebKit/Source/core/html/canvas/HitRegion.cpp \
 	third_party/WebKit/Source/core/html/canvas/OESElementIndexUint.cpp \
 	third_party/WebKit/Source/core/html/canvas/OESStandardDerivatives.cpp \
 	third_party/WebKit/Source/core/html/canvas/OESTextureFloat.cpp \
@@ -227,7 +229,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/html/forms/TimeInputType.cpp \
 	third_party/WebKit/Source/core/html/forms/TypeAhead.cpp \
 	third_party/WebKit/Source/core/html/forms/URLInputType.cpp \
-	third_party/WebKit/Source/core/html/forms/ValidationMessage.cpp \
 	third_party/WebKit/Source/core/html/forms/WeekInputType.cpp \
 	third_party/WebKit/Source/core/html/ime/InputMethodContext.cpp \
 	third_party/WebKit/Source/core/html/imports/HTMLImport.cpp \
@@ -330,7 +331,6 @@ MY_CFLAGS_Debug := \
 	-Wno-unused-but-set-variable \
 	-Os \
 	-g \
-	-fomit-frame-pointer \
 	-fdata-sections \
 	-ffunction-sections \
 	-funwind-tables
@@ -351,6 +351,7 @@ MY_DEFS_Debug := \
 	'-DSYSTEM_NATIVELY_SIGNALS_MEMORY_PRESSURE' \
 	'-DENABLE_EGLIMAGE=1' \
 	'-DCLD_VERSION=1' \
+	'-DCLD_DATA_FROM_STATIC' \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
@@ -364,7 +365,8 @@ MY_DEFS_Debug := \
 	'-DENABLE_CUSTOM_SCHEME_HANDLER=0' \
 	'-DENABLE_SVG_FONTS=1' \
 	'-DWTF_USE_CONCATENATED_IMPULSE_RESPONSES=1' \
-	'-DENABLE_MEDIA_CAPTURE=1' \
+	'-DWTF_USE_WEBAUDIO_OPENMAX_DL_FFT=1' \
+	'-DENABLE_WEB_AUDIO=1' \
 	'-DENABLE_OPENTYPE_VERTICAL=1' \
 	'-DU_USING_ICU_NAMESPACE=0' \
 	'-DSK_ENABLE_INST_COUNT=0' \
@@ -374,14 +376,10 @@ MY_DEFS_Debug := \
 	'-DSK_ATTR_DEPRECATED=SK_NOTHING_ARG1' \
 	'-DGR_GL_IGNORE_ES3_MSAA=0' \
 	'-DSK_WILL_NEVER_DRAW_PERSPECTIVE_TEXT' \
-	'-DSK_SUPPORT_LEGACY_GETTOPDEVICE' \
-	'-DSK_SUPPORT_LEGACY_BITMAP_CONFIG' \
-	'-DSK_SUPPORT_LEGACY_DEVICE_VIRTUAL_ISOPAQUE' \
-	'-DSK_SUPPORT_LEGACY_N32_NAME' \
-	'-DSK_SUPPORT_LEGACY_SETCONFIG' \
+	'-DSK_SUPPORT_LEGACY_PICTURE_CLONE' \
+	'-DSK_SUPPORT_LEGACY_GETDEVICE' \
 	'-DSK_IGNORE_ETC1_SUPPORT' \
 	'-DSK_IGNORE_GPU_DITHER' \
-	'-DSK_SUPPORT_LEGACY_GETTOTALCLIP' \
 	'-DSK_BUILD_FOR_ANDROID' \
 	'-DSK_USE_POSIX_THREADS' \
 	'-DSK_DEFERRED_CANVAS_USES_FACTORIES=1' \
@@ -415,11 +413,8 @@ LOCAL_C_INCLUDES_Debug := \
 	$(LOCAL_PATH)/skia/config \
 	$(LOCAL_PATH)/third_party/khronos \
 	$(LOCAL_PATH)/gpu \
-	$(gyp_shared_intermediate_dir)/blink/core \
-	$(gyp_shared_intermediate_dir)/blink/modules \
-	$(gyp_shared_intermediate_dir)/blink/bindings/core/v8 \
-	$(gyp_shared_intermediate_dir)/blink/bindings/modules/v8 \
 	$(gyp_shared_intermediate_dir)/blink \
+	$(LOCAL_PATH)/third_party/openmax_dl \
 	$(LOCAL_PATH)/third_party/angle/include \
 	$(PWD)/external/icu4c/common \
 	$(PWD)/external/icu4c/i18n \
@@ -460,6 +455,9 @@ LOCAL_CPPFLAGS_Debug := \
 	-fvisibility-inlines-hidden \
 	-Wsign-compare \
 	-Wno-c++0x-compat \
+	-std=gnu++11 \
+	-Wno-narrowing \
+	-Wno-literal-suffix \
 	-Wno-non-virtual-dtor \
 	-Wno-sign-promo
 
@@ -492,7 +490,6 @@ MY_CFLAGS_Release := \
 	-fno-ident \
 	-fdata-sections \
 	-ffunction-sections \
-	-fomit-frame-pointer \
 	-funwind-tables
 
 MY_DEFS_Release := \
@@ -511,6 +508,7 @@ MY_DEFS_Release := \
 	'-DSYSTEM_NATIVELY_SIGNALS_MEMORY_PRESSURE' \
 	'-DENABLE_EGLIMAGE=1' \
 	'-DCLD_VERSION=1' \
+	'-DCLD_DATA_FROM_STATIC' \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
@@ -524,7 +522,8 @@ MY_DEFS_Release := \
 	'-DENABLE_CUSTOM_SCHEME_HANDLER=0' \
 	'-DENABLE_SVG_FONTS=1' \
 	'-DWTF_USE_CONCATENATED_IMPULSE_RESPONSES=1' \
-	'-DENABLE_MEDIA_CAPTURE=1' \
+	'-DWTF_USE_WEBAUDIO_OPENMAX_DL_FFT=1' \
+	'-DENABLE_WEB_AUDIO=1' \
 	'-DENABLE_OPENTYPE_VERTICAL=1' \
 	'-DU_USING_ICU_NAMESPACE=0' \
 	'-DSK_ENABLE_INST_COUNT=0' \
@@ -534,14 +533,10 @@ MY_DEFS_Release := \
 	'-DSK_ATTR_DEPRECATED=SK_NOTHING_ARG1' \
 	'-DGR_GL_IGNORE_ES3_MSAA=0' \
 	'-DSK_WILL_NEVER_DRAW_PERSPECTIVE_TEXT' \
-	'-DSK_SUPPORT_LEGACY_GETTOPDEVICE' \
-	'-DSK_SUPPORT_LEGACY_BITMAP_CONFIG' \
-	'-DSK_SUPPORT_LEGACY_DEVICE_VIRTUAL_ISOPAQUE' \
-	'-DSK_SUPPORT_LEGACY_N32_NAME' \
-	'-DSK_SUPPORT_LEGACY_SETCONFIG' \
+	'-DSK_SUPPORT_LEGACY_PICTURE_CLONE' \
+	'-DSK_SUPPORT_LEGACY_GETDEVICE' \
 	'-DSK_IGNORE_ETC1_SUPPORT' \
 	'-DSK_IGNORE_GPU_DITHER' \
-	'-DSK_SUPPORT_LEGACY_GETTOTALCLIP' \
 	'-DSK_BUILD_FOR_ANDROID' \
 	'-DSK_USE_POSIX_THREADS' \
 	'-DSK_DEFERRED_CANVAS_USES_FACTORIES=1' \
@@ -576,11 +571,8 @@ LOCAL_C_INCLUDES_Release := \
 	$(LOCAL_PATH)/skia/config \
 	$(LOCAL_PATH)/third_party/khronos \
 	$(LOCAL_PATH)/gpu \
-	$(gyp_shared_intermediate_dir)/blink/core \
-	$(gyp_shared_intermediate_dir)/blink/modules \
-	$(gyp_shared_intermediate_dir)/blink/bindings/core/v8 \
-	$(gyp_shared_intermediate_dir)/blink/bindings/modules/v8 \
 	$(gyp_shared_intermediate_dir)/blink \
+	$(LOCAL_PATH)/third_party/openmax_dl \
 	$(LOCAL_PATH)/third_party/angle/include \
 	$(PWD)/external/icu4c/common \
 	$(PWD)/external/icu4c/i18n \
@@ -621,6 +613,9 @@ LOCAL_CPPFLAGS_Release := \
 	-fvisibility-inlines-hidden \
 	-Wsign-compare \
 	-Wno-c++0x-compat \
+	-std=gnu++11 \
+	-Wno-narrowing \
+	-Wno-literal-suffix \
 	-Wno-non-virtual-dtor \
 	-Wno-sign-promo
 

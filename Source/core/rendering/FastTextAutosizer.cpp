@@ -48,8 +48,6 @@
 #include "core/dom/ExecutionContextTask.h"
 #endif
 
-using namespace std;
-
 namespace WebCore {
 
 #ifdef AUTOSIZING_DOM_DEBUG_INFO
@@ -123,7 +121,7 @@ static const RenderObject* parentElementRenderer(const RenderObject* renderer)
     if (!node)
         return 0;
 
-    while ((node = node->parentNode())) {
+    for (node = node->parentNode(); node; node = node->parentNode()) {
         if (node->isElementNode())
             return node->renderer();
     }
@@ -281,7 +279,7 @@ static bool hasExplicitWidth(const RenderBlock* block)
 FastTextAutosizer::FastTextAutosizer(const Document* document)
     : m_document(document)
     , m_firstBlockToBeginLayout(0)
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     , m_blocksThatHaveBegunLayout()
 #endif
     , m_superclusters()
@@ -325,7 +323,7 @@ void FastTextAutosizer::destroy(const RenderBlock* block)
 
 FastTextAutosizer::BeginLayoutBehavior FastTextAutosizer::prepareForLayout(const RenderBlock* block)
 {
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     m_blocksThatHaveBegunLayout.add(block);
 #endif
 
@@ -349,7 +347,7 @@ void FastTextAutosizer::prepareClusterStack(const RenderObject* renderer)
 
     if (renderer->isRenderBlock()) {
         const RenderBlock* block = toRenderBlock(renderer);
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
         m_blocksThatHaveBegunLayout.add(block);
 #endif
         if (Cluster* cluster = maybeCreateCluster(block))
@@ -428,7 +426,7 @@ void FastTextAutosizer::endLayout(RenderBlock* block)
         m_clusterStack.clear();
         m_superclusters.clear();
         m_stylesRetainedDuringLayout.clear();
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
         m_blocksThatHaveBegunLayout.clear();
 #endif
     // Tables can create two layout scopes for the same block so the isEmpty
@@ -833,7 +831,7 @@ float FastTextAutosizer::widthFromBlock(const RenderBlock* block)
 
     // Tables may be inflated before computing their preferred widths. Try several methods to
     // obtain a width, and fall back on a containing block's width.
-    do {
+    for (; block; block = block->containingBlock()) {
         float width;
         Length specifiedWidth = block->isTableCell()
             ? toRenderTableCell(block)->styleOrColLogicalWidth() : block->style()->logicalWidth();
@@ -849,7 +847,7 @@ float FastTextAutosizer::widthFromBlock(const RenderBlock* block)
         }
         if ((width = block->contentLogicalWidth().toFloat()) > 0)
             return width;
-    } while ((block = block->containingBlock()));
+    }
     return 0;
 }
 
@@ -862,9 +860,9 @@ float FastTextAutosizer::multiplierFromBlock(const RenderBlock* block)
 
     // Block width, in CSS pixels.
     float blockWidth = widthFromBlock(block);
-    float multiplier = m_pageInfo.m_frameWidth ? min(blockWidth, static_cast<float>(m_pageInfo.m_layoutWidth)) / m_pageInfo.m_frameWidth : 1.0f;
+    float multiplier = m_pageInfo.m_frameWidth ? std::min(blockWidth, static_cast<float>(m_pageInfo.m_layoutWidth)) / m_pageInfo.m_frameWidth : 1.0f;
 
-    return max(m_pageInfo.m_baseMultiplier * multiplier, 1.0f);
+    return std::max(m_pageInfo.m_baseMultiplier * multiplier, 1.0f);
 }
 
 const RenderBlock* FastTextAutosizer::deepestBlockContainingAllText(Cluster* cluster)
@@ -1011,7 +1009,7 @@ FastTextAutosizer::Cluster* FastTextAutosizer::currentCluster() const
     return m_clusterStack.last().get();
 }
 
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
 void FastTextAutosizer::FingerprintMapper::assertMapsAreConsistent()
 {
     // For each fingerprint -> block mapping in m_blocksForFingerprint we should have an associated
@@ -1033,7 +1031,7 @@ void FastTextAutosizer::FingerprintMapper::add(const RenderObject* renderer, Fin
     remove(renderer);
 
     m_fingerprints.set(renderer, fingerprint);
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     assertMapsAreConsistent();
 #endif
 }
@@ -1046,7 +1044,7 @@ void FastTextAutosizer::FingerprintMapper::addTentativeClusterRoot(const RenderB
     if (addResult.isNewEntry)
         addResult.storedValue->value = adoptPtr(new BlockSet);
     addResult.storedValue->value->add(block);
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     assertMapsAreConsistent();
 #endif
 }
@@ -1065,7 +1063,7 @@ bool FastTextAutosizer::FingerprintMapper::remove(const RenderObject* renderer)
     blocks.remove(toRenderBlock(renderer));
     if (blocks.isEmpty())
         m_blocksForFingerprint.remove(blocksIter);
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     assertMapsAreConsistent();
 #endif
     return true;
@@ -1126,6 +1124,34 @@ FastTextAutosizer::DeferUpdatePageInfo::~DeferUpdatePageInfo()
         textAutosizer->m_updatePageInfoDeferred = false;
         textAutosizer->updatePageInfoInAllFrames();
     }
+}
+
+float FastTextAutosizer::computeAutosizedFontSize(float specifiedSize, float multiplier)
+{
+    // Somewhat arbitrary "pleasant" font size.
+    const float pleasantSize = 16;
+
+    // Multiply fonts that the page author has specified to be larger than
+    // pleasantSize by less and less, until huge fonts are not increased at all.
+    // For specifiedSize between 0 and pleasantSize we directly apply the
+    // multiplier; hence for specifiedSize == pleasantSize, computedSize will be
+    // multiplier * pleasantSize. For greater specifiedSizes we want to
+    // gradually fade out the multiplier, so for every 1px increase in
+    // specifiedSize beyond pleasantSize we will only increase computedSize
+    // by gradientAfterPleasantSize px until we meet the
+    // computedSize = specifiedSize line, after which we stay on that line (so
+    // then every 1px increase in specifiedSize increases computedSize by 1px).
+    const float gradientAfterPleasantSize = 0.5;
+
+    float computedSize;
+    if (specifiedSize <= pleasantSize) {
+        computedSize = multiplier * specifiedSize;
+    } else {
+        computedSize = multiplier * pleasantSize + gradientAfterPleasantSize * (specifiedSize - pleasantSize);
+        if (computedSize < specifiedSize)
+            computedSize = specifiedSize;
+    }
+    return computedSize;
 }
 
 } // namespace WebCore

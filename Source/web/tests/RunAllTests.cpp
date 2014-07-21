@@ -43,12 +43,10 @@
 #include "web/tests/WebUnitTests.h"
 #endif
 
-#include <gmock/gmock.h>
-
 // TestSuite must be created before SetUpTestEnvironment so it performs
 // initializations needed by WebKit support. This is slightly complicated by the
 // fact that chromium multi-dll build requires that the TestSuite object be created
-// and run inside webkit.dll.
+// and run inside blink_web.dll.
 int main(int argc, char** argv)
 {
 #if defined(BLINK_DLL_UNITTEST)
@@ -58,7 +56,6 @@ int main(int argc, char** argv)
     content::TearDownEnvironmentForWebKitUnitTests();
     blink::DeleteTestSuite();
 #else
-    ::testing::InitGoogleMock(&argc, argv);
     TestSuite testSuite(argc, argv);
     content::SetUpTestEnvironmentForWebKitUnitTests();
     int result = testSuite.Run();

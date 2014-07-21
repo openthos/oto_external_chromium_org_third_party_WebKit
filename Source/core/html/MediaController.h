@@ -26,7 +26,6 @@
 #ifndef MediaController_h
 #define MediaController_h
 
-#include "bindings/v8/ScriptWrappable.h"
 #include "core/events/EventTarget.h"
 #include "core/html/HTMLMediaElement.h"
 #include "wtf/LinkedHashSet.h"
@@ -40,7 +39,7 @@ class ExceptionState;
 class ExecutionContext;
 class GenericEventQueue;
 
-class MediaController FINAL : public RefCountedWillBeRefCountedGarbageCollected<MediaController>, public ScriptWrappable, public EventTargetWithInlineData {
+class MediaController FINAL : public RefCountedWillBeRefCountedGarbageCollected<MediaController>, public EventTargetWithInlineData {
     REFCOUNTED_EVENT_TARGET(MediaController);
     WILL_BE_USING_GARBAGE_COLLECTED_MIXIN(MediaController);
 public:
@@ -50,9 +49,9 @@ public:
     void addMediaElement(HTMLMediaElement*);
     void removeMediaElement(HTMLMediaElement*);
 
-    PassRefPtr<TimeRanges> buffered() const;
-    PassRefPtr<TimeRanges> seekable() const;
-    PassRefPtr<TimeRanges> played();
+    PassRefPtrWillBeRawPtr<TimeRanges> buffered() const;
+    PassRefPtrWillBeRawPtr<TimeRanges> seekable() const;
+    PassRefPtrWillBeRawPtr<TimeRanges> played();
 
     double duration() const;
     double currentTime() const;

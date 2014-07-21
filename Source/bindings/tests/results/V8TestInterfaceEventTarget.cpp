@@ -7,10 +7,10 @@
 #include "config.h"
 #include "V8TestInterfaceEventTarget.h"
 
-#include "bindings/v8/ExceptionState.h"
-#include "bindings/v8/V8DOMConfiguration.h"
-#include "bindings/v8/V8HiddenValue.h"
-#include "bindings/v8/V8ObjectConstructor.h"
+#include "bindings/core/v8/ExceptionState.h"
+#include "bindings/core/v8/V8DOMConfiguration.h"
+#include "bindings/core/v8/V8HiddenValue.h"
+#include "bindings/core/v8/V8ObjectConstructor.h"
 #include "core/dom/ContextFeatures.h"
 #include "core/dom/Document.h"
 #include "core/frame/LocalDOMWindow.h"
@@ -49,29 +49,19 @@ const WrapperTypeInfo V8TestInterfaceEventTargetConstructor::wrapperTypeInfo = {
 
 static void V8TestInterfaceEventTargetConstructorCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    v8::Isolate* isolate = info.GetIsolate();
     if (!info.IsConstructCall()) {
-        throwTypeError(ExceptionMessages::constructorNotCallableAsFunction("Name"), isolate);
+        throwTypeError(ExceptionMessages::constructorNotCallableAsFunction("Name"), info.GetIsolate());
         return;
     }
 
-    if (ConstructorMode::current(isolate) == ConstructorMode::WrapExistingObject) {
+    if (ConstructorMode::current(info.GetIsolate()) == ConstructorMode::WrapExistingObject) {
         v8SetReturnValue(info, info.Holder());
         return;
     }
-
-    Document* documentPtr = currentDOMWindow(isolate)->document();
-    ASSERT(documentPtr);
-    Document& document = *documentPtr;
-
-    // Make sure the document is added to the DOM Node map. Otherwise, the TestInterfaceEventTarget instance
-    // may end up being the only node in the map and get garbage-collected prematurely.
-    toV8(documentPtr, info.Holder(), isolate);
-
+    Document& document = *toDocument(currentExecutionContext(info.GetIsolate()));
     RefPtrWillBeRawPtr<TestInterfaceEventTarget> impl = TestInterfaceEventTarget::createForJSConstructor(document);
-
     v8::Handle<v8::Object> wrapper = info.Holder();
-    V8DOMWrapper::associateObjectWithWrapper<V8TestInterfaceEventTarget>(impl.release(), &V8TestInterfaceEventTargetConstructor::wrapperTypeInfo, wrapper, isolate, WrapperConfiguration::Independent);
+    V8DOMWrapper::associateObjectWithWrapper<V8TestInterfaceEventTarget>(impl.release(), &V8TestInterfaceEventTargetConstructor::wrapperTypeInfo, wrapper, info.GetIsolate(), WrapperConfiguration::Independent);
     v8SetReturnValue(info, wrapper);
 }
 
@@ -83,7 +73,7 @@ v8::Handle<v8::FunctionTemplate> V8TestInterfaceEventTargetConstructor::domTempl
     if (!result.IsEmpty())
         return result;
 
-    TRACE_EVENT_SCOPED_SAMPLING_STATE("Blink", "BuildDOMTemplate");
+    TRACE_EVENT_SCOPED_SAMPLING_STATE("blink", "BuildDOMTemplate");
     result = v8::FunctionTemplate::New(isolate, V8TestInterfaceEventTargetConstructorCallback);
     v8::Local<v8::ObjectTemplate> instanceTemplate = result->InstanceTemplate();
     instanceTemplate->SetInternalFieldCount(V8TestInterfaceEventTarget::internalFieldCount);
@@ -93,7 +83,7 @@ v8::Handle<v8::FunctionTemplate> V8TestInterfaceEventTargetConstructor::domTempl
     return result;
 }
 
-static void configureV8TestInterfaceEventTargetTemplate(v8::Handle<v8::FunctionTemplate> functionTemplate, v8::Isolate* isolate)
+static void installV8TestInterfaceEventTargetTemplate(v8::Handle<v8::FunctionTemplate> functionTemplate, v8::Isolate* isolate)
 {
     functionTemplate->ReadOnlyPrototype();
 
@@ -112,7 +102,7 @@ static void configureV8TestInterfaceEventTargetTemplate(v8::Handle<v8::FunctionT
 
 v8::Handle<v8::FunctionTemplate> V8TestInterfaceEventTarget::domTemplate(v8::Isolate* isolate)
 {
-    return V8DOMConfiguration::domClassTemplate(isolate, const_cast<WrapperTypeInfo*>(&wrapperTypeInfo), configureV8TestInterfaceEventTargetTemplate);
+    return V8DOMConfiguration::domClassTemplate(isolate, const_cast<WrapperTypeInfo*>(&wrapperTypeInfo), installV8TestInterfaceEventTargetTemplate);
 }
 
 bool V8TestInterfaceEventTarget::hasInstance(v8::Handle<v8::Value> v8Value, v8::Isolate* isolate)

@@ -26,7 +26,6 @@
 #ifndef RenderLayerCompositor_h
 #define RenderLayerCompositor_h
 
-#include "core/page/ChromeClient.h"
 #include "core/rendering/RenderLayer.h"
 #include "core/rendering/compositing/CompositingReasonFinder.h"
 #include "platform/graphics/GraphicsLayerClient.h"
@@ -34,7 +33,10 @@
 
 namespace WebCore {
 
+class DocumentLifecycle;
 class GraphicsLayer;
+class GraphicsLayerFactory;
+class Page;
 class RenderPart;
 class ScrollingCoordinator;
 
@@ -93,16 +95,6 @@ public:
 
     void didLayout();
 
-    enum UpdateLayerCompositingStateOptions {
-        Normal,
-        UseChickenEggHacks, // Use this to trigger temporary chicken-egg hacks. See crbug.com/339892.
-    };
-
-    // Update the compositing dirty bits, based on the compositing-impacting properties of the layer.
-    void updateLayerCompositingState(RenderLayer*, UpdateLayerCompositingStateOptions = Normal);
-
-    // Returns whether this layer is clipped by another layer that is not an ancestor of the given layer in the stacking context hierarchy.
-    bool clippedByNonAncestorInStackingTree(const RenderLayer*) const;
     // Whether layer's compositedLayerMapping needs a GraphicsLayer to clip z-order children of the given RenderLayer.
     bool clipsCompositingDescendants(const RenderLayer*) const;
 
@@ -117,7 +109,6 @@ public:
     // Repaint the appropriate layers when the given RenderLayer starts or stops being composited.
     void repaintOnCompositingChange(RenderLayer*);
 
-    void repaintInCompositedAncestor(RenderLayer*, const LayoutRect&);
     void repaintCompositedLayers();
 
     RenderLayer* rootRenderLayer() const;
@@ -164,8 +155,9 @@ public:
     void setTracksRepaints(bool);
 
     virtual String debugName(const GraphicsLayer*) OVERRIDE;
+    DocumentLifecycle& lifecycle() const;
 
-    void updateStyleDeterminedCompositingReasons(RenderLayer*);
+    void updatePotentialCompositingReasonsFromStyle(RenderLayer*);
 
     // Whether the layer could ever be composited.
     bool canBeComposited(const RenderLayer*) const;
@@ -183,7 +175,7 @@ public:
 private:
     class OverlapMap;
 
-#if ASSERT_ENABLED
+#if ENABLE(ASSERT)
     void assertNoUnresolvedDirtyBits();
 #endif
 
@@ -226,10 +218,6 @@ private:
     bool requiresHorizontalScrollbarLayer() const;
     bool requiresVerticalScrollbarLayer() const;
     bool requiresScrollCornerLayer() const;
-
-    void applyUpdateLayerCompositingStateChickenEggHacks(RenderLayer*, CompositingStateTransitionType compositedLayerUpdate);
-
-    DocumentLifecycle& lifecycle() const;
 
     void applyOverlayFullscreenVideoAdjustment();
 

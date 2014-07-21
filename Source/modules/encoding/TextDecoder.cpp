@@ -32,7 +32,7 @@
 
 #include "modules/encoding/TextDecoder.h"
 
-#include "bindings/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionState.h"
 #include "core/dom/ExceptionCode.h"
 #include "wtf/StringExtras.h"
 #include "wtf/text/TextEncodingRegistry.h"
@@ -41,21 +41,19 @@ namespace WebCore {
 
 TextDecoder* TextDecoder::create(const String& label, const Dictionary& options, ExceptionState& exceptionState)
 {
-    const String& encodingLabel = label.isNull() ? String("utf-8") : label;
-
-    WTF::TextEncoding encoding(encodingLabel);
+    WTF::TextEncoding encoding(label);
     // The replacement encoding is not valid, but the Encoding API also
     // rejects aliases of the replacement encoding.
     if (!encoding.isValid() || !strcasecmp(encoding.name(), "replacement")) {
-        exceptionState.throwTypeError("The encoding label provided ('" + encodingLabel + "') is invalid.");
+        exceptionState.throwTypeError("The encoding label provided ('" + label + "') is invalid.");
         return 0;
     }
 
     bool fatal = false;
-    options.get("fatal", fatal);
+    DictionaryHelper::get(options, "fatal", fatal);
 
     bool ignoreBOM = false;
-    options.get("ignoreBOM", ignoreBOM);
+    DictionaryHelper::get(options, "ignoreBOM", ignoreBOM);
 
     return new TextDecoder(encoding, fatal, ignoreBOM);
 }
@@ -87,7 +85,7 @@ String TextDecoder::encoding() const
 String TextDecoder::decode(ArrayBufferView* input, const Dictionary& options, ExceptionState& exceptionState)
 {
     bool stream = false;
-    options.get("stream", stream);
+    DictionaryHelper::get(options, "stream", stream);
 
     const char* start = input ? static_cast<const char*>(input->baseAddress()) : 0;
     size_t length = input ? input->byteLength() : 0;

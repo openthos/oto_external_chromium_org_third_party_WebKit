@@ -27,12 +27,14 @@
 #include "config.h"
 #include "core/frame/LocalDOMWindow.h"
 
-#include "bindings/v8/ExceptionMessages.h"
-#include "bindings/v8/ExceptionState.h"
-#include "bindings/v8/ExceptionStatePlaceholder.h"
-#include "bindings/v8/ScriptCallStackFactory.h"
-#include "bindings/v8/ScriptController.h"
-#include "bindings/v8/SerializedScriptValue.h"
+#include "bindings/core/v8/Dictionary.h"
+#include "bindings/core/v8/ExceptionMessages.h"
+#include "bindings/core/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionStatePlaceholder.h"
+#include "bindings/core/v8/ScriptCallStackFactory.h"
+#include "bindings/core/v8/ScriptController.h"
+#include "bindings/core/v8/SerializedScriptValue.h"
+#include "bindings/core/v8/V8DOMActivityLogger.h"
 #include "core/css/CSSComputedStyleDeclaration.h"
 #include "core/css/CSSRuleList.h"
 #include "core/css/DOMWindowCSS.h"
@@ -327,7 +329,7 @@ bool LocalDOMWindow::canShowModalDialogNow(const LocalFrame* frame)
 LocalDOMWindow::LocalDOMWindow(LocalFrame& frame)
     : FrameDestructionObserver(&frame)
     , m_shouldPrintWhenFinishedLoading(false)
-#if ASSERT_ENABLED
+#if ENABLE(ASSERT)
     , m_hasBeenReset(false)
 #endif
 {
@@ -397,10 +399,8 @@ PassRefPtrWillBeRawPtr<Document> LocalDOMWindow::installNewDocument(const String
     m_eventQueue = DOMWindowEventQueue::create(m_document.get());
     m_document->attach();
 
-    if (!m_frame) {
-        // FIXME: Oilpan: Remove .get() when m_document becomes Member<>.
-        return m_document.get();
-    }
+    if (!m_frame)
+        return m_document;
 
     m_frame->script().updateDocument();
     m_document->updateViewportDescription();
@@ -419,9 +419,7 @@ PassRefPtrWillBeRawPtr<Document> LocalDOMWindow::installNewDocument(const String
         if (m_document->hasTouchEventHandlers())
             m_frame->host()->chrome().client().needTouchEvents(true);
     }
-
-    // FIXME: Oilpan: Remove .get() when m_document becomes Member<>.
-    return m_document.get();
+    return m_document;
 }
 
 EventQueue* LocalDOMWindow::eventQueue() const
@@ -608,7 +606,7 @@ void LocalDOMWindow::resetDOMWindowProperties()
     m_sessionStorage = nullptr;
     m_localStorage = nullptr;
     m_applicationCache = nullptr;
-#if ASSERT_ENABLED
+#if ENABLE(ASSERT)
     m_hasBeenReset = true;
 #endif
 }
@@ -1374,7 +1372,7 @@ double LocalDOMWindow::devicePixelRatio() const
 static bool scrollBehaviorFromScrollOptions(const Dictionary& scrollOptions, ScrollBehavior& scrollBehavior, ExceptionState& exceptionState)
 {
     String scrollBehaviorString;
-    if (!scrollOptions.get("behavior", scrollBehaviorString)) {
+    if (!DictionaryHelper::get(scrollOptions, "behavior", scrollBehaviorString)) {
         scrollBehavior = ScrollBehaviorAuto;
         return true;
     }
@@ -1570,7 +1568,7 @@ bool LocalDOMWindow::addEventListener(const AtomicString& eventType, PassRefPtr<
     return true;
 }
 
-bool LocalDOMWindow::removeEventListener(const AtomicString& eventType, EventListener* listener, bool useCapture)
+bool LocalDOMWindow::removeEventListener(const AtomicString& eventType, PassRefPtr<EventListener> listener, bool useCapture)
 {
     if (!EventTarget::removeEventListener(eventType, listener, useCapture))
         return false;
@@ -1631,7 +1629,7 @@ bool LocalDOMWindow::dispatchEvent(PassRefPtrWillBeRawPtr<Event> prpEvent, PassR
     event->setCurrentTarget(this);
     event->setEventPhase(Event::AT_TARGET);
 
-    TRACE_EVENT1(TRACE_DISABLED_BY_DEFAULT("devtools.timeline"), "EventDispatch", "type", event->type().ascii());
+    TRACE_EVENT1(TRACE_DISABLED_BY_DEFAULT("devtools.timeline"), "EventDispatch", "data", InspectorEventDispatchEvent::data(*event));
     // FIXME(361045): remove InspectorInstrumentation calls once DevTools Timeline migrates to tracing.
     InspectorInstrumentationCookie cookie = InspectorInstrumentation::willDispatchEventOnWindow(frame(), *event, this);
 
@@ -1696,6 +1694,16 @@ void LocalDOMWindow::setLocation(const String& urlString, LocalDOMWindow* callin
 
     if (isInsecureScriptAccess(*callingWindow, completedURL))
         return;
+
+    V8DOMActivityLogger* activityLogger = V8DOMActivityLogger::currentActivityLoggerIfIsolatedWorld();
+    if (activityLogger) {
+        Vector<String> argv;
+        argv.append("LocalDOMWindow");
+        argv.append("url");
+        argv.append(firstFrame->document()->url());
+        argv.append(completedURL);
+        activityLogger->logEvent("blinkSetAttribute", argv.size(), argv.data());
+    }
 
     // We want a new history item if we are processing a user gesture.
     m_frame->navigationScheduler().scheduleLocationChange(activeDocument,
@@ -1815,6 +1823,10 @@ PassRefPtrWillBeRawPtr<LocalDOMWindow> LocalDOMWindow::open(const String& urlStr
     LocalFrame* firstFrame = enteredWindow->frame();
     if (!firstFrame)
         return nullptr;
+
+    UseCounter::count(*activeDocument, UseCounter::DOMWindowOpen);
+    if (!windowFeaturesString.isEmpty())
+        UseCounter::count(*activeDocument, UseCounter::DOMWindowOpenFeatures);
 
     if (!enteredWindow->allowPopUp()) {
         // Because FrameTree::find() returns true for empty strings, we must check for empty frame names.

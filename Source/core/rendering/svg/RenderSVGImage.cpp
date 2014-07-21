@@ -29,7 +29,6 @@
 
 #include "core/rendering/GraphicsContextAnnotator.h"
 #include "core/rendering/ImageQualityController.h"
-#include "core/rendering/LayoutRepainter.h"
 #include "core/rendering/PointerEventsHitRules.h"
 #include "core/rendering/RenderImageResource.h"
 #include "core/rendering/svg/RenderSVGResource.h"
@@ -93,7 +92,6 @@ void RenderSVGImage::layout()
 {
     ASSERT(needsLayout());
 
-    LayoutRepainter repainter(*this, SVGRenderSupport::checkForSVGRepaintDuringLayout(this) && selfNeedsLayout());
     updateImageViewport();
 
     bool transformOrBoundariesUpdate = m_needsTransformUpdate || m_needsBoundariesUpdate;
@@ -117,7 +115,6 @@ void RenderSVGImage::layout()
     if (transformOrBoundariesUpdate)
         RenderSVGModelObject::setNeedsBoundariesUpdate();
 
-    repainter.repaintAfterLayout();
     clearNeedsLayout();
 }
 
@@ -148,7 +145,7 @@ void RenderSVGImage::paint(PaintInfo& paintInfo, const LayoutPoint&)
             SVGRenderingContext::DontSaveGraphicsContext : SVGRenderingContext::SaveGraphicsContext);
 
         if (renderingContext.isRenderingPrepared()) {
-            if (style()->svgStyle()->bufferedRendering() == BR_STATIC && renderingContext.bufferForeground(m_bufferedForeground))
+            if (style()->svgStyle().bufferedRendering() == BR_STATIC && renderingContext.bufferForeground(m_bufferedForeground))
                 return;
 
             paintForeground(childPaintInfo);
@@ -169,7 +166,7 @@ void RenderSVGImage::paintForeground(PaintInfo& paintInfo)
     imageElement->preserveAspectRatio()->currentValue()->transformRect(destRect, srcRect);
 
     InterpolationQuality interpolationQuality = InterpolationDefault;
-    if (style()->svgStyle()->bufferedRendering() != BR_STATIC)
+    if (style()->svgStyle().bufferedRendering() != BR_STATIC)
         interpolationQuality = ImageQualityController::imageQualityController()->chooseInterpolationQuality(paintInfo.context, this, image.get(), image.get(), LayoutSize(destRect.size()));
 
     InterpolationQuality previousInterpolationQuality = paintInfo.context->imageInterpolationQuality();

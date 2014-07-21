@@ -15,19 +15,19 @@ gyp_shared_intermediate_dir := $(call intermediates-dir-for,GYP,shared,,,$(GYP_V
 GYP_TARGET_DEPENDENCIES :=
 
 ### Rules for action "generateSupportedCSSProperties":
-$(gyp_shared_intermediate_dir)/blink/SupportedCSSProperties.js: gyp_local_path := $(LOCAL_PATH)
-$(gyp_shared_intermediate_dir)/blink/SupportedCSSProperties.js: gyp_var_prefix := $(GYP_VAR_PREFIX)
-$(gyp_shared_intermediate_dir)/blink/SupportedCSSProperties.js: gyp_intermediate_dir := $(abspath $(gyp_intermediate_dir))
-$(gyp_shared_intermediate_dir)/blink/SupportedCSSProperties.js: gyp_shared_intermediate_dir := $(abspath $(gyp_shared_intermediate_dir))
-$(gyp_shared_intermediate_dir)/blink/SupportedCSSProperties.js: export PATH := $(subst $(ANDROID_BUILD_PATHS),,$(PATH))
-$(gyp_shared_intermediate_dir)/blink/SupportedCSSProperties.js: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/scripts/generate_supported_css.py $(LOCAL_PATH)/third_party/WebKit/Source/core/css/CSSPropertyNames.in $(LOCAL_PATH)/third_party/WebKit/Source/core/css/SVGCSSPropertyNames.in $(LOCAL_PATH)/third_party/WebKit/Source/core/css/CSSShorthands.in $(GYP_TARGET_DEPENDENCIES)
+$(gyp_shared_intermediate_dir)/blink/devtools/SupportedCSSProperties.js: gyp_local_path := $(LOCAL_PATH)
+$(gyp_shared_intermediate_dir)/blink/devtools/SupportedCSSProperties.js: gyp_var_prefix := $(GYP_VAR_PREFIX)
+$(gyp_shared_intermediate_dir)/blink/devtools/SupportedCSSProperties.js: gyp_intermediate_dir := $(abspath $(gyp_intermediate_dir))
+$(gyp_shared_intermediate_dir)/blink/devtools/SupportedCSSProperties.js: gyp_shared_intermediate_dir := $(abspath $(gyp_shared_intermediate_dir))
+$(gyp_shared_intermediate_dir)/blink/devtools/SupportedCSSProperties.js: export PATH := $(subst $(ANDROID_BUILD_PATHS),,$(PATH))
+$(gyp_shared_intermediate_dir)/blink/devtools/SupportedCSSProperties.js: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/scripts/generate_supported_css.py $(LOCAL_PATH)/third_party/WebKit/Source/core/css/CSSPropertyNames.in $(LOCAL_PATH)/third_party/WebKit/Source/core/css/SVGCSSPropertyNames.in $(LOCAL_PATH)/third_party/WebKit/Source/core/css/CSSShorthands.in $(GYP_TARGET_DEPENDENCIES)
 	@echo "Gyp action: Generating supported CSS properties for front end ($@)"
-	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/devtools; mkdir -p $(gyp_shared_intermediate_dir)/blink; python scripts/generate_supported_css.py ../core/css/CSSPropertyNames.in ../core/css/SVGCSSPropertyNames.in ../core/css/CSSShorthands.in "$(gyp_shared_intermediate_dir)/blink/SupportedCSSProperties.js"
+	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/devtools; mkdir -p $(gyp_shared_intermediate_dir)/blink/devtools; python scripts/generate_supported_css.py ../core/css/CSSPropertyNames.in ../core/css/SVGCSSPropertyNames.in ../core/css/CSSShorthands.in "$(gyp_shared_intermediate_dir)/blink/devtools/SupportedCSSProperties.js"
 
 
 
 GYP_GENERATED_OUTPUTS := \
-	$(gyp_shared_intermediate_dir)/blink/SupportedCSSProperties.js
+	$(gyp_shared_intermediate_dir)/blink/devtools/SupportedCSSProperties.js
 
 # Make sure our deps and generated files are built first.
 LOCAL_ADDITIONAL_DEPENDENCIES := $(GYP_TARGET_DEPENDENCIES) $(GYP_GENERATED_OUTPUTS)

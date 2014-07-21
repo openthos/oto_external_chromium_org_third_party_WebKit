@@ -27,7 +27,7 @@
 #ifndef ClientRect_h
 #define ClientRect_h
 
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "platform/geometry/FloatRect.h"
 #include "platform/heap/Handle.h"
 #include "wtf/PassRefPtr.h"
@@ -37,7 +37,7 @@ namespace WebCore {
 
 class IntRect;
 
-class ClientRect FINAL : public RefCountedWillBeGarbageCollectedFinalized<ClientRect>, public ScriptWrappable {
+class ClientRect FINAL : public RefCountedWillBeGarbageCollected<ClientRect>, public ScriptWrappable {
 public:
     static PassRefPtrWillBeRawPtr<ClientRect> create()
     {

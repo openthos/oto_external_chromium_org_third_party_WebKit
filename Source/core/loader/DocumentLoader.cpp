@@ -52,6 +52,7 @@
 #include "core/frame/Settings.h"
 #include "platform/Logging.h"
 #include "platform/UserGestureIndicator.h"
+#include "platform/mhtml/ArchiveResource.h"
 #include "platform/mhtml/ArchiveResourceCollection.h"
 #include "platform/mhtml/MHTMLArchive.h"
 #include "platform/plugins/PluginData.h"
@@ -296,16 +297,16 @@ bool DocumentLoader::isRedirectAfterPost(const ResourceRequest& newRequest, cons
     return false;
 }
 
-bool DocumentLoader::shouldContinueForNavigationPolicy(const ResourceRequest& request)
+bool DocumentLoader::shouldContinueForNavigationPolicy(const ResourceRequest& request, ContentSecurityPolicyCheck shouldCheckMainWorldContentSecurityPolicy, bool isTransitionNavigation)
 {
     // Don't ask if we are loading an empty URL.
     if (request.url().isEmpty() || m_substituteData.isValid())
         return true;
 
     // If we're loading content into a subframe, check against the parent's Content Security Policy
-    // and kill the load if that check fails.
+    // and kill the load if that check fails, unless we should bypass the main world's CSP.
     // FIXME: CSP checks are broken for OOPI. For now, this policy always allows frames with a remote parent...
-    if (m_frame->deprecatedLocalOwner() && !m_frame->deprecatedLocalOwner()->document().contentSecurityPolicy()->allowChildFrameFromSource(request.url())) {
+    if ((shouldCheckMainWorldContentSecurityPolicy == CheckContentSecurityPolicy) && (m_frame->deprecatedLocalOwner() && !m_frame->deprecatedLocalOwner()->document().contentSecurityPolicy()->allowChildFrameFromSource(request.url()))) {
         // Fire a load event, as timing attacks would otherwise reveal that the
         // frame was blocked. This way, it looks like every other cross-origin
         // page load.
@@ -315,7 +316,7 @@ bool DocumentLoader::shouldContinueForNavigationPolicy(const ResourceRequest& re
     }
 
     NavigationPolicy policy = m_triggeringAction.policy();
-    policy = frameLoader()->client()->decidePolicyForNavigation(request, this, policy);
+    policy = frameLoader()->client()->decidePolicyForNavigation(request, this, policy, isTransitionNavigation);
     if (policy == NavigationPolicyCurrentTab)
         return true;
     if (policy == NavigationPolicyIgnore)
@@ -378,7 +379,7 @@ void DocumentLoader::willSendRequest(ResourceRequest& newRequest, const Resource
     if (m_frame->tree().parent()) {
         // FIXME: This does not yet work with out-of-process iframes.
         Frame* top = m_frame->tree().top();
-        if (top->isLocalFrame() && !toLocalFrame(top)->loader().mixedContentChecker()->canRunInsecureContent(toLocalFrame(top)->document()->securityOrigin(), newRequest.url())) {
+        if (top->isLocalFrame() && !toLocalFrame(top)->loader().mixedContentChecker()->canFrameInsecureContent(toLocalFrame(top)->document()->securityOrigin(), newRequest.url())) {
             cancelMainResourceLoad(ResourceError::cancelledError(newRequest.url()));
             return;
         }
@@ -391,7 +392,7 @@ void DocumentLoader::willSendRequest(ResourceRequest& newRequest, const Resource
 
     appendRedirect(newRequest.url());
     frameLoader()->client()->dispatchDidReceiveServerRedirectForProvisionalLoad();
-    if (!shouldContinueForNavigationPolicy(newRequest))
+    if (!shouldContinueForNavigationPolicy(newRequest, CheckContentSecurityPolicy))
         cancelMainResourceLoad(ResourceError::cancelledError(m_request.url()));
 }
 
@@ -622,7 +623,7 @@ void DocumentLoader::addAllArchiveResources(MHTMLArchive* archive)
 {
     ASSERT(archive);
     if (!m_archiveResourceCollection)
-        m_archiveResourceCollection = adoptPtr(new ArchiveResourceCollection);
+        m_archiveResourceCollection = ArchiveResourceCollection::create();
     m_archiveResourceCollection->addAllResources(archive);
 }
 

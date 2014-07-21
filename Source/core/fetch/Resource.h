@@ -84,6 +84,7 @@ public:
 
     Resource(const ResourceRequest&, Type);
     virtual ~Resource();
+    virtual void dispose();
 
     virtual void load(ResourceFetcher*, const ResourceLoaderOptions&);
 
@@ -203,6 +204,7 @@ public:
     DataBufferingPolicy dataBufferingPolicy() const { return m_options.dataBufferingPolicy; }
     void setDataBufferingPolicy(DataBufferingPolicy);
 
+    bool isUnusedPreload() const { return isPreloaded() && preloadResult() == PreloadNotReferenced; }
     bool isPreloaded() const { return m_preloadCount; }
     void increasePreloadCount() { ++m_preloadCount; }
     void decreasePreloadCount() { ASSERT(m_preloadCount); --m_preloadCount; }

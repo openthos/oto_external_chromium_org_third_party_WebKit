@@ -29,8 +29,6 @@
 #include "core/rendering/RenderLayer.h"
 #include "core/rendering/RenderView.h"
 
-using namespace std;
-
 namespace WebCore {
 
 bool RenderLayerModelObject::s_wasFloating = false;
@@ -99,19 +97,12 @@ void RenderLayerModelObject::styleWillChange(StyleDifference diff, const RenderS
         // Do a repaint with the old style first through RenderLayerRepainter.
         // RenderObject::styleWillChange takes care of repainting objects without RenderLayers.
         if (parent() && diff.needsRepaintLayer()) {
+            // This is currently need to make non-layout-requiring updates work that impact descendant layers,
+            // such as changes to opacity or transform.
             layer()->repainter().repaintIncludingNonCompositingDescendants();
             if (oldStyle->hasClip() != newStyle.hasClip()
                 || oldStyle->clip() != newStyle.clip())
                 layer()->clipper().clearClipRectsIncludingDescendants();
-        } else if (diff.needsFullLayout()) {
-            if (hasLayer()) {
-                if (!layer()->hasCompositedLayerMapping() && oldStyle->position() != newStyle.position())
-                    layer()->repainter().repaintIncludingNonCompositingDescendants();
-            } else if (newStyle.hasTransform() || newStyle.opacity() < 1 || newStyle.hasFilter()) {
-                // If we don't have a layer yet, but we are going to get one because of transform or opacity,
-                //  then we need to repaint the old position of the object.
-                paintInvalidationForWholeRenderer();
-            }
         }
     }
 
@@ -134,10 +125,7 @@ void RenderLayerModelObject::styleDidChange(StyleDifference diff, const RenderSt
             if (parent() && !needsLayout() && containingBlock()) {
                 // FIXME: This invalidation is overly broad. We should update to
                 // do the correct invalidation at RenderStyle::diff time. crbug.com/349061
-                if (RuntimeEnabledFeatures::repaintAfterLayoutEnabled())
-                    layer()->renderer()->setShouldDoFullPaintInvalidationAfterLayout(true);
-                else
-                    layer()->repainter().setRepaintStatus(NeedsFullRepaint);
+                layer()->renderer()->setShouldDoFullPaintInvalidation(true);
                 // Hit in animations/interpolation/perspective-interpolation.html
                 // FIXME: I suspect we can remove this assert disabler now.
                 DisableCompositingQueryAsserts disabler;
@@ -189,21 +177,6 @@ void RenderLayerModelObject::addLayerHitTestRects(LayerHitTestRects& rects, cons
     } else {
         RenderObject::addLayerHitTestRects(rects, currentLayer, layerOffset, containerRect);
     }
-}
-
-CompositedLayerMappingPtr RenderLayerModelObject::compositedLayerMapping() const
-{
-    return m_layer ? m_layer->compositedLayerMapping() : 0;
-}
-
-bool RenderLayerModelObject::hasCompositedLayerMapping() const
-{
-    return m_layer ? m_layer->hasCompositedLayerMapping() : false;
-}
-
-CompositedLayerMapping* RenderLayerModelObject::groupedMapping() const
-{
-    return m_layer ? m_layer->groupedMapping() : 0;
 }
 
 } // namespace WebCore

@@ -23,7 +23,7 @@
 #include "config.h"
 #include "core/frame/Navigator.h"
 
-#include "bindings/v8/ScriptController.h"
+#include "bindings/core/v8/ScriptController.h"
 #include "core/dom/Document.h"
 #include "core/frame/FrameHost.h"
 #include "core/frame/LocalFrame.h"
@@ -137,7 +137,7 @@ Vector<String> Navigator::languages()
     }
 
     String acceptLanguages = m_frame->host()->chrome().client().acceptLanguages();
-    acceptLanguages.split(",", languages);
+    acceptLanguages.split(',', languages);
 
     // Sanitizing tokens. We could do that more extensively but we should assume
     // that the accept languages are already sane and support BCP47. It is

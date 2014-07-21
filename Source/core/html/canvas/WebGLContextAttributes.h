@@ -27,7 +27,7 @@
 #ifndef WebGLContextAttributes_h
 #define WebGLContextAttributes_h
 
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "core/html/canvas/CanvasContextAttributes.h"
 #include "public/platform/WebGraphicsContext3D.h"
 #include "wtf/PassRefPtr.h"
@@ -81,7 +81,7 @@ public:
     // Set up the attributes that can be used to initialize a WebGraphicsContext3D.
     // It's mostly based on WebGLContextAttributes, but would be adjusted based
     // on settings.
-    blink::WebGraphicsContext3D::Attributes attributes(const blink::WebString&, Settings*) const;
+    blink::WebGraphicsContext3D::Attributes attributes(const blink::WebString&, Settings*, unsigned webGLVersion) const;
 
 protected:
     WebGLContextAttributes();

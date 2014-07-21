@@ -24,7 +24,6 @@
 
 #include "core/SVGNames.h"
 #include "core/XLinkNames.h"
-#include "core/dom/Document.h"
 
 namespace WebCore {
 
@@ -125,7 +124,9 @@ void SVGCursorElement::svgAttributeChanged(const QualifiedName& attrName)
 
 void SVGCursorElement::trace(Visitor* visitor)
 {
+#if ENABLE(OILPAN)
     visitor->trace(m_clients);
+#endif
     SVGElement::trace(visitor);
 }
 

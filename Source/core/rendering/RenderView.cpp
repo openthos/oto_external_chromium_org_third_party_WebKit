@@ -35,6 +35,7 @@
 #include "core/rendering/RenderFlowThread.h"
 #include "core/rendering/RenderGeometryMap.h"
 #include "core/rendering/RenderLayer.h"
+#include "core/rendering/RenderPart.h"
 #include "core/rendering/RenderSelectionInfo.h"
 #include "core/rendering/compositing/CompositedLayerMapping.h"
 #include "core/rendering/compositing/RenderLayerCompositor.h"
@@ -59,6 +60,7 @@ RenderView::RenderView(Document* document)
     , m_layoutState(0)
     , m_renderQuoteHead(0)
     , m_renderCounterCount(0)
+    , m_hitTestCount(0)
 {
     // init RenderObject attributes
     setInline(false);
@@ -83,6 +85,7 @@ bool RenderView::hitTest(const HitTestRequest& request, HitTestResult& result)
 bool RenderView::hitTest(const HitTestRequest& request, const HitTestLocation& location, HitTestResult& result)
 {
     TRACE_EVENT0("blink", "RenderView::hitTest");
+    m_hitTestCount++;
 
     // We have to recursively update layout/style here because otherwise, when the hit test recurses
     // into a child document, it could trigger a layout on the parent document, which can destroy RenderLayers
@@ -119,8 +122,7 @@ bool RenderView::isChildAllowed(RenderObject* child, RenderStyle*) const
 
 static bool canCenterDialog(const RenderStyle* style)
 {
-    // FIXME: We must center for FixedPosition as well.
-    return style->position() == AbsolutePosition && style->hasAutoTopAndBottom();
+    return (style->position() == AbsolutePosition || style->position() == FixedPosition) && style->hasAutoTopAndBottom();
 }
 
 void RenderView::positionDialog(RenderBox* box)
@@ -140,9 +142,8 @@ void RenderView::positionDialog(RenderBox* box)
         return;
     }
     FrameView* frameView = document().view();
-    int scrollTop = frameView->scrollOffset().height();
+    LayoutUnit top = (box->style()->position() == FixedPosition) ? 0 : frameView->scrollOffset().height();
     int visibleHeight = frameView->visibleContentRect(IncludeScrollbars).height();
-    LayoutUnit top = scrollTop;
     if (box->height() < visibleHeight)
         top += (visibleHeight - box->height()) / 2;
     box->setY(top);
@@ -171,17 +172,14 @@ void RenderView::layoutContent()
     if (RuntimeEnabledFeatures::dialogElementEnabled())
         positionDialogs();
 
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     checkLayoutState();
 #endif
 }
 
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
 void RenderView::checkLayoutState()
 {
-    if (!RuntimeEnabledFeatures::repaintAfterLayoutEnabled()) {
-        ASSERT(layoutDeltaMatches(LayoutSize()));
-    }
     ASSERT(!m_layoutState->next());
 }
 #endif
@@ -208,7 +206,7 @@ bool RenderView::shouldDoFullRepaintForNextLayout() const
             // background positioning area resize.
             if (!m_compositor || !m_compositor->needsFixedRootBackgroundLayer(layer())) {
                 if (backgroundRenderer->style()->hasFixedBackgroundImage()
-                    && mustInvalidateFillLayersPaintOnHeightChange(*backgroundRenderer->style()->backgroundLayers()))
+                    && mustInvalidateFillLayersPaintOnHeightChange(backgroundRenderer->style()->backgroundLayers()))
                 return true;
             }
         }
@@ -256,13 +254,13 @@ void RenderView::layout()
 
     layoutContent();
 
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     checkLayoutState();
 #endif
     clearNeedsLayout();
 }
 
-void RenderView::mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState& transformState, MapCoordinatesFlags mode, bool* wasFixed) const
+void RenderView::mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState& transformState, MapCoordinatesFlags mode, bool* wasFixed, const PaintInvalidationState* paintInvalidationState) const
 {
     ASSERT_UNUSED(wasFixed, !wasFixed || *wasFixed == static_cast<bool>(mode & IsFixed));
 
@@ -283,7 +281,7 @@ void RenderView::mapLocalToContainer(const RenderLayerModelObject* repaintContai
             transformState.move(-frame()->view()->scrollOffset());
             if (parentDocRenderer->isBox())
                 transformState.move(toLayoutSize(toRenderBox(parentDocRenderer)->contentBoxRect().location()));
-            parentDocRenderer->mapLocalToContainer(repaintContainer, transformState, mode, wasFixed);
+            parentDocRenderer->mapLocalToContainer(repaintContainer, transformState, mode, wasFixed, paintInvalidationState);
             return;
         }
     }
@@ -391,7 +389,7 @@ bool RenderView::rootFillsViewportBackground(RenderBox* rootBox) const
     return rootBox->frameRect().contains(frameRect());
 }
 
-void RenderView::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint&)
+void RenderView::paintBoxDecorationBackground(PaintInfo& paintInfo, const LayoutPoint&)
 {
     // Check to see if we are enclosed by a layer that requires complex painting rules.  If so, we cannot blit
     // when scrolling, and we need to use slow repaints.  Examples of layers that require this are transparent layers,
@@ -406,7 +404,7 @@ void RenderView::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint&)
             break;
         }
 
-        if (layer->enclosingCompositingLayerForRepaint()) {
+        if (layer->enclosingLayerForPaintInvalidation()) {
             frameView()->setCannotBlitToWindow();
             break;
         }
@@ -446,9 +444,8 @@ void RenderView::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint&)
     }
 }
 
-void RenderView::invalidateTreeAfterLayout(const RenderLayerModelObject& paintInvalidationContainer)
+void RenderView::invalidateTreeIfNeeded(const PaintInvalidationState& paintInvalidationState)
 {
-    ASSERT(RuntimeEnabledFeatures::repaintAfterLayoutEnabled());
     ASSERT(!needsLayout());
 
     // We specifically need to repaint the viewRect since other renderers
@@ -456,8 +453,7 @@ void RenderView::invalidateTreeAfterLayout(const RenderLayerModelObject& paintIn
     if (doingFullRepaint() && !viewRect().isEmpty())
         repaintViewRectangle(viewRect());
 
-    LayoutState rootLayoutState(0, false, *this);
-    RenderBlock::invalidateTreeAfterLayout(paintInvalidationContainer);
+    RenderBlock::invalidateTreeIfNeeded(paintInvalidationState);
 }
 
 void RenderView::repaintViewRectangle(const LayoutRect& repaintRect) const
@@ -499,7 +495,7 @@ void RenderView::repaintViewAndCompositedLayers()
         compositor()->repaintCompositedLayers();
 }
 
-void RenderView::mapRectToPaintInvalidationBacking(const RenderLayerModelObject* paintInvalidationContainer, LayoutRect& rect, bool fixed) const
+void RenderView::mapRectToPaintInvalidationBacking(const RenderLayerModelObject* paintInvalidationContainer, LayoutRect& rect, bool fixed, const PaintInvalidationState* paintInvalidationState) const
 {
     // If a container was specified, and was not 0 or the RenderView,
     // then we should have found it by now.
@@ -800,7 +796,7 @@ void RenderView::getSelection(RenderObject*& startRenderer, int& startOffset, Re
 
 void RenderView::clearSelection()
 {
-    layer()->repaintBlockSelectionGaps();
+    layer()->invalidatePaintForBlockSelectionGaps();
     setSelection(0, -1, 0, -1, RepaintNewMinusOld);
 }
 

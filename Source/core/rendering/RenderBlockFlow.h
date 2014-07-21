@@ -60,6 +60,7 @@ public:
     virtual void layoutBlock(bool relayoutChildren) OVERRIDE;
 
     virtual void computeOverflow(LayoutUnit oldClientAfterEdge, bool recomputeFloats = false) OVERRIDE;
+
     virtual void deleteLineBoxTree() OVERRIDE FINAL;
 
     LayoutUnit availableLogicalWidthForLine(LayoutUnit position, bool shouldIndentText, LayoutUnit logicalHeight = 0) const
@@ -150,7 +151,7 @@ public:
 
     LayoutUnit startAlignedOffsetForLine(LayoutUnit position, bool shouldIndentText);
 
-    void setStaticInlinePositionForChild(RenderBox*, LayoutUnit blockOffset, LayoutUnit inlinePosition);
+    void setStaticInlinePositionForChild(RenderBox*, LayoutUnit inlinePosition);
     void updateStaticInlinePositionForChild(RenderBox*, LayoutUnit logicalTop);
 
     static bool shouldSkipCreatingRunsForObject(RenderObject* obj)
@@ -197,6 +198,10 @@ public:
 
     GapRects inlineSelectionGaps(RenderBlock* rootBlock, const LayoutPoint& rootBlockPhysicalPosition, const LayoutSize& offsetFromRootBlock,
         LayoutUnit& lastLogicalTop, LayoutUnit& lastLogicalLeft, LayoutUnit& lastLogicalRight, const PaintInfo*);
+
+    LayoutUnit paginationStrut() const { return m_rareData ? m_rareData->m_paginationStrut : LayoutUnit(); }
+    void setPaginationStrut(LayoutUnit);
+
 protected:
     void rebuildFloatsFromIntruding();
     void layoutInlineChildren(bool relayoutChildren, LayoutUnit& repaintLogicalTop, LayoutUnit& repaintLogicalBottom, LayoutUnit afterEdge);
@@ -220,11 +225,9 @@ protected:
     virtual RenderObject* layoutSpecialExcludedChild(bool /*relayoutChildren*/, SubtreeLayoutScope&);
     virtual bool updateLogicalWidthAndColumnWidth() OVERRIDE;
 
-    // These functions optionally update LayoutState's layoutDelta, which is used to ensure they're repainted correctly when moved
-    enum ApplyLayoutDeltaMode { ApplyLayoutDelta, DoNotApplyLayoutDelta };
-    void setLogicalLeftForChild(RenderBox* child, LayoutUnit logicalLeft, ApplyLayoutDeltaMode = DoNotApplyLayoutDelta);
-    void setLogicalTopForChild(RenderBox* child, LayoutUnit logicalTop, ApplyLayoutDeltaMode = DoNotApplyLayoutDelta);
-    void determineLogicalLeftPositionForChild(RenderBox* child, ApplyLayoutDeltaMode = DoNotApplyLayoutDelta);
+    void setLogicalLeftForChild(RenderBox* child, LayoutUnit logicalLeft);
+    void setLogicalTopForChild(RenderBox* child, LayoutUnit logicalTop);
+    void determineLogicalLeftPositionForChild(RenderBox* child);
 
 private:
     bool layoutBlockFlow(bool relayoutChildren, LayoutUnit& pageLogicalHeight, SubtreeLayoutScope&);
@@ -274,7 +277,7 @@ private:
 
     virtual bool hitTestFloats(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset) OVERRIDE FINAL;
 
-    virtual void repaintOverhangingFloats(bool paintAllDescendants) OVERRIDE FINAL;
+    virtual void invalidatePaintForOverhangingFloats(bool paintAllDescendants) OVERRIDE FINAL;
     virtual void invalidatePaintForOverflow() OVERRIDE FINAL;
     virtual void paintFloats(PaintInfo&, const LayoutPoint&, bool preservePhase = false) OVERRIDE FINAL;
     virtual void clipOutFloatingObjects(RenderBlock*, const PaintInfo*, const LayoutPoint&, const LayoutSize&) OVERRIDE;
@@ -293,7 +296,18 @@ private:
 
     virtual RootInlineBox* createRootInlineBox(); // Subclassed by SVG
 
-    void createOrDestroyMultiColumnFlowThreadIfNeeded();
+    bool isPagedOverflow(const RenderStyle*);
+
+    enum FlowThreadType {
+        NoFlowThread,
+        MultiColumnFlowThread,
+        PagedFlowThread
+    };
+
+    FlowThreadType flowThreadType(const RenderStyle*);
+
+    RenderMultiColumnFlowThread* createMultiColumnFlowThread(FlowThreadType);
+    void createOrDestroyMultiColumnFlowThreadIfNeeded(const RenderStyle* oldStyle);
 
     void updateLogicalWidthForAlignment(const ETextAlign&, const RootInlineBox*, BidiRun* trailingSpaceRun, float& logicalLeft, float& totalLogicalWidth, float& availableLogicalWidth, unsigned expansionOpportunityCount);
     void checkForPaginationLogicalHeightChange(LayoutUnit& pageLogicalHeight, bool& pageLogicalHeightChanged, bool& hasSpecifiedPageLogicalHeight);
@@ -347,6 +361,7 @@ public:
     public:
         RenderBlockFlowRareData(const RenderBlockFlow* block)
             : m_margins(positiveMarginBeforeDefault(block), negativeMarginBeforeDefault(block), positiveMarginAfterDefault(block), negativeMarginAfterDefault(block))
+            , m_paginationStrut(0)
             , m_multiColumnFlowThread(0)
             , m_discardMarginBefore(false)
             , m_discardMarginAfter(false)
@@ -371,6 +386,7 @@ public:
         }
 
         MarginValues m_margins;
+        LayoutUnit m_paginationStrut;
 
         RenderMultiColumnFlowThread* m_multiColumnFlowThread;
 
@@ -427,6 +443,7 @@ private:
     LayoutUnit applyAfterBreak(RenderBox* child, LayoutUnit logicalOffset, MarginInfo&); // If the child has an after break, then return a new offset that shifts to the top of the next page/column.
 
     LayoutUnit adjustBlockChildForPagination(LayoutUnit logicalTopAfterClear, LayoutUnit estimateWithoutPagination, RenderBox* child, bool atBeforeSideOfBlock);
+    void adjustLinePositionForPagination(RootInlineBox*, LayoutUnit& deltaOffset, RenderFlowThread*); // Computes a deltaOffset value that put a line at the top of the next page if it doesn't fit on the current page.
 
     // Used to store state between styleWillChange and styleDidChange
     static bool s_canPropagateFloatIntoSibling;

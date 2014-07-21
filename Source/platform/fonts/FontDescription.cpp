@@ -127,11 +127,9 @@ float FontDescription::effectiveFontSize() const
     return floorf(size * FontCacheKey::precisionMultiplier()) / FontCacheKey::precisionMultiplier();
 }
 
-FontCacheKey FontDescription::cacheKey(const AtomicString& familyName, FontTraits desiredTraits) const
+FontCacheKey FontDescription::cacheKey(const FontFaceCreationParams& creationParams, FontTraits desiredTraits) const
 {
-    FontTraits fontTraits = desiredTraits.mask()
-        ? desiredTraits
-        : traits();
+    FontTraits fontTraits = desiredTraits.bitfield() ? desiredTraits : traits();
 
     unsigned options =
         static_cast<unsigned>(m_syntheticItalic) << 7 | // bit 8
@@ -141,7 +139,7 @@ FontCacheKey FontDescription::cacheKey(const AtomicString& familyName, FontTrait
         static_cast<unsigned>(m_orientation) << 1 | // bit 2
         static_cast<unsigned>(m_subpixelTextPosition); // bit 1
 
-    return FontCacheKey(familyName, effectiveFontSize(), options | fontTraits.mask() << 8);
+    return FontCacheKey(creationParams, effectiveFontSize(), options | fontTraits.bitfield() << 8);
 }
 
 

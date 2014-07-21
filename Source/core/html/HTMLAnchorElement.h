@@ -72,7 +72,7 @@ public:
     virtual String input() const OVERRIDE FINAL;
     virtual void setInput(const String&) OVERRIDE FINAL;
 
-    bool isLiveLink() const;
+    virtual bool isLiveLink() const OVERRIDE FINAL;
 
     virtual bool willRespondToMouseClickEvents() OVERRIDE FINAL;
 
@@ -82,11 +82,12 @@ public:
     LinkHash visitedLinkHash() const;
     void invalidateCachedVisitedLinkHash() { m_cachedVisitedLinkHash = 0; }
 
-    virtual void trace(Visitor*) OVERRIDE;
+    void sendPings(const KURL& destinationURL) const;
 
 protected:
     HTMLAnchorElement(const QualifiedName&, Document&);
 
+    virtual void attributeWillChange(const QualifiedName&, const AtomicString& oldValue, const AtomicString& newValue) OVERRIDE;
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual bool supportsFocus() const OVERRIDE;
 
@@ -102,16 +103,10 @@ private:
     virtual short tabIndex() const OVERRIDE FINAL;
     virtual bool draggable() const OVERRIDE FINAL;
     virtual bool isInteractiveContent() const OVERRIDE FINAL;
-
-    void sendPings(const KURL& destinationURL);
-    AtomicString target() const;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     void handleClick(Event*);
 
-    class PrefetchEventHandler;
-    PrefetchEventHandler* prefetchEventHandler();
-
     uint32_t m_linkRelations;
-    OwnPtrWillBeMember<PrefetchEventHandler> m_prefetchEventHandler;
     mutable LinkHash m_cachedVisitedLinkHash;
 };
 

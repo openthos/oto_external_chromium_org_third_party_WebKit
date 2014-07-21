@@ -26,8 +26,8 @@
 #ifndef VisiblePosition_h
 #define VisiblePosition_h
 
-#include "core/dom/Position.h"
 #include "core/editing/EditingBoundary.h"
+#include "core/editing/PositionWithAffinity.h"
 #include "platform/heap/Handle.h"
 #include "platform/text/TextDirection.h"
 
@@ -48,6 +48,7 @@ namespace WebCore {
 
 class InlineBox;
 class Node;
+class Range;
 
 class VisiblePosition FINAL {
     DISALLOW_ALLOCATION();

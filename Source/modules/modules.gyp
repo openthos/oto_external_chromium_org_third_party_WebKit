@@ -49,14 +49,9 @@
       'BLINK_IMPLEMENTATION=1',
       'INSIDE_BLINK',
     ],
-    'include_dirs': [
-      # FIXME: Remove these once scripts generate qualified
-      # includes correctly: http://crbug.com/380054
-      '<(blink_core_output_dir)',
-      '<(blink_modules_output_dir)',
-    ],
     'sources': [
       '<@(modules_files)',
+      '<@(bindings_modules_v8_files)',
       '<@(bindings_modules_v8_generated_aggregate_files)',
     ],
     'actions': [
@@ -74,14 +69,14 @@
             '<@(resources)',
         ],
         'outputs': [
-            '<(SHARED_INTERMEDIATE_DIR)/blink/FetchPolyfill.h',
-            '<(SHARED_INTERMEDIATE_DIR)/blink/FetchPolyfill.cpp',
+            '<(blink_modules_output_dir)/FetchPolyfill.h',
+            '<(blink_modules_output_dir)/FetchPolyfill.cpp',
         ],
         'action': [
             'python',
             '../build/scripts/make-file-arrays.py',
-            '--out-h=<(SHARED_INTERMEDIATE_DIR)/blink/FetchPolyfill.h',
-            '--out-cpp=<(SHARED_INTERMEDIATE_DIR)/blink/FetchPolyfill.cpp',
+            '--out-h=<(blink_modules_output_dir)/FetchPolyfill.h',
+            '--out-cpp=<(blink_modules_output_dir)/FetchPolyfill.cpp',
             '--namespace=WebCore',
             '<@(resources)',
         ],
@@ -100,14 +95,14 @@
             '<@(resources)',
         ],
         'outputs': [
-            '<(SHARED_INTERMEDIATE_DIR)/blink/CachePolyfill.h',
-            '<(SHARED_INTERMEDIATE_DIR)/blink/CachePolyfill.cpp',
+            '<(blink_modules_output_dir)/CachePolyfill.h',
+            '<(blink_modules_output_dir)/CachePolyfill.cpp',
         ],
         'action': [
             'python',
             '../build/scripts/make-file-arrays.py',
-            '--out-h=<(SHARED_INTERMEDIATE_DIR)/blink/CachePolyfill.h',
-            '--out-cpp=<(SHARED_INTERMEDIATE_DIR)/blink/CachePolyfill.cpp',
+            '--out-h=<(blink_modules_output_dir)/CachePolyfill.h',
+            '--out-cpp=<(blink_modules_output_dir)/CachePolyfill.cpp',
             '--namespace=WebCore',
             '<@(resources)',
         ],
@@ -126,14 +121,14 @@
             '<@(resources)',
         ],
         'outputs': [
-            '<(SHARED_INTERMEDIATE_DIR)/blink/CacheStoragePolyfill.h',
-            '<(SHARED_INTERMEDIATE_DIR)/blink/CacheStoragePolyfill.cpp',
+            '<(blink_modules_output_dir)/CacheStoragePolyfill.h',
+            '<(blink_modules_output_dir)/CacheStoragePolyfill.cpp',
         ],
         'action': [
             'python',
             '../build/scripts/make-file-arrays.py',
-            '--out-h=<(SHARED_INTERMEDIATE_DIR)/blink/CacheStoragePolyfill.h',
-            '--out-cpp=<(SHARED_INTERMEDIATE_DIR)/blink/CacheStoragePolyfill.cpp',
+            '--out-h=<(blink_modules_output_dir)/CacheStoragePolyfill.h',
+            '--out-cpp=<(blink_modules_output_dir)/CacheStoragePolyfill.cpp',
             '--namespace=WebCore',
             '<@(resources)',
         ],

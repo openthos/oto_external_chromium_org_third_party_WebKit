@@ -34,21 +34,21 @@
  * @param {string=} settingName
  * @param {number=} defaultSidebarWidth
  * @param {number=} defaultSidebarHeight
+ * @param {boolean=} constraintsInDip
  */
-WebInspector.SplitView = function(isVertical, secondIsSidebar, settingName, defaultSidebarWidth, defaultSidebarHeight)
+WebInspector.SplitView = function(isVertical, secondIsSidebar, settingName, defaultSidebarWidth, defaultSidebarHeight, constraintsInDip)
 {
     WebInspector.View.call(this);
 
-    this.registerRequiredCSS("splitView.css");
     this.element.classList.add("split-view");
 
     this._mainView = new WebInspector.VBox();
     this._mainElement = this._mainView.element;
-    this._mainElement.className = "split-view-contents scroll-target split-view-main vbox"; // Override
+    this._mainElement.className = "split-view-contents split-view-main vbox"; // Override
 
     this._sidebarView = new WebInspector.VBox();
     this._sidebarElement = this._sidebarView.element;
-    this._sidebarElement.className = "split-view-contents scroll-target split-view-sidebar vbox"; // Override
+    this._sidebarElement.className = "split-view-contents split-view-sidebar vbox"; // Override
 
     this._resizerElement = this.element.createChild("div", "split-view-resizer");
     this._resizerElement.createChild("div", "split-view-resizer-border");
@@ -68,6 +68,7 @@ WebInspector.SplitView = function(isVertical, secondIsSidebar, settingName, defa
 
     this._defaultSidebarWidth = defaultSidebarWidth || 200;
     this._defaultSidebarHeight = defaultSidebarHeight || this._defaultSidebarWidth;
+    this._constraintsInDip = !!constraintsInDip;
     this._settingName = settingName;
 
     this.setSecondIsSidebar(secondIsSidebar);
@@ -367,6 +368,7 @@ WebInspector.SplitView.prototype = {
      */
     setSidebarSize: function(size)
     {
+        size *= WebInspector.zoomManager.zoomFactor();
         this._savedSidebarSize = size;
         this._saveSetting();
         this._innerSetSidebarSize(size, false, true);
@@ -377,7 +379,8 @@ WebInspector.SplitView.prototype = {
      */
     sidebarSize: function()
     {
-        return Math.max(0, this._sidebarSize);
+        var size = Math.max(0, this._sidebarSize);
+        return size / WebInspector.zoomManager.zoomFactor();
     },
 
     /**
@@ -565,7 +568,7 @@ WebInspector.SplitView.prototype = {
     _applyConstraints: function(sidebarSize, userAction)
     {
         var totalSize = this._totalSizeDIP();
-        var zoomFactor = WebInspector.zoomManager.zoomFactor();
+        var zoomFactor = this._constraintsInDip ? 1 : WebInspector.zoomManager.zoomFactor();
 
         var constraints = this._sidebarView.constraints();
         var minSidebarSize = this.isVertical() ? constraints.minimum.width : constraints.minimum.height;
@@ -593,7 +596,7 @@ WebInspector.SplitView.prototype = {
         preferredMainSize *= zoomFactor;
         var savedMainSize = this.isVertical() ? this._savedVerticalMainSize : this._savedHorizontalMainSize;
         if (typeof savedMainSize !== "undefined")
-            preferredMainSize = Math.min(preferredMainSize, savedMainSize);
+            preferredMainSize = Math.min(preferredMainSize, savedMainSize * zoomFactor);
         if (userAction)
             preferredMainSize = minMainSize;
 

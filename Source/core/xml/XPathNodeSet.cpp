@@ -144,7 +144,7 @@ static void sortBlock(unsigned from, unsigned to, WillBeHeapVector<NodeSetVector
 
             ASSERT(previousGroupEnd != groupEnd);
             previousGroupEnd = groupEnd;
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
             parentNodes.remove(n);
 #endif
         }
@@ -181,7 +181,7 @@ void NodeSet::sort() const
             parentsVector.append(n);
             containsAttributeNodes = true;
         }
-        while ((n = n->parentNode()))
+        for (n = n->parentNode(); n; n = n->parentNode())
             parentsVector.append(n);
     }
     sortBlock(0, nodeCount, parentMatrix, containsAttributeNodes);

@@ -26,7 +26,7 @@
 #ifndef SpeechGrammarList_h
 #define SpeechGrammarList_h
 
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "modules/speech/SpeechGrammar.h"
 #include "platform/heap/Handle.h"
 
@@ -34,7 +34,7 @@ namespace WebCore {
 
 class ExecutionContext;
 
-class SpeechGrammarList : public GarbageCollectedFinalized<SpeechGrammarList>, public ScriptWrappable {
+class SpeechGrammarList FINAL : public GarbageCollectedFinalized<SpeechGrammarList>, public ScriptWrappable {
 public:
     static SpeechGrammarList* create();
 

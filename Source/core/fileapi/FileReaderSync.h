@@ -31,7 +31,7 @@
 #ifndef FileReaderSync_h
 #define FileReaderSync_h
 
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "platform/heap/Handle.h"
 #include "wtf/Forward.h"
 #include "wtf/RefCounted.h"
@@ -44,14 +44,12 @@ class ExceptionState;
 class FileReaderLoader;
 class ExecutionContext;
 
-class FileReaderSync FINAL : public RefCountedWillBeGarbageCollectedFinalized<FileReaderSync>, public ScriptWrappable {
+class FileReaderSync FINAL : public RefCountedWillBeGarbageCollected<FileReaderSync>, public ScriptWrappable {
 public:
     static PassRefPtrWillBeRawPtr<FileReaderSync> create()
     {
         return adoptRefWillBeNoop(new FileReaderSync());
     }
-
-    ~FileReaderSync() { }
 
     PassRefPtr<ArrayBuffer> readAsArrayBuffer(ExecutionContext*, Blob*, ExceptionState&);
     String readAsBinaryString(ExecutionContext*, Blob*, ExceptionState&);

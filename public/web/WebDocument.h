@@ -82,8 +82,7 @@ public:
     BLINK_EXPORT WebString encoding() const;
     BLINK_EXPORT WebString contentLanguage() const;
     BLINK_EXPORT WebString referrer() const;
-    BLINK_EXPORT WebColor brandColor() const;
-
+    BLINK_EXPORT WebColor themeColor() const;
     // The url of the OpenSearch Desription Document (if any).
     BLINK_EXPORT WebURL openSearchDescriptionURL() const;
 

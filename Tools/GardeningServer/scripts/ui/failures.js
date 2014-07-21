@@ -87,9 +87,10 @@ ui.failures.FailureGrid = base.extends('table', {
     _rowByResult: function(result)
     {
         var row = this._resultRows[result];
-        $(row).show();
-        if (row)
+        if (row) {
+            row.style.display = '';
             return row;
+        }
 
         row = this._resultRows[result] = this._body.insertRow(0);
         row.className = result;
@@ -126,30 +127,9 @@ ui.failures.FailureGrid = base.extends('table', {
     {
         this._pendingReset = false;
         this._resultRows = {};
-        $(this._body).empty();
+        this._body.innerHTML = '';
         // Add the BUILDING row eagerly so that it appears last.
-        this._rowByResult(kBuildingResult);
-        $(this._resultRows[kBuildingResult]).hide();
-    }
-});
-
-ui.failures.ListItem = base.extends('li', {
-    init: function(groupName, failingTestsList)
-    {
-        this._failingTestsList = failingTestsList;
-        this.appendChild(new ui.actions.List([
-            new ui.actions.Examine().makeDefault(),
-        ]));
-        var label = this.appendChild(document.createElement('label'))
-        label.textContent = failingTestsList.length == 1 ? failingTestsList[0] : groupName;
-    },
-});
-
-ui.failures.List = base.extends('ul', {
-    init: function()
-    {
-        this.className = 'failures';
-        this.textContent = 'Loading...';
+        this._rowByResult(kBuildingResult).style.display = 'none';
     }
 });
 

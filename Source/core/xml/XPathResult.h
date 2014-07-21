@@ -27,7 +27,7 @@
 #ifndef XPathResult_h
 #define XPathResult_h
 
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "core/xml/XPathValue.h"
 #include "platform/heap/Handle.h"
 #include "wtf/Forward.h"
@@ -39,7 +39,12 @@ class Document;
 class ExceptionState;
 class Node;
 
-class XPathResult : public RefCountedWillBeGarbageCollectedFinalized<XPathResult>, public ScriptWrappable {
+namespace XPath {
+struct EvaluationContext;
+}
+
+class XPathResult FINAL : public RefCountedWillBeGarbageCollected<XPathResult>, public ScriptWrappable {
+    DECLARE_EMPTY_DESTRUCTOR_WILL_BE_REMOVED(XPathResult);
 public:
     enum XPathResultType {
         ANY_TYPE = 0,
@@ -54,11 +59,10 @@ public:
         FIRST_ORDERED_NODE_TYPE = 9
     };
 
-    static PassRefPtrWillBeRawPtr<XPathResult> create(Document* document, const XPath::Value& value)
+    static PassRefPtrWillBeRawPtr<XPathResult> create(XPath::EvaluationContext& context, const XPath::Value& value)
     {
-        return adoptRefWillBeNoop(new XPathResult(document, value));
+        return adoptRefWillBeNoop(new XPathResult(context, value));
     }
-    ~XPathResult();
 
     void convertTo(unsigned short type, ExceptionState&);
 
@@ -79,7 +83,7 @@ public:
     void trace(Visitor*);
 
 private:
-    XPathResult(Document*, const XPath::Value&);
+    XPathResult(XPath::EvaluationContext&, const XPath::Value&);
     XPath::NodeSet& nodeSet() { return *m_nodeSet; }
 
     XPath::Value m_value;

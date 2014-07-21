@@ -1,11 +1,6 @@
 ../../modules/battery/BatteryManager.idl
-../../modules/crypto/AesKeyAlgorithm.idl
 ../../modules/crypto/Crypto.idl
-../../modules/crypto/HmacKeyAlgorithm.idl
-../../modules/crypto/Key.idl
-../../modules/crypto/KeyAlgorithm.idl
-../../modules/crypto/RsaHashedKeyAlgorithm.idl
-../../modules/crypto/RsaKeyAlgorithm.idl
+../../modules/crypto/CryptoKey.idl
 ../../modules/crypto/SubtleCrypto.idl
 ../../modules/device_light/DeviceLightEvent.idl
 ../../modules/device_orientation/DeviceAcceleration.idl
@@ -44,7 +39,9 @@
 ../../modules/gamepad/GamepadList.idl
 ../../modules/gamepad/WebKitGamepad.idl
 ../../modules/gamepad/WebKitGamepadList.idl
+../../modules/geolocation/CircularRegion.idl
 ../../modules/geolocation/Coordinates.idl
+../../modules/geolocation/GeofencingRegion.idl
 ../../modules/geolocation/Geolocation.idl
 ../../modules/geolocation/Geoposition.idl
 ../../modules/geolocation/PositionCallback.idl
@@ -103,10 +100,12 @@
 ../../modules/quota/StorageQuota.idl
 ../../modules/quota/StorageQuotaCallback.idl
 ../../modules/quota/StorageUsageCallback.idl
+../../modules/screen_orientation/ScreenOrientation.idl
 ../../modules/serviceworkers/Client.idl
+../../modules/serviceworkers/FetchBodyStream.idl
 ../../modules/serviceworkers/FetchEvent.idl
-../../modules/serviceworkers/HeaderMap.idl
-../../modules/serviceworkers/HeaderMapForEachCallback.idl
+../../modules/serviceworkers/Headers.idl
+../../modules/serviceworkers/HeadersForEachCallback.idl
 ../../modules/serviceworkers/InstallEvent.idl
 ../../modules/serviceworkers/InstallPhaseEvent.idl
 ../../modules/serviceworkers/Request.idl
@@ -213,7 +212,7 @@
 ../../modules/quota/NavigatorStorageQuota.idl
 ../../modules/quota/WindowQuota.idl
 ../../modules/quota/WorkerNavigatorStorageQuota.idl
-../../modules/screen_orientation/ScreenOrientation.idl
+../../modules/screen_orientation/ScreenScreenOrientation.idl
 ../../modules/serviceworkers/NavigatorServiceWorker.idl
 ../../modules/speech/WindowSpeech.idl
 ../../modules/speech/WindowSpeechSynthesis.idl

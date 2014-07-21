@@ -40,6 +40,7 @@
 
 namespace WebCore {
 
+class ContextMenuProvider;
 class DOMWrapperWorld;
 class LocalFrame;
 class GraphicsContext;
@@ -48,6 +49,7 @@ class InjectedScriptManager;
 class InspectorBackendDispatcher;
 class InspectorAgent;
 class InspectorClient;
+class InspectorCSSAgent;
 class InspectorDOMAgent;
 class InspectorFrontend;
 class InspectorFrontendChannel;
@@ -87,6 +89,7 @@ public:
     void setInspectorFrontendClient(PassOwnPtr<InspectorFrontendClient>);
     void didClearDocumentOfWindowObject(LocalFrame*);
     void setInjectedScriptForOrigin(const String& origin, const String& source);
+    void showContextMenu(float x, float y, PassRefPtr<ContextMenuProvider>);
 
     void dispatchMessageFromFrontend(const String& message);
 
@@ -105,7 +108,7 @@ public:
     bool handleTouchEvent(LocalFrame*, const PlatformTouchEvent&);
     bool handleKeyboardEvent(LocalFrame*, const PlatformKeyboardEvent&);
 
-    void requestPageScaleFactor(float scale, const IntPoint& origin);
+    void deviceOrPageScaleFactorChanged();
     bool deviceEmulationEnabled();
 
     bool isUnderTest();
@@ -147,6 +150,7 @@ private:
     InspectorDOMAgent* m_domAgent;
     InspectorPageAgent* m_pageAgent;
     InspectorResourceAgent* m_resourceAgent;
+    InspectorCSSAgent* m_cssAgent;
     InspectorTimelineAgent* m_timelineAgent;
     InspectorLayerTreeAgent* m_layerTreeAgent;
     InspectorTracingAgent* m_tracingAgent;
@@ -157,7 +161,6 @@ private:
     Page* m_page;
     InspectorClient* m_inspectorClient;
     InspectorAgentRegistry m_agents;
-    Vector<InspectorAgent*> m_moduleAgents;
     bool m_isUnderTest;
     bool m_deferredAgentsInitialized;
     String m_hostId;

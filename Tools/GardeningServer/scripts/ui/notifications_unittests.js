@@ -93,7 +93,6 @@ test('FailingTestsSummary', 10, function() {
                 '<ul class="effects"></ul>' +
                 '<ul class="actions">' +
                     '<li><button class="action default" title="Examine these failures in detail.">Examine</button></li>' +
-                    '<li><button class="action">Rebaseline</button></li>' +
                 '</ul>' +
             '</div>' +
             '<ul class="causes"></ul>' +
@@ -113,7 +112,6 @@ test('FailingTestsSummary', 10, function() {
                 '</ul>' +
                 '<ul class="actions">' +
                     '<li><button class="action default" title="Examine these failures in detail.">Examine</button></li>' +
-                    '<li><button class="action">Rebaseline</button></li>' +
                 '</ul>' +
             '</div>' +
             '<ul class="causes"></ul>' +
@@ -135,7 +133,6 @@ test('FailingTestsSummary', 10, function() {
                 '</ul>' +
                 '<ul class="actions">' +
                     '<li><button class="action default" title="Examine these failures in detail.">Examine</button></li>' +
-                    '<li><button class="action">Rebaseline</button></li>' +
                 '</ul>' +
             '</div>' +
             '<ul class="causes"></ul>' +
@@ -158,7 +155,6 @@ test('FailingTestsSummary', 10, function() {
                 '</ul>' +
                 '<ul class="actions">' +
                     '<li><button class="action default" title="Examine these failures in detail.">Examine</button></li>' +
-                    '<li><button class="action">Rebaseline</button></li>' +
                 '</ul>' +
             '</div>' +
             '<ul class="causes">' +
@@ -198,7 +194,6 @@ test('FailingTestsSummary', 10, function() {
                 '</ul>' +
                 '<ul class="actions">' +
                     '<li><button class="action default" title="Examine these failures in detail.">Examine</button></li>' +
-                    '<li><button class="action">Rebaseline</button></li>' +
                 '</ul>' +
             '</div>' +
             '<ul class="causes">' +
@@ -226,7 +221,7 @@ test('FailingTestsSummary', 10, function() {
                         '<td></td>' +
                         '<td><a class="failing-builder" href="http://build.chromium.org/p/chromium.webkit/waterfall?builder=WebKit+Linux+(dbg)"><span class="version">lucid</span><span class="architecture">64-bit</span></a></td>' +
                     '</tr>' +
-                    '<tr class="BUILDING" style="">' +
+                    '<tr class="BUILDING">' +
                         '<td><span>BUILDING</span></td>' +
                         '<td><a class="failing-builder" href="http://build.chromium.org/p/chromium.webkit/waterfall?builder=WebKit+Mac10.6"><span class="version">snowleopard</span></a></td>' +
                         '<td></td>' +
@@ -242,7 +237,6 @@ test('FailingTestsSummary', 10, function() {
                 '</ul>' +
                 '<ul class="actions">' +
                     '<li><button class="action default" title="Examine these failures in detail.">Examine</button></li>' +
-                    '<li><button class="action">Rebaseline</button></li>' +
                 '</ul>' +
             '</div>' +
             '<ul class="causes">' +
@@ -282,7 +276,6 @@ test('FailingTestsSummary (grouping)', 1, function() {
                 '</ul>' +
                 '<ul class="actions">' +
                     '<li><button class="action default" title="Examine these failures in detail.">Examine</button></li>' +
-                    '<li><button class="action">Rebaseline</button></li>' +
                 '</ul>' +
             '</div>' +
             '<ul class="causes"></ul>' +

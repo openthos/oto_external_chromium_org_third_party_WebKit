@@ -33,7 +33,6 @@
 
 #include "platform/heap/Handle.h"
 #include "wtf/ArrayBufferView.h"
-#include "wtf/RefCounted.h"
 #include "wtf/Uint8Array.h"
 #include "wtf/text/TextCodec.h"
 #include "wtf/text/TextEncoding.h"
@@ -41,7 +40,6 @@
 
 namespace WebCore {
 
-class Dictionary;
 class ExceptionState;
 
 class TextEncoder FINAL : public GarbageCollectedFinalized<TextEncoder> {
@@ -51,7 +49,7 @@ public:
 
     // Implement the IDL
     String encoding() const;
-    PassRefPtr<Uint8Array> encode(const String&, const Dictionary&);
+    PassRefPtr<Uint8Array> encode(const String&);
 
     void trace(Visitor*) { }
 

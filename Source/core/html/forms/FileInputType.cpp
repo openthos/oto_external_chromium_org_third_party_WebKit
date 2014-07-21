@@ -22,7 +22,7 @@
 #include "config.h"
 #include "core/html/forms/FileInputType.h"
 
-#include "bindings/v8/ExceptionStatePlaceholder.h"
+#include "bindings/core/v8/ExceptionStatePlaceholder.h"
 #include "core/HTMLNames.h"
 #include "core/InputTypeNames.h"
 #include "core/dom/shadow/ShadowRoot.h"
@@ -157,9 +157,7 @@ void FileInputType::handleDOMActivateEvent(Event* event)
         settings.acceptMIMETypes = input.acceptMIMETypes();
         settings.acceptFileExtensions = input.acceptFileExtensions();
         settings.selectedFiles = m_fileList->paths();
-#if ENABLE(MEDIA_CAPTURE)
-        settings.useMediaCapture = input.isFileUpload() && input.fastHasAttribute(captureAttr);
-#endif
+        settings.useMediaCapture = RuntimeEnabledFeatures::mediaCaptureEnabled() && input.isFileUpload() && input.fastHasAttribute(captureAttr);
         chrome->runOpenPanel(input.document().frame(), newFileChooser(settings));
     }
     event->setDefaultHandled();
@@ -364,18 +362,6 @@ bool FileInputType::receiveDroppedFiles(const DragData* dragData)
 String FileInputType::droppedFileSystemId()
 {
     return m_droppedFileSystemId;
-}
-
-void FileInputType::copyNonAttributeProperties(const HTMLInputElement& sourceElement)
-{
-    RefPtrWillBeRawPtr<FileList> fileList(FileList::create());
-    FileList* sourceFileList = sourceElement.files();
-    unsigned size = sourceFileList->length();
-    for (unsigned i = 0; i < size; ++i) {
-        File* file = sourceFileList->item(i);
-        fileList->append(File::createWithRelativePath(file->path(), file->webkitRelativePath()));
-    }
-    setFiles(fileList.release());
 }
 
 String FileInputType::defaultToolTip() const

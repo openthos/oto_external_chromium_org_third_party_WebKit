@@ -497,19 +497,19 @@ TestSuite.prototype.testNetworkTiming = function()
 
 TestSuite.prototype.testConsoleOnNavigateBack = function()
 {
-    if (WebInspector.console.messages.length === 1)
+    if (WebInspector.multitargetConsoleModel.messages().length === 1)
         firstConsoleMessageReceived.call(this);
     else
-        WebInspector.console.addEventListener(WebInspector.ConsoleModel.Events.MessageAdded, firstConsoleMessageReceived, this);
+        WebInspector.multitargetConsoleModel.addEventListener(WebInspector.ConsoleModel.Events.MessageAdded, firstConsoleMessageReceived, this);
 
     function firstConsoleMessageReceived() {
-        WebInspector.console.removeEventListener(WebInspector.ConsoleModel.Events.MessageAdded, firstConsoleMessageReceived, this);
+        WebInspector.multitargetConsoleModel.removeEventListener(WebInspector.ConsoleModel.Events.MessageAdded, firstConsoleMessageReceived, this);
         this.evaluateInConsole_("clickLink();", didClickLink.bind(this));
     }
 
     function didClickLink() {
         // Check that there are no new messages(command is not a message).
-        this.assertEquals(3, WebInspector.console.messages.length);
+        this.assertEquals(3, WebInspector.multitargetConsoleModel.messages().length);
         this.evaluateInConsole_("history.back();", didNavigateBack.bind(this));
     }
 
@@ -520,7 +520,7 @@ TestSuite.prototype.testConsoleOnNavigateBack = function()
     }
 
     function didCompleteNavigation() {
-        this.assertEquals(7, WebInspector.console.messages.length);
+        this.assertEquals(7, WebInspector.multitargetConsoleModel.messages().length);
         this.releaseControl();
     }
 
@@ -597,7 +597,7 @@ TestSuite.prototype.testTimelineFrames = function()
 
 TestSuite.prototype.enableTouchEmulation = function()
 {
-    WebInspector.targetManager.activeTarget().domModel.emulateTouchEventObjects(true);
+    WebInspector.targetManager.mainTarget().domModel.emulateTouchEventObjects(true);
 };
 
 // Regression test for http://webk.it/97466
@@ -695,22 +695,22 @@ TestSuite.prototype.testDeviceMetricsOverrides = function()
 
     function step1()
     {
-        testOverrides({width: 1200, height: 1000, deviceScaleFactor: 1, emulateViewport: false, fitWindow: true}, {width: 1200, height: 1000, deviceScaleFactor: 1}, step2);
+        testOverrides({width: 1200, height: 1000, deviceScaleFactor: 1, mobile: false, fitWindow: true}, {width: 1200, height: 1000, deviceScaleFactor: 1}, step2);
     }
 
     function step2()
     {
-        testOverrides({width: 1200, height: 1000, deviceScaleFactor: 1, emulateViewport: false, fitWindow: false}, {width: 1200, height: 1000, deviceScaleFactor: 1}, step3);
+        testOverrides({width: 1200, height: 1000, deviceScaleFactor: 1, mobile: false, fitWindow: false}, {width: 1200, height: 1000, deviceScaleFactor: 1}, step3);
     }
 
     function step3()
     {
-        testOverrides({width: 1200, height: 1000, deviceScaleFactor: 3, emulateViewport: false, fitWindow: true}, {width: 1200, height: 1000, deviceScaleFactor: 3}, step4);
+        testOverrides({width: 1200, height: 1000, deviceScaleFactor: 3, mobile: false, fitWindow: true}, {width: 1200, height: 1000, deviceScaleFactor: 3}, step4);
     }
 
     function step4()
     {
-        testOverrides({width: 1200, height: 1000, deviceScaleFactor: 3, emulateViewport: false, fitWindow: false}, {width: 1200, height: 1000, deviceScaleFactor: 3}, finish);
+        testOverrides({width: 1200, height: 1000, deviceScaleFactor: 3, mobile: false, fitWindow: false}, {width: 1200, height: 1000, deviceScaleFactor: 3}, finish);
     }
 
     function finish()
@@ -765,7 +765,7 @@ TestSuite.prototype.stopTimeline = function()
 
 TestSuite.prototype.waitForTestResultsInConsole = function()
 {
-    var messages = WebInspector.console.messages;
+    var messages = WebInspector.multitargetConsoleModel.messages();
     for (var i = 0; i < messages.length; ++i) {
         var text = messages[i].messageText;
         if (text === "PASS")
@@ -783,13 +783,13 @@ TestSuite.prototype.waitForTestResultsInConsole = function()
             this.fail(text);
     }
 
-    WebInspector.console.addEventListener(WebInspector.ConsoleModel.Events.MessageAdded, onConsoleMessage, this);
+    WebInspector.multitargetConsoleModel.addEventListener(WebInspector.ConsoleModel.Events.MessageAdded, onConsoleMessage, this);
     this.takeControl();
 };
 
 TestSuite.prototype.checkLogAndErrorMessages = function()
 {
-    var messages = WebInspector.console.messages;
+    var messages = WebInspector.multitargetConsoleModel.messages();
 
     var matchesCount = 0;
     function validMessage(message)
@@ -828,7 +828,7 @@ TestSuite.prototype.checkLogAndErrorMessages = function()
             this.fail(message.text + ":" + messages[i].level);
     }
 
-    WebInspector.console.addEventListener(WebInspector.ConsoleModel.Events.MessageAdded, onConsoleMessage, this);
+    WebInspector.multitargetConsoleModel.addEventListener(WebInspector.ConsoleModel.Events.MessageAdded, onConsoleMessage, this);
     this.takeControl();
 };
 

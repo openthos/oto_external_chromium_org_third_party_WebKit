@@ -43,31 +43,13 @@ WebInspector.IsolatedFileSystem = function(manager, path, name, rootURL)
     this._rootURL = rootURL;
 }
 
+/**
+ * @param {!FileError} error
+ * @return {string}
+ */
 WebInspector.IsolatedFileSystem.errorMessage = function(error)
 {
-    var msg;
-    switch (error.code) {
-    case FileError.QUOTA_EXCEEDED_ERR:
-        msg = "QUOTA_EXCEEDED_ERR";
-        break;
-    case FileError.NOT_FOUND_ERR:
-        msg = "NOT_FOUND_ERR";
-        break;
-    case FileError.SECURITY_ERR:
-        msg = "SECURITY_ERR";
-        break;
-    case FileError.INVALID_MODIFICATION_ERR:
-        msg = "INVALID_MODIFICATION_ERR";
-        break;
-    case FileError.INVALID_STATE_ERR:
-        msg = "INVALID_STATE_ERR";
-        break;
-    default:
-        msg = WebInspector.UIString("Unknown Error");
-        break;
-    };
-
-    return WebInspector.UIString("File system error: %s", msg);
+    return WebInspector.UIString("File system error: %s", error.message);
 }
 
 /**
@@ -127,13 +109,14 @@ WebInspector.IsolatedFileSystem.prototype = {
 
     /**
      * @param {string} path
-     * @param {function(string)} callback
+     * @param {function(string)} fileCallback
+     * @param {function()=} finishedCallback
      */
-    requestFilesRecursive: function(path, callback)
+    requestFilesRecursive: function(path, fileCallback, finishedCallback)
     {
-        this._requestFileSystem(fileSystemLoaded.bind(this));
-
         var domFileSystem;
+        var pendingRequests = 0;
+        this._requestFileSystem(fileSystemLoaded.bind(this));
         /**
          * @param {?DOMFileSystem} fs
          * @this {WebInspector.IsolatedFileSystem}
@@ -142,6 +125,7 @@ WebInspector.IsolatedFileSystem.prototype = {
         {
             domFileSystem = /** @type {!DOMFileSystem} */ (fs);
             console.assert(domFileSystem);
+            ++pendingRequests;
             this._requestEntries(domFileSystem, path, innerCallback.bind(this));
         }
 
@@ -156,14 +140,17 @@ WebInspector.IsolatedFileSystem.prototype = {
                 if (!entry.isDirectory) {
                     if (this._manager.mapping().isFileExcluded(this._path, entry.fullPath))
                         continue;
-                    callback(entry.fullPath.substr(1));
+                    fileCallback(entry.fullPath.substr(1));
                 }
                 else {
                     if (this._manager.mapping().isFileExcluded(this._path, entry.fullPath + "/"))
                         continue;
+                    ++pendingRequests;
                     this._requestEntries(domFileSystem, entry.fullPath, innerCallback.bind(this));
                 }
             }
+            if (finishedCallback && (--pendingRequests === 0))
+                finishedCallback();
         }
     },
 

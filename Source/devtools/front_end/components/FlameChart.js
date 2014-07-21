@@ -65,7 +65,7 @@ WebInspector.FlameChart = function(dataProvider, flameChartDelegate, isTopDown)
 
     this._vScrollElement = this.element.createChild("div", "flame-chart-v-scroll");
     this._vScrollContent = this._vScrollElement.createChild("div");
-    this._vScrollElement.addEventListener("scroll", this._scheduleUpdate.bind(this), false);
+    this._vScrollElement.addEventListener("scroll", this.scheduleUpdate.bind(this), false);
 
     this._entryInfo = this.element.createChild("div", "profile-entry-info");
     this._highlightElement = this.element.createChild("div", "flame-chart-highlight-element");
@@ -399,7 +399,7 @@ WebInspector.FlameChart.prototype = {
     {
         this._timeWindowLeft = startTime;
         this._timeWindowRight = endTime;
-        this._scheduleUpdate();
+        this.scheduleUpdate();
     },
 
     /**
@@ -449,7 +449,7 @@ WebInspector.FlameChart.prototype = {
     },
 
     /**
-     * @param {?Event} event
+     * @param {!Event} event
      */
     _onMouseMove: function(event)
     {
@@ -494,7 +494,7 @@ WebInspector.FlameChart.prototype = {
     },
 
     /**
-     * @param {?Event} e
+     * @param {!Event} e
      */
     _onMouseWheel: function(e)
     {
@@ -829,15 +829,11 @@ WebInspector.FlameChart.prototype = {
 
     _buildEntryInfo: function(entryInfo)
     {
-        var infoTable = document.createElement("table");
-        infoTable.className = "info-table";
+        var infoTable = document.createElementWithClass("table", "info-table");
         for (var i = 0; i < entryInfo.length; ++i) {
             var row = infoTable.createChild("tr");
-            var titleCell = row.createChild("td");
-            titleCell.textContent = entryInfo[i].title;
-            titleCell.className = "title";
-            var textCell = row.createChild("td");
-            textCell.textContent = entryInfo[i].text;
+            row.createChild("td", "title").textContent = entryInfo[i].title;
+            row.createChild("td").textContent = entryInfo[i].text;
         }
         return infoTable;
     },
@@ -926,7 +922,7 @@ WebInspector.FlameChart.prototype = {
     onResize: function()
     {
         this._updateScrollBar();
-        this._scheduleUpdate();
+        this.scheduleUpdate();
     },
 
     _updateScrollBar: function()
@@ -937,7 +933,7 @@ WebInspector.FlameChart.prototype = {
         this._offsetHeight = this.element.offsetHeight;
     },
 
-    _scheduleUpdate: function()
+    scheduleUpdate: function()
     {
         if (this._updateTimerId)
             return;

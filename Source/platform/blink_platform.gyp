@@ -161,7 +161,7 @@
                 'class_whitelist_regex':
                     'ChromiumWebCoreObjC|TCMVisibleView|RTCMFlippedView|ScrollerStyleObserver',
                 'category_whitelist_regex':
-                    'TCMInterposing|ScrollAnimatorChromiumMacExt|WebCoreTheme',
+                    'WebCoreFocusRingDrawing|WebCoreTheme',
               },
               'action': [
                 '../build/scripts/check_objc_rename.sh',
@@ -220,8 +220,7 @@
     'xcode_settings': {
       # Some Mac-specific parts of WebKit won't compile without having this
       # prefix header injected.
-      # FIXME: make this a first-class setting.
-      'GCC_PREFIX_HEADER': '../core/WebCorePrefixMac.h',
+      'GCC_PREFIX_HEADER': '<(DEPTH)/third_party/WebKit/Source/build/mac/Prefix.h',
     },
     'sources': [
       '<@(platform_files)',
@@ -319,6 +318,8 @@
           ['include', 'mac/ScrollElasticityController\\.mm$'],
           ['include', 'mac/ThemeMac\\.h$'],
           ['include', 'mac/ThemeMac\\.mm$'],
+          ['include', 'mac/WebCoreNSCellExtras\\.h$'],
+          ['include', 'mac/WebCoreNSCellExtras\\.mm$'],
  
           # Mac uses only ScrollAnimatorMac.
           ['exclude', 'scroll/ScrollbarThemeNonMacCommon\\.(cpp|h)$'],

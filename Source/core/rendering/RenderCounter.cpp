@@ -23,7 +23,6 @@
 #include "core/rendering/RenderCounter.h"
 
 #include "core/HTMLNames.h"
-#include "core/dom/Document.h"
 #include "core/dom/Element.h"
 #include "core/dom/ElementTraversal.h"
 #include "core/html/HTMLOListElement.h"
@@ -552,10 +551,10 @@ void RenderCounter::rendererStyleChanged(RenderObject& renderer, const RenderSty
     Node* node = renderer.generatingNode();
     if (!node || node->needsAttach())
         return; // cannot have generated content or if it can have, it will be handled during attaching
-    const CounterDirectiveMap* newCounterDirectives;
-    const CounterDirectiveMap* oldCounterDirectives;
-    if (oldStyle && (oldCounterDirectives = oldStyle->counterDirectives())) {
-        if (newStyle && (newCounterDirectives = newStyle->counterDirectives())) {
+    const CounterDirectiveMap* oldCounterDirectives = oldStyle ? oldStyle->counterDirectives() : 0;
+    const CounterDirectiveMap* newCounterDirectives = newStyle ? newStyle->counterDirectives() : 0;
+    if (oldCounterDirectives) {
+        if (newCounterDirectives) {
             CounterDirectiveMap::const_iterator newMapEnd = newCounterDirectives->end();
             CounterDirectiveMap::const_iterator oldMapEnd = oldCounterDirectives->end();
             for (CounterDirectiveMap::const_iterator it = newCounterDirectives->begin(); it != newMapEnd; ++it) {
@@ -579,7 +578,7 @@ void RenderCounter::rendererStyleChanged(RenderObject& renderer, const RenderSty
             if (renderer.hasCounterNodeMap())
                 RenderCounter::destroyCounterNodes(renderer);
         }
-    } else if (newStyle && (newCounterDirectives = newStyle->counterDirectives())) {
+    } else if (newCounterDirectives) {
         CounterDirectiveMap::const_iterator newMapEnd = newCounterDirectives->end();
         for (CounterDirectiveMap::const_iterator it = newCounterDirectives->begin(); it != newMapEnd; ++it) {
             // We must create this node here, because the added node may be a node with no display such as

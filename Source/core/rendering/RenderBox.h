@@ -23,7 +23,6 @@
 #ifndef RenderBox_h
 #define RenderBox_h
 
-#include "core/animation/ActiveAnimations.h"
 #include "core/rendering/RenderBoxModelObject.h"
 #include "core/rendering/RenderOverflow.h"
 #include "core/rendering/shapes/ShapeOutsideInfo.h"
@@ -54,6 +53,7 @@ public:
         : m_inlineBoxWrapper(0)
         , m_overrideLogicalContentHeight(-1)
         , m_overrideLogicalContentWidth(-1)
+        , m_previousBorderBoxSize(-1, -1)
     {
     }
 
@@ -62,6 +62,9 @@ public:
 
     LayoutUnit m_overrideLogicalContentHeight;
     LayoutUnit m_overrideLogicalContentWidth;
+
+    // Set by RenderBox::updatePreviousBorderBoxSizeIfNeeded().
+    LayoutSize m_previousBorderBoxSize;
 };
 
 
@@ -227,6 +230,7 @@ public:
     void addContentsVisualOverflow(const LayoutRect&);
 
     void addVisualEffectOverflow();
+    LayoutBoxExtent computeVisualEffectOverflowExtent() const;
     void addOverflowFromChild(RenderBox* child) { addOverflowFromChild(child, child->locationOffset()); }
     void addOverflowFromChild(RenderBox* child, const LayoutSize& delta);
     void clearLayoutOverflow();
@@ -407,10 +411,9 @@ public:
     void setInlineBoxWrapper(InlineBox*);
     void deleteLineBoxWrapper();
 
-    virtual LayoutRect clippedOverflowRectForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer) const OVERRIDE;
-    virtual void mapRectToPaintInvalidationBacking(const RenderLayerModelObject* paintInvalidationContainer, LayoutRect&, bool fixed = false) const OVERRIDE;
-    void repaintDuringLayoutIfMoved(const LayoutRect&);
-    virtual void repaintOverhangingFloats(bool paintAllDescendants);
+    virtual LayoutRect clippedOverflowRectForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer, const PaintInvalidationState* = 0) const OVERRIDE;
+    virtual void mapRectToPaintInvalidationBacking(const RenderLayerModelObject* paintInvalidationContainer, LayoutRect&, bool fixed = false, const PaintInvalidationState* = 0) const OVERRIDE;
+    virtual void invalidatePaintForOverhangingFloats(bool paintAllDescendants);
 
     virtual LayoutUnit containingBlockLogicalWidthForContent() const OVERRIDE;
     LayoutUnit containingBlockLogicalHeightForContent(AvailableLogicalHeightType) const;
@@ -507,7 +510,7 @@ public:
     void popContentsClip(PaintInfo&, PaintPhase originalPhase, const LayoutPoint& accumulatedOffset);
 
     virtual void paintObject(PaintInfo&, const LayoutPoint&) { ASSERT_NOT_REACHED(); }
-    virtual void paintBoxDecorations(PaintInfo&, const LayoutPoint&);
+    virtual void paintBoxDecorationBackground(PaintInfo&, const LayoutPoint&);
     virtual void paintMask(PaintInfo&, const LayoutPoint&);
     virtual void paintClippingMask(PaintInfo&, const LayoutPoint&);
     virtual void imageChanged(WrappedImagePtr, const IntRect* = 0) OVERRIDE;
@@ -619,7 +622,7 @@ public:
             removeFloatingOrPositionedChildFromBlockLists();
     }
 
-    virtual void invalidateTreeAfterLayout(const RenderLayerModelObject&) OVERRIDE;
+    virtual void invalidateTreeIfNeeded(const PaintInvalidationState&) OVERRIDE;
 
 protected:
     virtual void willBeDestroyed() OVERRIDE;
@@ -633,14 +636,13 @@ protected:
     virtual bool foregroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect, unsigned maxDepthToTest) const;
     virtual bool computeBackgroundIsKnownToBeObscured() OVERRIDE;
 
-    void paintBackgroundWithBorderAndBoxShadow(PaintInfo&, const LayoutRect&, BackgroundBleedAvoidance);
     void paintBackground(const PaintInfo&, const LayoutRect&, BackgroundBleedAvoidance = BackgroundBleedNone);
 
-    void paintFillLayer(const PaintInfo&, const Color&, const FillLayer*, const LayoutRect&, BackgroundBleedAvoidance, CompositeOperator, RenderObject* backgroundObject);
-    void paintFillLayers(const PaintInfo&, const Color&, const FillLayer*, const LayoutRect&, BackgroundBleedAvoidance = BackgroundBleedNone, CompositeOperator = CompositeSourceOver, RenderObject* backgroundObject = 0);
+    void paintFillLayer(const PaintInfo&, const Color&, const FillLayer&, const LayoutRect&, BackgroundBleedAvoidance, CompositeOperator, RenderObject* backgroundObject);
+    void paintFillLayers(const PaintInfo&, const Color&, const FillLayer&, const LayoutRect&, BackgroundBleedAvoidance = BackgroundBleedNone, CompositeOperator = CompositeSourceOver, RenderObject* backgroundObject = 0);
 
     void paintMaskImages(const PaintInfo&, const LayoutRect&);
-    void paintBoxDecorationsWithRect(PaintInfo&, const LayoutPoint&, const LayoutRect&);
+    void paintBoxDecorationBackgroundWithRect(PaintInfo&, const LayoutPoint&, const LayoutRect&);
 
     BackgroundBleedAvoidance determineBackgroundBleedAvoidance(GraphicsContext*) const;
     bool backgroundHasOpaqueTopLayer() const;
@@ -652,7 +654,7 @@ protected:
 
     virtual bool shouldComputeSizeAsReplaced() const { return isReplaced() && !isInlineBlockOrInlineTable(); }
 
-    virtual void mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState&, MapCoordinatesFlags = ApplyContainerFlip, bool* wasFixed = 0) const OVERRIDE;
+    virtual void mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState&, MapCoordinatesFlags = ApplyContainerFlip, bool* wasFixed = 0, const PaintInvalidationState* = 0) const OVERRIDE;
     virtual void mapAbsoluteToLocalPoint(MapCoordinatesFlags, TransformState&) const OVERRIDE;
 
     void paintRootBoxFillLayers(const PaintInfo&);
@@ -664,7 +666,9 @@ protected:
 
     void updateIntrinsicContentLogicalHeight(LayoutUnit intrinsicContentLogicalHeight) const { m_intrinsicContentLogicalHeight = intrinsicContentLogicalHeight; }
 
-    bool createsBlockFormattingContext() const;
+    virtual InvalidationReason getPaintInvalidationReason(const RenderLayerModelObject& paintInvalidationContainer,
+        const LayoutRect& oldBounds, const LayoutPoint& oldPositionFromPaintInvalidationContainer,
+        const LayoutRect& newBounds, const LayoutPoint& newPositionFromPaintInvalidationContainer) OVERRIDE;
 
 private:
     void updateShapeOutsideInfoAfterStyleChange(const RenderStyle&, const RenderStyle* oldStyle);
@@ -674,7 +678,7 @@ private:
     void shrinkToFitWidth(const LayoutUnit availableSpace, const LayoutUnit logicalLeftValue, const LayoutUnit bordersPlusPadding, LogicalExtentComputedValues&) const;
 
     // Returns true if we did a full repaint
-    bool repaintLayerRectsForImage(WrappedImagePtr image, const FillLayer* layers, bool drawingBackground);
+    bool repaintLayerRectsForImage(WrappedImagePtr, const FillLayer&, bool drawingBackground);
 
     bool skipContainingBlockForPercentHeightCalculation(const RenderBox* containingBlock) const;
 
@@ -704,14 +708,15 @@ private:
     // These include tables, positioned objects, floats and flexible boxes.
     virtual void computePreferredLogicalWidths() { clearPreferredLogicalWidthsDirty(); }
 
-    virtual LayoutRect frameRectForStickyPositioning() const OVERRIDE FINAL { return frameRect(); }
-
     RenderBoxRareData& ensureRareData()
     {
         if (!m_rareData)
             m_rareData = adoptPtr(new RenderBoxRareData());
         return *m_rareData.get();
     }
+
+    void savePreviousBorderBoxSizeIfNeeded();
+    bool logicalHeightComputesAsNone(SizeType) const;
 
 private:
     // The width/height of the contents + borders + padding.  The x/y location is relative to our container (which is not always our parent).

@@ -27,43 +27,22 @@
 #define PositionOptions_h
 
 #include "platform/heap/Handle.h"
-#include <limits.h>
 
 namespace WebCore {
 
+class Dictionary;
+
 class PositionOptions : public GarbageCollected<PositionOptions> {
 public:
-    static PositionOptions* create() { return new PositionOptions(); }
+    static PositionOptions* create(const Dictionary&);
     void trace(Visitor*) { }
 
     bool enableHighAccuracy() const { return m_highAccuracy; }
-    void setEnableHighAccuracy(bool enable) { m_highAccuracy = enable; }
-    unsigned timeout() const
-    {
-        return m_timeout;
-    }
-    void setTimeout(unsigned timeout)
-    {
-        m_timeout = timeout;
-    }
-    unsigned maximumAge() const
-    {
-        return m_maximumAge;
-    }
-    void setMaximumAge(unsigned age)
-    {
-        m_maximumAge = age;
-    }
+    unsigned timeout() const { return m_timeout; }
+    unsigned maximumAge() const { return m_maximumAge; }
 
 private:
-    PositionOptions()
-        : m_highAccuracy(false)
-        , m_maximumAge(0)
-        , m_timeout(std::numeric_limits<unsigned>::max())
-
-    {
-        setMaximumAge(0);
-    }
+    explicit PositionOptions(const Dictionary&);
 
     bool m_highAccuracy;
     unsigned m_maximumAge;

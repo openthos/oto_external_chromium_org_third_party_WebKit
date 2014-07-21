@@ -31,9 +31,8 @@
 #include "config.h"
 #include "modules/quota/StorageQuota.h"
 
-#include "bindings/v8/ScriptPromise.h"
-#include "bindings/v8/ScriptPromiseResolver.h"
-#include "bindings/v8/ScriptPromiseResolverWithContext.h"
+#include "bindings/core/v8/ScriptPromise.h"
+#include "bindings/core/v8/ScriptPromiseResolver.h"
 #include "core/dom/DOMError.h"
 #include "core/dom/ExceptionCode.h"
 #include "core/dom/ExecutionContext.h"
@@ -86,7 +85,7 @@ Vector<String> StorageQuota::supportedTypes() const
 
 ScriptPromise StorageQuota::queryInfo(ScriptState* scriptState, String type)
 {
-    RefPtr<ScriptPromiseResolverWithContext> resolver = ScriptPromiseResolverWithContext::create(scriptState);
+    RefPtr<ScriptPromiseResolver> resolver = ScriptPromiseResolver::create(scriptState);
     ScriptPromise promise = resolver->promise();
 
     SecurityOrigin* securityOrigin = scriptState->executionContext()->securityOrigin();

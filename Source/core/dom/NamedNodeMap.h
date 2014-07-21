@@ -25,7 +25,7 @@
 #ifndef NamedNodeMap_h
 #define NamedNodeMap_h
 
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "core/dom/Element.h"
 #include "wtf/PassOwnPtr.h"
 #include "wtf/PassRefPtr.h"
@@ -36,7 +36,7 @@ namespace WebCore {
 class Node;
 class ExceptionState;
 
-class NamedNodeMap FINAL : public NoBaseWillBeGarbageCollectedFinalized<NamedNodeMap>, public ScriptWrappable {
+class NamedNodeMap FINAL : public NoBaseWillBeGarbageCollected<NamedNodeMap>, public ScriptWrappable {
     WTF_MAKE_FAST_ALLOCATED_WILL_BE_REMOVED;
     friend class Element;
 public:

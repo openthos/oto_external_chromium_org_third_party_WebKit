@@ -27,14 +27,14 @@
 #include "config.h"
 #include "core/editing/Editor.h"
 
-#include "bindings/v8/ExceptionStatePlaceholder.h"
+#include "bindings/core/v8/ExceptionStatePlaceholder.h"
 #include "core/CSSPropertyNames.h"
 #include "core/EventNames.h"
 #include "core/HTMLNames.h"
 #include "core/XLinkNames.h"
 #include "core/accessibility/AXObjectCache.h"
-#include "core/clipboard/Clipboard.h"
 #include "core/clipboard/DataObject.h"
+#include "core/clipboard/DataTransfer.h"
 #include "core/clipboard/Pasteboard.h"
 #include "core/css/CSSComputedStyleDeclaration.h"
 #include "core/css/StylePropertySet.h"
@@ -68,6 +68,7 @@
 #include "core/frame/LocalFrame.h"
 #include "core/frame/Settings.h"
 #include "core/frame/UseCounter.h"
+#include "core/html/HTMLCanvasElement.h"
 #include "core/html/HTMLImageElement.h"
 #include "core/html/HTMLInputElement.h"
 #include "core/html/HTMLTextAreaElement.h"
@@ -193,17 +194,17 @@ bool Editor::canEditRichly() const
 
 bool Editor::canDHTMLCut()
 {
-    return !m_frame.selection().isInPasswordField() && !dispatchCPPEvent(EventTypeNames::beforecut, ClipboardNumb);
+    return !m_frame.selection().isInPasswordField() && !dispatchCPPEvent(EventTypeNames::beforecut, DataTransferNumb);
 }
 
 bool Editor::canDHTMLCopy()
 {
-    return !m_frame.selection().isInPasswordField() && !dispatchCPPEvent(EventTypeNames::beforecopy, ClipboardNumb);
+    return !m_frame.selection().isInPasswordField() && !dispatchCPPEvent(EventTypeNames::beforecopy, DataTransferNumb);
 }
 
 bool Editor::canDHTMLPaste()
 {
-    return !dispatchCPPEvent(EventTypeNames::beforepaste, ClipboardNumb);
+    return !dispatchCPPEvent(EventTypeNames::beforepaste, DataTransferNumb);
 }
 
 bool Editor::canCut() const
@@ -254,7 +255,7 @@ bool Editor::canDeleteRange(Range* range) const
     if (!startContainer || !endContainer)
         return false;
 
-    if (!startContainer->rendererIsEditable() || !endContainer->rendererIsEditable())
+    if (!startContainer->hasEditableStyle() || !endContainer->hasEditableStyle())
         return false;
 
     if (range->collapsed()) {
@@ -362,7 +363,7 @@ bool Editor::tryDHTMLCopy()
     if (m_frame.selection().isInPasswordField())
         return false;
 
-    return !dispatchCPPEvent(EventTypeNames::copy, ClipboardWritable);
+    return !dispatchCPPEvent(EventTypeNames::copy, DataTransferWritable);
 }
 
 bool Editor::tryDHTMLCut()
@@ -370,12 +371,12 @@ bool Editor::tryDHTMLCut()
     if (m_frame.selection().isInPasswordField())
         return false;
 
-    return !dispatchCPPEvent(EventTypeNames::cut, ClipboardWritable);
+    return !dispatchCPPEvent(EventTypeNames::cut, DataTransferWritable);
 }
 
 bool Editor::tryDHTMLPaste(PasteMode pasteMode)
 {
-    return !dispatchCPPEvent(EventTypeNames::paste, ClipboardReadable, pasteMode);
+    return !dispatchCPPEvent(EventTypeNames::paste, DataTransferReadable, pasteMode);
 }
 
 void Editor::pasteAsPlainTextWithPasteboard(Pasteboard* pasteboard)
@@ -420,20 +421,38 @@ void Editor::writeSelectionToPasteboard(Pasteboard* pasteboard, Range* selectedR
     pasteboard->writeHTML(html, url, plainText, canSmartCopyOrDelete());
 }
 
+static Image* imageFromNode(const Node& node)
+{
+    node.document().updateLayoutIgnorePendingStylesheets();
+    RenderObject* renderer = node.renderer();
+    if (!renderer)
+        return nullptr;
+
+    if (renderer->isCanvas())
+        return toHTMLCanvasElement(node).copiedImage();
+
+    if (renderer->isImage()) {
+        RenderImage* renderImage = toRenderImage(renderer);
+        if (!renderImage)
+            return nullptr;
+
+        ImageResource* cachedImage = renderImage->cachedImage();
+        if (!cachedImage || cachedImage->errorOccurred())
+            return nullptr;
+        return cachedImage->imageForRenderer(renderImage);
+    }
+
+    return nullptr;
+}
+
 static void writeImageNodeToPasteboard(Pasteboard* pasteboard, Node* node, const String& title)
 {
     ASSERT(pasteboard);
     ASSERT(node);
 
-    if (!(node->renderer() && node->renderer()->isImage()))
+    Image* image = imageFromNode(*node);
+    if (!image)
         return;
-
-    RenderImage* renderer = toRenderImage(node->renderer());
-    ImageResource* cachedImage = renderer->cachedImage();
-    if (!cachedImage || cachedImage->errorOccurred())
-        return;
-    Image* image = cachedImage->imageForRenderer(renderer);
-    ASSERT(image);
 
     // FIXME: This should probably be reconciled with HitTestResult::absoluteImageURL.
     AtomicString urlString;
@@ -441,7 +460,7 @@ static void writeImageNodeToPasteboard(Pasteboard* pasteboard, Node* node, const
         urlString = toElement(node)->getAttribute(srcAttr);
     else if (isSVGImageElement(*node))
         urlString = toElement(node)->getAttribute(XLinkNames::hrefAttr);
-    else if (isHTMLEmbedElement(*node) || isHTMLObjectElement(*node))
+    else if (isHTMLEmbedElement(*node) || isHTMLObjectElement(*node) || isHTMLCanvasElement(*node))
         urlString = toElement(node)->imageSourceURL();
     KURL url = urlString.isEmpty() ? KURL() : node->document().completeURL(stripLeadingAndTrailingHTMLSpaces(urlString));
 
@@ -450,29 +469,29 @@ static void writeImageNodeToPasteboard(Pasteboard* pasteboard, Node* node, const
 
 // Returns whether caller should continue with "the default processing", which is the same as
 // the event handler NOT setting the return value to false
-bool Editor::dispatchCPPEvent(const AtomicString &eventType, ClipboardAccessPolicy policy, PasteMode pasteMode)
+bool Editor::dispatchCPPEvent(const AtomicString &eventType, DataTransferAccessPolicy policy, PasteMode pasteMode)
 {
     Node* target = findEventTargetFromSelection();
     if (!target)
         return true;
 
-    RefPtrWillBeRawPtr<Clipboard> clipboard = Clipboard::create(
-        Clipboard::CopyAndPaste,
+    RefPtrWillBeRawPtr<DataTransfer> dataTransfer = DataTransfer::create(
+        DataTransfer::CopyAndPaste,
         policy,
-        policy == ClipboardWritable
+        policy == DataTransferWritable
             ? DataObject::create()
             : DataObject::createFromPasteboard(pasteMode));
 
-    RefPtrWillBeRawPtr<Event> evt = ClipboardEvent::create(eventType, true, true, clipboard);
+    RefPtrWillBeRawPtr<Event> evt = ClipboardEvent::create(eventType, true, true, dataTransfer);
     target->dispatchEvent(evt, IGNORE_EXCEPTION);
     bool noDefaultProcessing = evt->defaultPrevented();
-    if (noDefaultProcessing && policy == ClipboardWritable) {
-        RefPtrWillBeRawPtr<DataObject> dataObject = clipboard->dataObject();
+    if (noDefaultProcessing && policy == DataTransferWritable) {
+        RefPtrWillBeRawPtr<DataObject> dataObject = dataTransfer->dataObject();
         Pasteboard::generalPasteboard()->writeDataObject(dataObject.release());
     }
 
     // invalidate clipboard here for security
-    clipboard->setAccessPolicy(ClipboardNumb);
+    dataTransfer->setAccessPolicy(DataTransferNumb);
 
     return !noDefaultProcessing;
 }
@@ -537,36 +556,6 @@ void Editor::respondToChangedContents(const VisibleSelection& endingSelection)
 
     spellChecker().updateMarkersForWordsAffectedByEditing(true);
     client().respondToChangedContents();
-}
-
-TriState Editor::selectionUnorderedListState() const
-{
-    if (m_frame.selection().isCaret()) {
-        if (enclosingNodeWithTag(m_frame.selection().selection().start(), ulTag))
-            return TrueTriState;
-    } else if (m_frame.selection().isRange()) {
-        Node* startNode = enclosingNodeWithTag(m_frame.selection().selection().start(), ulTag);
-        Node* endNode = enclosingNodeWithTag(m_frame.selection().selection().end(), ulTag);
-        if (startNode && endNode && startNode == endNode)
-            return TrueTriState;
-    }
-
-    return FalseTriState;
-}
-
-TriState Editor::selectionOrderedListState() const
-{
-    if (m_frame.selection().isCaret()) {
-        if (enclosingNodeWithTag(m_frame.selection().selection().start(), olTag))
-            return TrueTriState;
-    } else if (m_frame.selection().isRange()) {
-        Node* startNode = enclosingNodeWithTag(m_frame.selection().selection().start(), olTag);
-        Node* endNode = enclosingNodeWithTag(m_frame.selection().selection().end(), olTag);
-        if (startNode && endNode && startNode == endNode)
-            return TrueTriState;
-    }
-
-    return FalseTriState;
 }
 
 void Editor::removeFormattingAndStyle()
@@ -657,18 +646,6 @@ String Editor::selectionStartCSSPropertyValue(CSSPropertyID propertyID)
     if (propertyID == CSSPropertyFontSize)
         return String::number(selectionStyle->legacyFontSize(m_frame.document()));
     return selectionStyle->style()->getPropertyValue(propertyID);
-}
-
-void Editor::indent()
-{
-    ASSERT(m_frame.document());
-    IndentOutdentCommand::create(*m_frame.document(), IndentOutdentCommand::Indent)->apply();
-}
-
-void Editor::outdent()
-{
-    ASSERT(m_frame.document());
-    IndentOutdentCommand::create(*m_frame.document(), IndentOutdentCommand::Outdent)->apply();
 }
 
 static void dispatchEditableContentChangedEvents(PassRefPtrWillBeRawPtr<Element> startRoot, PassRefPtrWillBeRawPtr<Element> endRoot)

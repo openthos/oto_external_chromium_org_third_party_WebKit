@@ -81,15 +81,13 @@ static void {{cpp_class}}ConstructorGetter(v8::Local<v8::String>, const v8::Prop
 {##############################################################################}
 {% block replaceable_attribute_setter_and_callback %}
 {% if has_replaceable_attributes or has_constructor_attributes %}
-{# FIXME: rename to ForceSetAttributeOnThis, since also used for Constructors #}
-static void {{cpp_class}}ReplaceableAttributeSetter(v8::Local<v8::String> name, v8::Local<v8::Value> v8Value, const v8::PropertyCallbackInfo<void>& info)
+static void {{cpp_class}}ForceSetAttributeOnThis(v8::Local<v8::String> name, v8::Local<v8::Value> v8Value, const v8::PropertyCallbackInfo<void>& info)
 {
     {% if is_check_security %}
     {{cpp_class}}* impl = {{v8_class}}::toNative(info.Holder());
-    v8::Isolate* isolate = info.GetIsolate();
     v8::String::Utf8Value attributeName(name);
-    ExceptionState exceptionState(ExceptionState::SetterContext, *attributeName, "{{interface_name}}", info.Holder(), isolate);
-    if (!BindingSecurity::shouldAllowAccessToFrame(isolate, impl->frame(), exceptionState)) {
+    ExceptionState exceptionState(ExceptionState::SetterContext, *attributeName, "{{interface_name}}", info.Holder(), info.GetIsolate());
+    if (!BindingSecurity::shouldAllowAccessToFrame(info.GetIsolate(), impl->frame(), exceptionState)) {
         exceptionState.throwIfNeeded();
         return;
     }
@@ -98,10 +96,9 @@ static void {{cpp_class}}ReplaceableAttributeSetter(v8::Local<v8::String> name, 
         v8::Handle<v8::Object>::Cast(info.This())->ForceSet(name, v8Value);
 }
 
-{# FIXME: rename to ForceSetAttributeOnThisCallback, since also used for Constructors #}
-static void {{cpp_class}}ReplaceableAttributeSetterCallback(v8::Local<v8::String> name, v8::Local<v8::Value> v8Value, const v8::PropertyCallbackInfo<void>& info)
+static void {{cpp_class}}ForceSetAttributeOnThisCallback(v8::Local<v8::String> name, v8::Local<v8::Value> v8Value, const v8::PropertyCallbackInfo<void>& info)
 {
-    {{cpp_class}}V8Internal::{{cpp_class}}ReplaceableAttributeSetter(name, v8Value, info);
+    {{cpp_class}}V8Internal::{{cpp_class}}ForceSetAttributeOnThis(name, v8Value, info);
 }
 
 {% endif %}
@@ -160,13 +157,13 @@ static void indexedPropertyGetter(uint32_t index, const v8::PropertyCallbackInfo
 {% set getter = indexed_property_getter %}
 static void indexedPropertyGetterCallback(uint32_t index, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
-    TRACE_EVENT_SET_SAMPLING_STATE("Blink", "DOMIndexedProperty");
+    TRACE_EVENT_SET_SAMPLING_STATE("blink", "DOMIndexedProperty");
     {% if getter.is_custom %}
     {{v8_class}}::indexedPropertyGetterCustom(index, info);
     {% else %}
     {{cpp_class}}V8Internal::indexedPropertyGetter(index, info);
     {% endif %}
-    TRACE_EVENT_SET_SAMPLING_STATE("V8", "V8Execution");
+    TRACE_EVENT_SET_SAMPLING_STATE("v8", "V8Execution");
 }
 
 {% endif %}
@@ -216,13 +213,13 @@ static void indexedPropertySetter(uint32_t index, v8::Local<v8::Value> v8Value, 
 {% set setter = indexed_property_setter %}
 static void indexedPropertySetterCallback(uint32_t index, v8::Local<v8::Value> v8Value, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
-    TRACE_EVENT_SET_SAMPLING_STATE("Blink", "DOMIndexedProperty");
+    TRACE_EVENT_SET_SAMPLING_STATE("blink", "DOMIndexedProperty");
     {% if setter.is_custom %}
     {{v8_class}}::indexedPropertySetterCustom(index, v8Value, info);
     {% else %}
     {{cpp_class}}V8Internal::indexedPropertySetter(index, v8Value, info);
     {% endif %}
-    TRACE_EVENT_SET_SAMPLING_STATE("V8", "V8Execution");
+    TRACE_EVENT_SET_SAMPLING_STATE("v8", "V8Execution");
 }
 
 {% endif %}
@@ -261,13 +258,13 @@ static void indexedPropertyDeleter(uint32_t index, const v8::PropertyCallbackInf
 {% set deleter = indexed_property_deleter %}
 static void indexedPropertyDeleterCallback(uint32_t index, const v8::PropertyCallbackInfo<v8::Boolean>& info)
 {
-    TRACE_EVENT_SET_SAMPLING_STATE("Blink", "DOMIndexedProperty");
+    TRACE_EVENT_SET_SAMPLING_STATE("blink", "DOMIndexedProperty");
     {% if deleter.is_custom %}
     {{v8_class}}::indexedPropertyDeleterCustom(index, info);
     {% else %}
     {{cpp_class}}V8Internal::indexedPropertyDeleter(index, info);
     {% endif %}
-    TRACE_EVENT_SET_SAMPLING_STATE("V8", "V8Execution");
+    TRACE_EVENT_SET_SAMPLING_STATE("v8", "V8Execution");
 }
 
 {% endif %}
@@ -318,13 +315,13 @@ static void namedPropertyGetter(v8::Local<v8::String> name, const v8::PropertyCa
 {% set getter = named_property_getter %}
 static void namedPropertyGetterCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
-    TRACE_EVENT_SET_SAMPLING_STATE("Blink", "DOMNamedProperty");
+    TRACE_EVENT_SET_SAMPLING_STATE("blink", "DOMNamedProperty");
     {% if getter.is_custom %}
     {{v8_class}}::namedPropertyGetterCustom(name, info);
     {% else %}
     {{cpp_class}}V8Internal::namedPropertyGetter(name, info);
     {% endif %}
-    TRACE_EVENT_SET_SAMPLING_STATE("V8", "V8Execution");
+    TRACE_EVENT_SET_SAMPLING_STATE("v8", "V8Execution");
 }
 
 {% endif %}
@@ -377,13 +374,13 @@ static void namedPropertySetter(v8::Local<v8::String> name, v8::Local<v8::Value>
 {% set setter = named_property_setter %}
 static void namedPropertySetterCallback(v8::Local<v8::String> name, v8::Local<v8::Value> v8Value, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
-    TRACE_EVENT_SET_SAMPLING_STATE("Blink", "DOMNamedProperty");
+    TRACE_EVENT_SET_SAMPLING_STATE("blink", "DOMNamedProperty");
     {% if setter.is_custom %}
     {{v8_class}}::namedPropertySetterCustom(name, v8Value, info);
     {% else %}
     {{cpp_class}}V8Internal::namedPropertySetter(name, v8Value, info);
     {% endif %}
-    TRACE_EVENT_SET_SAMPLING_STATE("V8", "V8Execution");
+    TRACE_EVENT_SET_SAMPLING_STATE("v8", "V8Execution");
 }
 
 {% endif %}
@@ -420,13 +417,13 @@ static void namedPropertyQuery(v8::Local<v8::String> name, const v8::PropertyCal
 {% set getter = named_property_getter %}
 static void namedPropertyQueryCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Integer>& info)
 {
-    TRACE_EVENT_SET_SAMPLING_STATE("Blink", "DOMNamedProperty");
+    TRACE_EVENT_SET_SAMPLING_STATE("blink", "DOMNamedProperty");
     {% if getter.is_custom_property_query %}
     {{v8_class}}::namedPropertyQueryCustom(name, info);
     {% else %}
     {{cpp_class}}V8Internal::namedPropertyQuery(name, info);
     {% endif %}
-    TRACE_EVENT_SET_SAMPLING_STATE("V8", "V8Execution");
+    TRACE_EVENT_SET_SAMPLING_STATE("v8", "V8Execution");
 }
 
 {% endif %}
@@ -467,13 +464,13 @@ static void namedPropertyDeleter(v8::Local<v8::String> name, const v8::PropertyC
 {% set deleter = named_property_deleter %}
 static void namedPropertyDeleterCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Boolean>& info)
 {
-    TRACE_EVENT_SET_SAMPLING_STATE("Blink", "DOMNamedProperty");
+    TRACE_EVENT_SET_SAMPLING_STATE("blink", "DOMNamedProperty");
     {% if deleter.is_custom %}
     {{v8_class}}::namedPropertyDeleterCustom(name, info);
     {% else %}
     {{cpp_class}}V8Internal::namedPropertyDeleter(name, info);
     {% endif %}
-    TRACE_EVENT_SET_SAMPLING_STATE("V8", "V8Execution");
+    TRACE_EVENT_SET_SAMPLING_STATE("v8", "V8Execution");
 }
 
 {% endif %}
@@ -487,15 +484,14 @@ static void namedPropertyDeleterCallback(v8::Local<v8::String> name, const v8::P
 static void namedPropertyEnumerator(const v8::PropertyCallbackInfo<v8::Array>& info)
 {
     {{cpp_class}}* impl = {{v8_class}}::toNative(info.Holder());
-    v8::Isolate* isolate = info.GetIsolate();
     Vector<String> names;
-    ExceptionState exceptionState(ExceptionState::EnumerationContext, "{{interface_name}}", info.Holder(), isolate);
+    ExceptionState exceptionState(ExceptionState::EnumerationContext, "{{interface_name}}", info.Holder(), info.GetIsolate());
     impl->namedPropertyEnumerator(names, exceptionState);
     if (exceptionState.throwIfNeeded())
         return;
-    v8::Handle<v8::Array> v8names = v8::Array::New(isolate, names.size());
+    v8::Handle<v8::Array> v8names = v8::Array::New(info.GetIsolate(), names.size());
     for (size_t i = 0; i < names.size(); ++i)
-        v8names->Set(v8::Integer::New(isolate, i), v8String(isolate, names[i]));
+        v8names->Set(v8::Integer::New(info.GetIsolate(), i), v8String(info.GetIsolate(), names[i]));
     v8SetReturnValue(info, v8names);
 }
 
@@ -509,13 +505,13 @@ static void namedPropertyEnumerator(const v8::PropertyCallbackInfo<v8::Array>& i
 {% set getter = named_property_getter %}
 static void namedPropertyEnumeratorCallback(const v8::PropertyCallbackInfo<v8::Array>& info)
 {
-    TRACE_EVENT_SET_SAMPLING_STATE("Blink", "DOMNamedProperty");
+    TRACE_EVENT_SET_SAMPLING_STATE("blink", "DOMNamedProperty");
     {% if getter.is_custom_property_enumerator %}
     {{v8_class}}::namedPropertyEnumeratorCustom(info);
     {% else %}
     {{cpp_class}}V8Internal::namedPropertyEnumerator(info);
     {% endif %}
-    TRACE_EVENT_SET_SAMPLING_STATE("V8", "V8Execution");
+    TRACE_EVENT_SET_SAMPLING_STATE("v8", "V8Execution");
 }
 
 {% endif %}
@@ -527,27 +523,26 @@ static void namedPropertyEnumeratorCallback(const v8::PropertyCallbackInfo<v8::A
 {% if has_origin_safe_method_setter %}
 static void {{cpp_class}}OriginSafeMethodSetter(v8::Local<v8::String> name, v8::Local<v8::Value> v8Value, const v8::PropertyCallbackInfo<void>& info)
 {
-    v8::Isolate* isolate = info.GetIsolate();
-    v8::Handle<v8::Object> holder = {{v8_class}}::findInstanceInPrototypeChain(info.This(), isolate);
+    v8::Handle<v8::Object> holder = {{v8_class}}::findInstanceInPrototypeChain(info.This(), info.GetIsolate());
     if (holder.IsEmpty())
         return;
     {{cpp_class}}* impl = {{v8_class}}::toNative(holder);
     v8::String::Utf8Value attributeName(name);
-    ExceptionState exceptionState(ExceptionState::SetterContext, *attributeName, "{{interface_name}}", info.Holder(), isolate);
-    if (!BindingSecurity::shouldAllowAccessToFrame(isolate, impl->frame(), exceptionState)) {
+    ExceptionState exceptionState(ExceptionState::SetterContext, *attributeName, "{{interface_name}}", info.Holder(), info.GetIsolate());
+    if (!BindingSecurity::shouldAllowAccessToFrame(info.GetIsolate(), impl->frame(), exceptionState)) {
         exceptionState.throwIfNeeded();
         return;
     }
 
     {# The findInstanceInPrototypeChain() call above only returns a non-empty handle if info.This() is an Object. #}
-    V8HiddenValue::setHiddenValue(isolate, v8::Handle<v8::Object>::Cast(info.This()), name, v8Value);
+    V8HiddenValue::setHiddenValue(info.GetIsolate(), v8::Handle<v8::Object>::Cast(info.This()), name, v8Value);
 }
 
 static void {{cpp_class}}OriginSafeMethodSetterCallback(v8::Local<v8::String> name, v8::Local<v8::Value> v8Value, const v8::PropertyCallbackInfo<void>& info)
 {
-    TRACE_EVENT_SET_SAMPLING_STATE("Blink", "DOMSetter");
+    TRACE_EVENT_SET_SAMPLING_STATE("blink", "DOMSetter");
     {{cpp_class}}V8Internal::{{cpp_class}}OriginSafeMethodSetter(name, v8Value, info);
-    TRACE_EVENT_SET_SAMPLING_STATE("V8", "V8Execution");
+    TRACE_EVENT_SET_SAMPLING_STATE("v8", "V8Execution");
 }
 
 {% endif %}
@@ -555,7 +550,7 @@ static void {{cpp_class}}OriginSafeMethodSetterCallback(v8::Local<v8::String> na
 
 
 {##############################################################################}
-{% from 'methods.cpp' import named_constructor_callback with context %}
+{% from 'methods.cpp' import generate_constructor with context %}
 {% block named_constructor %}
 {% if named_constructor %}
 {% set to_active_dom_object = '%s::toActiveDOMObject' % v8_class
@@ -564,7 +559,7 @@ static void {{cpp_class}}OriginSafeMethodSetterCallback(v8::Local<v8::String> na
                          if is_event_target else '0' %}
 const WrapperTypeInfo {{v8_class}}Constructor::wrapperTypeInfo = { gin::kEmbedderBlink, {{v8_class}}Constructor::domTemplate, {{v8_class}}::derefObject, {{to_active_dom_object}}, {{to_event_target}}, 0, {{v8_class}}::installPerContextEnabledMethods, 0, WrapperTypeObjectPrototype, {{gc_type}} };
 
-{{named_constructor_callback(named_constructor)}}
+{{generate_constructor(named_constructor)}}
 v8::Handle<v8::FunctionTemplate> {{v8_class}}Constructor::domTemplate(v8::Isolate* isolate)
 {
     static int domTemplateKey; // This address is used for a key to look up the dom template.
@@ -573,7 +568,7 @@ v8::Handle<v8::FunctionTemplate> {{v8_class}}Constructor::domTemplate(v8::Isolat
     if (!result.IsEmpty())
         return result;
 
-    TRACE_EVENT_SCOPED_SAMPLING_STATE("Blink", "BuildDOMTemplate");
+    TRACE_EVENT_SCOPED_SAMPLING_STATE("blink", "BuildDOMTemplate");
     result = v8::FunctionTemplate::New(isolate, {{v8_class}}ConstructorCallback);
     v8::Local<v8::ObjectTemplate> instanceTemplate = result->InstanceTemplate();
     instanceTemplate->SetInternalFieldCount({{v8_class}}::internalFieldCount);
@@ -591,8 +586,7 @@ v8::Handle<v8::FunctionTemplate> {{v8_class}}Constructor::domTemplate(v8::Isolat
 {% if constructor_overloads %}
 static void constructor(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    v8::Isolate* isolate = info.GetIsolate();
-    ExceptionState exceptionState(ExceptionState::ConstructionContext, "{{interface_name}}", info.Holder(), isolate);
+    ExceptionState exceptionState(ExceptionState::ConstructionContext, "{{interface_name}}", info.Holder(), info.GetIsolate());
     {# 2. Initialize argcount to be min(maxarg, n). #}
     switch (std::min({{constructor_overloads.maxarg}}, info.Length())) {
     {# 3. Remove from S all entries whose type list is not of length argcount. #}
@@ -636,8 +630,7 @@ static void constructor(const v8::FunctionCallbackInfo<v8::Value>& info)
 {% if has_event_constructor %}
 static void constructor(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    v8::Isolate* isolate = info.GetIsolate();
-    ExceptionState exceptionState(ExceptionState::ConstructionContext, "{{interface_name}}", info.Holder(), isolate);
+    ExceptionState exceptionState(ExceptionState::ConstructionContext, "{{interface_name}}", info.Holder(), info.GetIsolate());
     if (info.Length() < 1) {
         exceptionState.throwTypeError("An event name must be provided.");
         exceptionState.throwIfNeeded();
@@ -650,7 +643,7 @@ static void constructor(const v8::FunctionCallbackInfo<v8::Value>& info)
     {% endfor %}
     {{cpp_class}}Init eventInit;
     if (info.Length() >= 2) {
-        TONATIVE_VOID(Dictionary, options, Dictionary(info[1], isolate));
+        TONATIVE_VOID(Dictionary, options, Dictionary(info[1], info.GetIsolate()));
         if (!initialize{{cpp_class}}(eventInit, options, exceptionState, info)) {
             exceptionState.throwIfNeeded();
             return;
@@ -660,7 +653,7 @@ static void constructor(const v8::FunctionCallbackInfo<v8::Value>& info)
         {% for attribute in any_type_attributes %}
         options.get("{{attribute.name}}", {{attribute.name}});
         if (!{{attribute.name}}.IsEmpty())
-            V8HiddenValue::setHiddenValue(isolate, info.Holder(), v8AtomicString(isolate, "{{attribute.name}}"), {{attribute.name}});
+            V8HiddenValue::setHiddenValue(info.GetIsolate(), info.Holder(), v8AtomicString(info.GetIsolate(), "{{attribute.name}}"), {{attribute.name}});
         {% endfor %}
     }
     {% if is_constructor_raises_exception %}
@@ -680,16 +673,16 @@ static void constructor(const v8::FunctionCallbackInfo<v8::Value>& info)
           thus passing it around would cause leakage.
        2) Errors cannot be cloned (or serialized):
        http://www.whatwg.org/specs/web-apps/current-work/multipage/common-dom-interfaces.html#safe-passing-of-structured-data #}
-    if (DOMWrapperWorld::current(isolate).isIsolatedWorld()) {
+    if (DOMWrapperWorld::current(info.GetIsolate()).isIsolatedWorld()) {
         {% for attribute in any_type_attributes %}
         if (!{{attribute.name}}.IsEmpty())
-            event->setSerialized{{attribute.name | blink_capitalize}}(SerializedScriptValue::createAndSwallowExceptions({{attribute.name}}, isolate));
+            event->setSerialized{{attribute.name | blink_capitalize}}(SerializedScriptValue::createAndSwallowExceptions({{attribute.name}}, info.GetIsolate()));
         {% endfor %}
     }
 
     {% endif %}
     v8::Handle<v8::Object> wrapper = info.Holder();
-    V8DOMWrapper::associateObjectWithWrapper<{{v8_class}}>(event.release(), &{{v8_class}}::wrapperTypeInfo, wrapper, isolate, {{wrapper_configuration}});
+    V8DOMWrapper::associateObjectWithWrapper<{{v8_class}}>(event.release(), &{{v8_class}}::wrapperTypeInfo, wrapper, info.GetIsolate(), {{wrapper_configuration}});
     v8SetReturnValue(info, wrapper);
 }
 
@@ -744,8 +737,7 @@ static const V8DOMConfiguration::AttributeConfiguration shadowAttributes[] = {
 
 
 {##############################################################################}
-{% block class_attributes %}
-{# FIXME: rename to install_attributes and put into configure_class_template #}
+{% block install_attributes %}
 {% if has_attribute_configuration %}
 static const V8DOMConfiguration::AttributeConfiguration {{v8_class}}Attributes[] = {
     {% for attribute in attributes
@@ -765,8 +757,7 @@ static const V8DOMConfiguration::AttributeConfiguration {{v8_class}}Attributes[]
 
 
 {##############################################################################}
-{% block class_accessors %}
-{# FIXME: rename install_accessors and put into configure_class_template #}
+{% block install_accessors %}
 {% if has_accessors %}
 static const V8DOMConfiguration::AccessorConfiguration {{v8_class}}Accessors[] = {
     {% for attribute in attributes if attribute.is_expose_js_accessors %}
@@ -779,8 +770,7 @@ static const V8DOMConfiguration::AccessorConfiguration {{v8_class}}Accessors[] =
 
 
 {##############################################################################}
-{% block class_methods %}
-{# FIXME: rename to install_methods and put into configure_class_template #}
+{% block install_methods %}
 {% if method_configuration_methods %}
 static const V8DOMConfiguration::MethodConfiguration {{v8_class}}Methods[] = {
     {% for method in method_configuration_methods %}
@@ -810,14 +800,14 @@ bool initialize{{cpp_class}}({{cpp_class}}Init& eventInit, const Dictionary& opt
                not attribute.idl_type == 'any')%}
     {% set is_nullable = 'true' if attribute.is_nullable else 'false' %}
     {% if attribute.deprecate_as %}
-    if (options.convert(conversionContext.setConversionType("{{attribute.idl_type}}", {{is_nullable}}), "{{attribute.name}}", eventInit.{{attribute.cpp_name}})) {
+    if (DictionaryHelper::convert(options, conversionContext.setConversionType("{{attribute.idl_type}}", {{is_nullable}}), "{{attribute.name}}", eventInit.{{attribute.cpp_name}})) {
         if (options.hasProperty("{{attribute.name}}"))
             UseCounter::countDeprecation(callingExecutionContext(info.GetIsolate()), UseCounter::{{attribute.deprecate_as}});
     } else {
         return false;
     }
     {% else %}
-    if (!options.convert(conversionContext.setConversionType("{{attribute.idl_type}}", {{is_nullable}}), "{{attribute.name}}", eventInit.{{attribute.cpp_name}}))
+    if (!DictionaryHelper::convert(options, conversionContext.setConversionType("{{attribute.idl_type}}", {{is_nullable}}), "{{attribute.name}}", eventInit.{{attribute.cpp_name}}))
         return false;
     {% endif %}
     {% endfor %}
@@ -833,7 +823,7 @@ bool initialize{{cpp_class}}({{cpp_class}}Init& eventInit, const Dictionary& opt
 {% if constructors or has_custom_constructor or has_event_constructor %}
 void {{v8_class}}::constructorCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    TRACE_EVENT_SCOPED_SAMPLING_STATE("Blink", "DOMConstructor");
+    TRACE_EVENT_SCOPED_SAMPLING_STATE("blink", "DOMConstructor");
     {% if measure_as %}
     UseCounter::count(callingExecutionContext(info.GetIsolate()), UseCounter::{{measure_as}});
     {% endif %}
@@ -875,9 +865,8 @@ static void configureShadowObjectTemplate(v8::Handle<v8::ObjectTemplate> templ, 
 
 
 {##############################################################################}
-{% block configure_class_template %}
-{# FIXME: rename to install_dom_template and Install{{v8_class}}DOMTemplate #}
-static void configure{{v8_class}}Template(v8::Handle<v8::FunctionTemplate> functionTemplate, v8::Isolate* isolate)
+{% block install_dom_template %}
+static void install{{v8_class}}Template(v8::Handle<v8::FunctionTemplate> functionTemplate, v8::Isolate* isolate)
 {
     functionTemplate->ReadOnlyPrototype();
 
@@ -998,25 +987,9 @@ static void configure{{v8_class}}Template(v8::Handle<v8::FunctionTemplate> funct
                               if method.overloads else
                               method.runtime_enabled_function) %}
     {% if method.is_do_not_check_security %}
-    {% if method.is_per_world_bindings %}
-    if (DOMWrapperWorld::current(isolate).isMainWorld()) {
-        {{install_do_not_check_security_signature(method, 'ForMainWorld')}}
-    } else {
-        {{install_do_not_check_security_signature(method)}}
-    }
-    {% else %}
-    {{install_do_not_check_security_signature(method)}}
-    {% endif %}
+    {{install_do_not_check_security_signature(method) | indent}}
     {% else %}{# is_do_not_check_security #}
-    {% if method.is_per_world_bindings %}
-    if (DOMWrapperWorld::current(isolate).isMainWorld()) {
-        {{install_custom_signature(method, 'ForMainWorld')}}
-    } else {
-        {{install_custom_signature(method)}}
-    }
-    {% else %}
-    {{install_custom_signature(method)}}
-    {% endif %}
+    {{install_custom_signature(method) | indent}}
     {% endif %}{# is_do_not_check_security #}
     {% endfilter %}{# runtime_enabled() #}
     {% endfilter %}{# conditional() #}
@@ -1053,7 +1026,6 @@ static void configure{{v8_class}}Template(v8::Handle<v8::FunctionTemplate> funct
 
 {######################################}
 {% macro install_do_not_check_security_signature(method, world_suffix) %}
-{# FIXME: move to V8DOMConfiguration::installDOMCallbacksWithDoNotCheckSecuritySignature #}
 {# Methods that are [DoNotCheckSecurity] are always readable, but if they are
    changed and then accessed from a different origin, we do not return the
    underlying value, but instead return a new copy of the original function.
@@ -1064,57 +1036,88 @@ static void configure{{v8_class}}Template(v8::Handle<v8::FunctionTemplate> funct
 {% set setter_callback =
     '{0}V8Internal::{0}OriginSafeMethodSetterCallback'.format(cpp_class)
     if not method.is_read_only else '0' %}
+{% if method.is_per_world_bindings %}
+{% set getter_callback_for_main_world = '%sForMainWorld' % getter_callback %}
+{% set setter_callback_for_main_world = '%sForMainWorld' % setter_callback
+   if not method.is_read_only else '0' %}
+{% else %}
+{% set getter_callback_for_main_world = '0' %}
+{% set setter_callback_for_main_world = '0' %}
+{% endif %}
 {% set property_attribute =
     'static_cast<v8::PropertyAttribute>(%s)' %
     ' | '.join(method.property_attributes or ['v8::DontDelete']) %}
-{{method.function_template}}->SetAccessor(v8AtomicString(isolate, "{{method.name}}"), {{getter_callback}}, {{setter_callback}}, v8Undefined(), v8::ALL_CAN_READ, {{property_attribute}});
+static const V8DOMConfiguration::AttributeConfiguration {{method.name}}OriginSafeAttributeConfiguration = {
+    "{{method.name}}", {{getter_callback}}, {{setter_callback}}, {{getter_callback_for_main_world}}, {{setter_callback_for_main_world}}, &{{v8_class}}::wrapperTypeInfo, v8::ALL_CAN_READ, {{property_attribute}}, false
+};
+V8DOMConfiguration::installAttribute({{method.function_template}}, v8::Handle<v8::ObjectTemplate>(), {{method.name}}OriginSafeAttributeConfiguration, isolate);
 {%- endmacro %}
 
 
 {######################################}
-{% macro install_custom_signature(method, world_suffix) %}
-{# FIXME: move to V8DOMConfiguration::installDOMCallbacksWithCustomSignature #}
-{% set method_callback = '%sV8Internal::%sMethodCallback%s' %
-                         (cpp_class, method.name, world_suffix) %}
-{% set property_attribute = 'static_cast<v8::PropertyAttribute>(%s)' %
-                            ' | '.join(method.property_attributes) %}
-{{method.function_template}}->Set(v8AtomicString(isolate, "{{method.name}}"), v8::FunctionTemplate::New(isolate, {{method_callback}}, v8Undefined(), {{method.signature}}, {{method.length}}){% if method.property_attributes %}, {{property_attribute}}{% endif %});
+{% macro install_custom_signature(method) %}
+{% set method_callback = '%sV8Internal::%sMethodCallback' % (cpp_class, method.name) %}
+{% set method_callback_for_main_world = '%sForMainWorld' % method_callback
+  if method.is_per_world_bindings else '0' %}
+{% set property_attribute =
+  'static_cast<v8::PropertyAttribute>(%s)' % ' | '.join(method.property_attributes)
+  if method.property_attributes else 'v8::None' %}
+static const V8DOMConfiguration::MethodConfiguration {{method.name}}MethodConfiguration = {
+    "{{method.name}}", {{method_callback}}, {{method_callback_for_main_world}}, {{method.length}}
+};
+V8DOMConfiguration::installMethodCustomSignature({{method.function_template}}, {{method.signature}}, {{property_attribute}}, {{method.name}}MethodConfiguration, isolate);
 {%- endmacro %}
 
 
 {######################################}
 {% macro install_constants() %}
-{# FIXME: should use reflected_name instead of name #}
 {# Normal (always enabled) constants #}
 static const V8DOMConfiguration::ConstantConfiguration {{v8_class}}Constants[] = {
     {% for constant in constants if not constant.runtime_enabled_function %}
-    {"{{constant.name}}", {{constant.value}}},
+    {% if constant.idl_type in ('Double', 'Float') %}
+        {% set value = '0, %s, 0' % constant.value %}
+    {% elif constant.idl_type == 'String' %}
+        {% set value = '0, 0, %s' % constant.value %}
+    {% else %}
+        {# 'Short', 'Long' etc. #}
+        {% set value = '%s, 0, 0' % constant.value %}
+    {% endif %}
+    {"{{constant.name}}", {{value}}, V8DOMConfiguration::ConstantType{{constant.idl_type}}},
     {% endfor %}
 };
 V8DOMConfiguration::installConstants(functionTemplate, prototypeTemplate, {{v8_class}}Constants, WTF_ARRAY_LENGTH({{v8_class}}Constants), isolate);
 {# Runtime-enabled constants #}
 {% for constant in constants if constant.runtime_enabled_function %}
 if ({{constant.runtime_enabled_function}}()) {
-    static const V8DOMConfiguration::ConstantConfiguration constantConfiguration = {"{{constant.name}}", static_cast<signed int>({{constant.value}})};
+    {% if constant.idl_type in ('Double', 'Float') %}
+        {% set value = '0, %s, 0' % constant.value %}
+    {% elif constant.idl_type == 'String' %}
+        {% set value = '0, 0, %s' % constant.value %}
+    {% else %}
+        {# 'Short', 'Long' etc. #}
+        {% set value = '%s, 0, 0' % constant.value %}
+    {% endif %}
+    static const V8DOMConfiguration::ConstantConfiguration constantConfiguration = {"{{constant.name}}", {{value}}, V8DOMConfiguration::ConstantType{{constant.idl_type}}};
     V8DOMConfiguration::installConstants(functionTemplate, prototypeTemplate, &constantConfiguration, 1, isolate);
 }
 {% endfor %}
 {# Check constants #}
 {% if not do_not_check_constants %}
 {% for constant in constants %}
+{% if constant.idl_type not in ('Double', 'Float', 'String') %}
 {% set constant_cpp_class = constant.cpp_class or cpp_class %}
 COMPILE_ASSERT({{constant.value}} == {{constant_cpp_class}}::{{constant.reflected_name}}, TheValueOf{{cpp_class}}_{{constant.reflected_name}}DoesntMatchWithImplementation);
+{% endif %}
 {% endfor %}
 {% endif %}
 {% endmacro %}
 
 
 {##############################################################################}
-{% block get_template %}
-{# FIXME: rename to get_dom_template and GetDOMTemplate #}
+{% block get_dom_template %}
 v8::Handle<v8::FunctionTemplate> {{v8_class}}::domTemplate(v8::Isolate* isolate)
 {
-    return V8DOMConfiguration::domClassTemplate(isolate, const_cast<WrapperTypeInfo*>(&wrapperTypeInfo), configure{{v8_class}}Template);
+    return V8DOMConfiguration::domClassTemplate(isolate, const_cast<WrapperTypeInfo*>(&wrapperTypeInfo), install{{v8_class}}Template);
 }
 
 {% endblock %}
@@ -1215,7 +1218,7 @@ v8::Handle<v8::ObjectTemplate> V8Window::getShadowObjectTemplate(v8::Isolate* is
     if (DOMWrapperWorld::current(isolate).isMainWorld()) {
         DEFINE_STATIC_LOCAL(v8::Persistent<v8::ObjectTemplate>, V8WindowShadowObjectCacheForMainWorld, ());
         if (V8WindowShadowObjectCacheForMainWorld.IsEmpty()) {
-            TRACE_EVENT_SCOPED_SAMPLING_STATE("Blink", "BuildDOMTemplate");
+            TRACE_EVENT_SCOPED_SAMPLING_STATE("blink", "BuildDOMTemplate");
             v8::Handle<v8::ObjectTemplate> templ = v8::ObjectTemplate::New(isolate);
             configureShadowObjectTemplate(templ, isolate);
             V8WindowShadowObjectCacheForMainWorld.Reset(isolate, templ);
@@ -1225,7 +1228,7 @@ v8::Handle<v8::ObjectTemplate> V8Window::getShadowObjectTemplate(v8::Isolate* is
     } else {
         DEFINE_STATIC_LOCAL(v8::Persistent<v8::ObjectTemplate>, V8WindowShadowObjectCacheForNonMainWorld, ());
         if (V8WindowShadowObjectCacheForNonMainWorld.IsEmpty()) {
-            TRACE_EVENT_SCOPED_SAMPLING_STATE("Blink", "BuildDOMTemplate");
+            TRACE_EVENT_SCOPED_SAMPLING_STATE("blink", "BuildDOMTemplate");
             v8::Handle<v8::ObjectTemplate> templ = v8::ObjectTemplate::New(isolate);
             configureShadowObjectTemplate(templ, isolate);
             V8WindowShadowObjectCacheForNonMainWorld.Reset(isolate, templ);

@@ -26,8 +26,8 @@
 #include "config.h"
 #include "core/editing/htmlediting.h"
 
-#include "bindings/v8/ExceptionState.h"
-#include "bindings/v8/ExceptionStatePlaceholder.h"
+#include "bindings/core/v8/ExceptionState.h"
+#include "bindings/core/v8/ExceptionStatePlaceholder.h"
 #include "core/HTMLElementFactory.h"
 #include "core/HTMLNames.h"
 #include "core/dom/Document.h"
@@ -128,7 +128,7 @@ Node* highestEditableRoot(const Position& position, EditableType editableType)
 
     node = highestRoot->parentNode();
     while (node) {
-        if (node->rendererIsEditable(editableType))
+        if (node->hasEditableStyle(editableType))
             highestRoot = node;
         if (isHTMLBodyElement(*node))
             break;
@@ -141,7 +141,7 @@ Node* highestEditableRoot(const Position& position, EditableType editableType)
 Node* lowestEditableAncestor(Node* node)
 {
     while (node) {
-        if (node->rendererIsEditable())
+        if (node->hasEditableStyle())
             return node->rootEditableElement();
         if (isHTMLBodyElement(*node))
             break;
@@ -164,7 +164,7 @@ bool isEditablePosition(const Position& p, EditableType editableType, EUpdateSty
     if (isRenderedTableElement(node))
         node = node->parentNode();
 
-    return node->rendererIsEditable(editableType);
+    return node->hasEditableStyle(editableType);
 }
 
 bool isAtUnsplittableElement(const Position& pos)
@@ -261,7 +261,7 @@ Position previousVisuallyDistinctCandidate(const Position& position)
 VisiblePosition firstEditableVisiblePositionAfterPositionInRoot(const Position& position, Node* highestRoot)
 {
     // position falls before highestRoot.
-    if (comparePositions(position, firstPositionInNode(highestRoot)) == -1 && highestRoot->rendererIsEditable())
+    if (comparePositions(position, firstPositionInNode(highestRoot)) == -1 && highestRoot->hasEditableStyle())
         return VisiblePosition(firstPositionInNode(highestRoot));
 
     Position editablePosition = position;
@@ -555,7 +555,7 @@ Node* enclosingNodeWithTag(const Position& p, const QualifiedName& tagName)
 
     Node* root = highestEditableRoot(p);
     for (Node* n = p.deprecatedNode(); n; n = n->parentNode()) {
-        if (root && !n->rendererIsEditable())
+        if (root && !n->hasEditableStyle())
             continue;
         if (n->hasTagName(tagName))
             return n;
@@ -577,7 +577,7 @@ Node* enclosingNodeOfType(const Position& p, bool (*nodeIsOfType)(const Node*), 
     for (Node* n = p.deprecatedNode(); n; n = n->parentNode()) {
         // Don't return a non-editable node if the input position was editable, since
         // the callers from editing will no doubt want to perform editing inside the returned node.
-        if (root && !n->rendererIsEditable())
+        if (root && !n->hasEditableStyle())
             continue;
         if (nodeIsOfType(n))
             return n;
@@ -593,7 +593,7 @@ Node* highestEnclosingNodeOfType(const Position& p, bool (*nodeIsOfType)(const N
     Node* highest = 0;
     Node* root = rule == CannotCrossEditingBoundary ? highestEditableRoot(p) : 0;
     for (Node* n = p.containerNode(); n && n != stayWithin; n = n->parentNode()) {
-        if (root && !n->rendererIsEditable())
+        if (root && !n->hasEditableStyle())
             continue;
         if (nodeIsOfType(n))
             highest = n;
@@ -722,7 +722,7 @@ bool canMergeLists(Element* firstList, Element* secondList)
         return false;
 
     return firstList->hasTagName(secondList->tagQName()) // make sure the list types match (ol vs. ul)
-    && firstList->rendererIsEditable() && secondList->rendererIsEditable() // both lists are editable
+    && firstList->hasEditableStyle() && secondList->hasEditableStyle() // both lists are editable
     && firstList->rootEditableElement() == secondList->rootEditableElement() // don't cross editing boundaries
     && isVisiblyAdjacent(positionInParentAfterNode(*firstList), positionInParentBeforeNode(*secondList));
     // Make sure there is no visible content between this li and the previous list
@@ -881,6 +881,73 @@ bool isNodeRendered(const Node *node)
         return false;
 
     return renderer->style()->visibility() == VISIBLE;
+}
+
+// return first preceding DOM position rendered at a different location, or "this"
+static Position previousCharacterPosition(const Position& position, EAffinity affinity)
+{
+    if (position.isNull())
+        return Position();
+
+    Node* fromRootEditableElement = position.anchorNode()->rootEditableElement();
+
+    bool atStartOfLine = isStartOfLine(VisiblePosition(position, affinity));
+    bool rendered = position.isCandidate();
+
+    Position currentPos = position;
+    while (!currentPos.atStartOfTree()) {
+        currentPos = currentPos.previous();
+
+        if (currentPos.anchorNode()->rootEditableElement() != fromRootEditableElement)
+            return position;
+
+        if (atStartOfLine || !rendered) {
+            if (currentPos.isCandidate())
+                return currentPos;
+        } else if (position.rendersInDifferentPosition(currentPos)) {
+            return currentPos;
+        }
+    }
+
+    return position;
+}
+
+// This assumes that it starts in editable content.
+Position leadingWhitespacePosition(const Position& position, EAffinity affinity, WhitespacePositionOption option)
+{
+    ASSERT(isEditablePosition(position, ContentIsEditable, DoNotUpdateStyle));
+    if (position.isNull())
+        return Position();
+
+    if (isHTMLBRElement(*position.upstream().anchorNode()))
+        return Position();
+
+    Position prev = previousCharacterPosition(position, affinity);
+    if (prev != position && prev.anchorNode()->inSameContainingBlockFlowElement(position.anchorNode()) && prev.anchorNode()->isTextNode()) {
+        String string = toText(prev.anchorNode())->data();
+        UChar previousCharacter = string[prev.deprecatedEditingOffset()];
+        bool isSpace = option == ConsiderNonCollapsibleWhitespace ? (isSpaceOrNewline(previousCharacter) || previousCharacter == noBreakSpace) : isCollapsibleWhitespace(previousCharacter);
+        if (isSpace && isEditablePosition(prev))
+            return prev;
+    }
+
+    return Position();
+}
+
+// This assumes that it starts in editable content.
+Position trailingWhitespacePosition(const Position& position, EAffinity, WhitespacePositionOption option)
+{
+    ASSERT(isEditablePosition(position, ContentIsEditable, DoNotUpdateStyle));
+    if (position.isNull())
+        return Position();
+
+    VisiblePosition visiblePosition(position);
+    UChar characterAfterVisiblePosition = visiblePosition.characterAfter();
+    bool isSpace = option == ConsiderNonCollapsibleWhitespace ? (isSpaceOrNewline(characterAfterVisiblePosition) || characterAfterVisiblePosition == noBreakSpace) : isCollapsibleWhitespace(characterAfterVisiblePosition);
+    // The space must not be in another paragraph and it must be editable.
+    if (isSpace && !isEndOfParagraph(visiblePosition) && visiblePosition.next(CannotCrossEditingBoundary).isNotNull())
+        return position;
+    return Position();
 }
 
 unsigned numEnclosingMailBlockquotes(const Position& p)

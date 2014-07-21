@@ -31,7 +31,7 @@
 #ifndef SVGNumberList_h
 #define SVGNumberList_h
 
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "core/svg/SVGNumber.h"
 #include "core/svg/properties/SVGListPropertyHelper.h"
 
@@ -50,12 +50,9 @@ public:
 
     virtual ~SVGNumberList();
 
-    PassRefPtr<SVGNumberList> clone();
-
     void setValueAsString(const String&, ExceptionState&);
 
     // SVGPropertyBase:
-    virtual PassRefPtr<SVGPropertyBase> cloneForAnimation(const String&) const OVERRIDE;
     virtual String valueAsString() const OVERRIDE;
 
     virtual void add(PassRefPtrWillBeRawPtr<SVGPropertyBase>, SVGElement*) OVERRIDE;
@@ -68,8 +65,6 @@ public:
 
 private:
     SVGNumberList();
-
-    bool adjustFromToListValues(PassRefPtr<SVGNumberList> fromList, PassRefPtr<SVGNumberList> toList, float percentage, bool isToAnimation, bool resizeAnimatedListIfNeeded);
 
     template <typename CharType>
     bool parse(const CharType*& ptr, const CharType* end);

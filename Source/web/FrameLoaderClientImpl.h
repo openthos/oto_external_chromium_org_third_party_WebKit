@@ -75,7 +75,6 @@ public:
     virtual WebCore::Frame* firstChild() const OVERRIDE;
     virtual WebCore::Frame* lastChild() const OVERRIDE;
     virtual void detachedFromParent() OVERRIDE;
-    virtual void dispatchWillRequestAfterPreconnect(WebCore::ResourceRequest&) OVERRIDE;
     virtual void dispatchWillSendRequest(WebCore::DocumentLoader*, unsigned long identifier, WebCore::ResourceRequest&, const WebCore::ResourceResponse& redirectResponse) OVERRIDE;
     virtual void dispatchDidReceiveResponse(WebCore::DocumentLoader*, unsigned long identifier, const WebCore::ResourceResponse&) OVERRIDE;
     virtual void dispatchDidChangeResourcePriority(unsigned long identifier, WebCore::ResourceLoadPriority, int intraPriorityValue) OVERRIDE;
@@ -85,7 +84,7 @@ public:
     virtual void dispatchDidReceiveServerRedirectForProvisionalLoad() OVERRIDE;
     virtual void dispatchDidNavigateWithinPage(WebCore::HistoryItem*, WebCore::HistoryCommitType) OVERRIDE;
     virtual void dispatchWillClose() OVERRIDE;
-    virtual void dispatchDidStartProvisionalLoad() OVERRIDE;
+    virtual void dispatchDidStartProvisionalLoad(bool isTransitionNavigation) OVERRIDE;
     virtual void dispatchDidReceiveTitle(const String&) OVERRIDE;
     virtual void dispatchDidChangeIcons(WebCore::IconType) OVERRIDE;
     virtual void dispatchDidCommitLoad(WebCore::LocalFrame*, WebCore::HistoryItem*, WebCore::HistoryCommitType) OVERRIDE;
@@ -94,8 +93,10 @@ public:
     virtual void dispatchDidFinishDocumentLoad() OVERRIDE;
     virtual void dispatchDidFinishLoad() OVERRIDE;
     virtual void dispatchDidFirstVisuallyNonEmptyLayout() OVERRIDE;
-    virtual void dispatchDidChangeBrandColor() OVERRIDE;
-    virtual WebCore::NavigationPolicy decidePolicyForNavigation(const WebCore::ResourceRequest&, WebCore::DocumentLoader*, WebCore::NavigationPolicy) OVERRIDE;
+
+    virtual void dispatchDidChangeThemeColor() OVERRIDE;
+    virtual WebCore::NavigationPolicy decidePolicyForNavigation(const WebCore::ResourceRequest&, WebCore::DocumentLoader*, WebCore::NavigationPolicy, bool isTransitionNavigation) OVERRIDE;
+    virtual void dispatchAddNavigationTransitionData(const String& allowedDestinationOrigin, const String& selector, const String& markup) OVERRIDE;
     virtual void dispatchWillRequestResource(WebCore::FetchRequest*) OVERRIDE;
     virtual void dispatchWillSendSubmitEvent(WebCore::HTMLFormElement*) OVERRIDE;
     virtual void dispatchWillSubmitForm(WebCore::HTMLFormElement*) OVERRIDE;
@@ -133,6 +134,7 @@ public:
     virtual bool allowScriptFromSource(bool enabledPerSettings, const WebCore::KURL& scriptURL) OVERRIDE;
     virtual bool allowPlugins(bool enabledPerSettings) OVERRIDE;
     virtual bool allowImage(bool enabledPerSettings, const WebCore::KURL& imageURL) OVERRIDE;
+    virtual bool allowMedia(const WebCore::KURL& mediaURL) OVERRIDE;
     virtual bool allowDisplayingInsecureContent(bool enabledPerSettings, WebCore::SecurityOrigin*, const WebCore::KURL&) OVERRIDE;
     virtual bool allowRunningInsecureContent(bool enabledPerSettings, WebCore::SecurityOrigin*, const WebCore::KURL&) OVERRIDE;
     virtual void didNotAllowScript() OVERRIDE;

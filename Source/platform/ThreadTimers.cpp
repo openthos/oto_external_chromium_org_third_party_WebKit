@@ -27,10 +27,11 @@
 #include "config.h"
 #include "platform/ThreadTimers.h"
 
-#include "platform/SharedTimer.h"
 #include "platform/PlatformThreadData.h"
+#include "platform/SharedTimer.h"
 #include "platform/Timer.h"
 #include "platform/TraceEvent.h"
+#include "platform/scheduler/Scheduler.h"
 #include "wtf/CurrentTime.h"
 #include "wtf/MainThread.h"
 
@@ -102,12 +103,12 @@ void ThreadTimers::updateSharedTimer()
 
 void ThreadTimers::sharedTimerFired()
 {
-    TRACE_EVENT_SET_SAMPLING_STATE("Blink", "BlinkInternal");
+    TRACE_EVENT_SET_SAMPLING_STATE("blink", "BlinkInternal");
 
     // Redirect to non-static method.
     PlatformThreadData::current().threadTimers().sharedTimerFiredInternal();
 
-    TRACE_EVENT_SET_SAMPLING_STATE("Blink", "Sleeping");
+    TRACE_EVENT_SET_SAMPLING_STATE("blink", "Sleeping");
 }
 
 void ThreadTimers::sharedTimerFiredInternal()
@@ -138,7 +139,7 @@ void ThreadTimers::sharedTimerFiredInternal()
         timer.fired();
 
         // Catch the case where the timer asked timers to fire in a nested event loop, or we are over time limit.
-        if (!m_firingTimers || timeToQuit < monotonicallyIncreasingTime())
+        if (!m_firingTimers || timeToQuit < monotonicallyIncreasingTime() || (isMainThread() && Scheduler::shared()->shouldYieldForHighPriorityWork()))
             break;
     }
 

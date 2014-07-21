@@ -34,7 +34,6 @@
 #include "core/animation/AnimationEffect.h"
 #include "core/animation/AnimationPlayer.h"
 #include "core/dom/Element.h"
-#include "core/events/Event.h"
 #include "platform/Timer.h"
 #include "platform/heap/Handle.h"
 #include "wtf/RefCounted.h"
@@ -68,6 +67,7 @@ public:
     // Creates a player attached to this timeline, but without a start time.
     AnimationPlayer* createAnimationPlayer(AnimationNode*);
     AnimationPlayer* play(AnimationNode*);
+    WillBeHeapVector<RefPtrWillBeMember<AnimationPlayer> > getAnimationPlayers();
 
 #if !ENABLE(OILPAN)
     void playerDestroyed(AnimationPlayer* player)

@@ -69,8 +69,6 @@ private:
     bool m_isSafe;
 };
 
-typedef HashSet<String, CaseFoldingHash> HTTPHeaderSet;
-
 void HTTPRequestHeaderValidator::visitHeader(const WebString& name, const WebString& value)
 {
     m_isSafe = m_isSafe && isValidHTTPToken(name) && XMLHttpRequest::isAllowedHTTPHeader(name) && isValidHTTPHeaderValue(value);
@@ -350,6 +348,13 @@ void AssociatedURLLoader::loadAsynchronously(const WebURLRequest& request, WebUR
         resourceLoaderOptions.dataBufferingPolicy = DoNotBufferData;
 
         const ResourceRequest& webcoreRequest = newRequest.toResourceRequest();
+        if (webcoreRequest.requestContext() == blink::WebURLRequest::RequestContextUnspecified) {
+            // FIXME: We load URLs without setting a TargetType (and therefore a request context) in several
+            // places in content/ (P2PPortAllocatorSession::AllocateLegacyRelaySession, for example). Remove
+            // this once those places are patched up.
+            newRequest.setRequestContext(blink::WebURLRequest::RequestContextInternal);
+        }
+
         Document* webcoreDocument = m_frameImpl->frame()->document();
         ASSERT(webcoreDocument);
         m_loader = DocumentThreadableLoader::create(*webcoreDocument, m_clientAdapter.get(), webcoreRequest, options, resourceLoaderOptions);

@@ -70,6 +70,14 @@ TYPE_NAMES = {
     'Date': 'Date',
 }
 
+STRING_TYPES = frozenset([
+    # http://heycam.github.io/webidl/#es-interface-call (step 10.11)
+    # (Interface object [[Call]] method's string types.)
+    'String',
+    'ByteString',
+    'ScalarValueString',
+])
+
 
 ################################################################################
 # Inheritance
@@ -125,24 +133,22 @@ class IdlType(object):
             return type_string
         return type_string
 
-    # FIXME: rename to native_array_element_type and move to v8_types.py
+    # FIXME: move to v8_types.py
     @property
-    def array_or_sequence_type(self):
-        return self.array_type or self.sequence_type
+    def native_array_element_type(self):
+        return self.array_element_type or self.sequence_element_type
 
-    # FIXME: rename to array_element_type
     @property
-    def array_type(self):
+    def array_element_type(self):
         return self.is_array and IdlType(self.base_type)
 
-    # FIXME: rename to sequence_element_type
     @property
-    def sequence_type(self):
+    def sequence_element_type(self):
         return self.is_sequence and IdlType(self.base_type)
 
     @property
     def is_basic_type(self):
-        return self.base_type in BASIC_TYPES and not self.array_or_sequence_type
+        return self.base_type in BASIC_TYPES and not self.native_array_element_type
 
     @property
     def is_callback_function(self):
@@ -155,8 +161,8 @@ class IdlType(object):
     @property
     def is_composite_type(self):
         return (self.name == 'Any' or
-                self.array_type or
-                self.sequence_type or
+                self.array_element_type or
+                self.sequence_element_type or
                 self.is_union_type)
 
     @property
@@ -171,15 +177,15 @@ class IdlType(object):
 
     @property
     def is_integer_type(self):
-        return self.base_type in INTEGER_TYPES and not self.array_or_sequence_type
+        return self.base_type in INTEGER_TYPES and not self.native_array_element_type
 
     @property
     def is_numeric_type(self):
-        return self.base_type in NUMERIC_TYPES and not self.array_or_sequence_type
+        return self.base_type in NUMERIC_TYPES and not self.native_array_element_type
 
     @property
     def is_primitive_type(self):
-        return self.base_type in PRIMITIVE_TYPES and not self.array_or_sequence_type
+        return self.base_type in PRIMITIVE_TYPES and not self.native_array_element_type
 
     @property
     def is_interface_type(self):
@@ -195,8 +201,22 @@ class IdlType(object):
                    self.name == 'Promise')  # Promise will be basic in future
 
     @property
+    def is_string_type(self):
+        return self.base_type_name in STRING_TYPES
+
+    @property
+    def may_raise_exception_on_conversion(self):
+        return (self.is_integer_type or
+                self.name in ('ByteString', 'ScalarValueString'))
+
+    @property
     def is_union_type(self):
         return isinstance(self, IdlUnionType)
+
+    @property
+    def base_type_name(self):
+        base_type = self.base_type
+        return TYPE_NAMES.get(base_type, base_type)
 
     @property
     def name(self):
@@ -204,8 +224,7 @@ class IdlType(object):
 
         http://heycam.github.io/webidl/#dfn-type-name
         """
-        base_type = self.base_type
-        base_type_name = TYPE_NAMES.get(base_type, base_type)
+        base_type_name = self.base_type_name
         if self.is_array:
             return base_type_name + 'Array'
         if self.is_sequence:
@@ -261,12 +280,12 @@ class IdlUnionType(object):
         self.is_nullable = is_nullable
 
     @property
-    def array_or_sequence_type(self):
-        return False
+    def native_array_element_type(self):
+        return None
 
     @property
-    def array_type(self):
-        return False
+    def array_element_type(self):
+        return None
 
     @property
     def is_array(self):
@@ -302,6 +321,10 @@ class IdlUnionType(object):
         return False
 
     @property
+    def is_string_type(self):
+        return False
+
+    @property
     def is_sequence(self):
         # We do not support sequences of union types
         return False
@@ -309,6 +332,10 @@ class IdlUnionType(object):
     @property
     def is_union_type(self):
         return True
+
+    @property
+    def may_raise_exception_on_conversion(self):
+        return False
 
     @property
     def name(self):

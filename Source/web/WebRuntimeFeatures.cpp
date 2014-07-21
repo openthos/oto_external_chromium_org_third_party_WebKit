@@ -67,11 +67,6 @@ void WebRuntimeFeatures::enableDatabase(bool enable)
     RuntimeEnabledFeatures::setDatabaseEnabled(enable);
 }
 
-void WebRuntimeFeatures::enableDialogElement(bool enable)
-{
-    RuntimeEnabledFeatures::setDialogElementEnabled(enable);
-}
-
 void WebRuntimeFeatures::enableEncryptedMedia(bool enable)
 {
     RuntimeEnabledFeatures::setEncryptedMediaEnabled(enable);
@@ -138,6 +133,11 @@ void WebRuntimeFeatures::enableMediaPlayer(bool enable)
 void WebRuntimeFeatures::enableSubpixelFontScaling(bool enable)
 {
     RuntimeEnabledFeatures::setSubpixelFontScalingEnabled(enable);
+}
+
+void WebRuntimeFeatures::enableMediaCapture(bool enable)
+{
+    RuntimeEnabledFeatures::setMediaCaptureEnabled(enable);
 }
 
 void WebRuntimeFeatures::enableMediaSource(bool enable)
@@ -235,11 +235,6 @@ void WebRuntimeFeatures::enableWebMIDI(bool enable)
     return RuntimeEnabledFeatures::setWebMIDIEnabled(enable);
 }
 
-void WebRuntimeFeatures::enableHTMLImports(bool enable)
-{
-    RuntimeEnabledFeatures::setHTMLImportsEnabled(enable);
-}
-
 void WebRuntimeFeatures::enableXSLT(bool enable)
 {
     RuntimeEnabledFeatures::setXSLTEnabled(enable);
@@ -260,16 +255,6 @@ void WebRuntimeFeatures::enableSharedWorker(bool enable)
     RuntimeEnabledFeatures::setSharedWorkerEnabled(enable);
 }
 
-void WebRuntimeFeatures::enableRepaintAfterLayout(bool enable)
-{
-    RuntimeEnabledFeatures::setRepaintAfterLayoutEnabled(enable);
-}
-
-void WebRuntimeFeatures::enableExperimentalWebSocket(bool enable)
-{
-    RuntimeEnabledFeatures::setExperimentalWebSocketEnabled(enable);
-}
-
 void WebRuntimeFeatures::enableTargetedStyleRecalc(bool enable)
 {
     RuntimeEnabledFeatures::setTargetedStyleRecalcEnabled(enable);
@@ -288,6 +273,11 @@ void WebRuntimeFeatures::enableLayerSquashing(bool enable)
 void WebRuntimeFeatures::enableShowModalDialog(bool enable)
 {
     RuntimeEnabledFeatures::setShowModalDialogEnabled(enable);
+}
+
+void WebRuntimeFeatures::enableLaxMixedContentChecking(bool enable)
+{
+    RuntimeEnabledFeatures::setLaxMixedContentCheckingEnabled(enable);
 }
 
 } // namespace blink

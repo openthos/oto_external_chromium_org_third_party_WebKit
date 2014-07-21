@@ -113,7 +113,6 @@
 ../../core/fileapi/FileList.idl
 ../../core/fileapi/FileReader.idl
 ../../core/fileapi/FileReaderSync.idl
-../../core/fileapi/Stream.idl
 ../../core/frame/BarProp.idl
 ../../core/frame/Console.idl
 ../../core/frame/ConsoleBase.idl
@@ -278,6 +277,7 @@
 ../../core/plugins/PluginArray.idl
 ../../core/storage/Storage.idl
 ../../core/storage/StorageEvent.idl
+../../core/streams/Stream.idl
 ../../core/svg/SVGAElement.idl
 ../../core/svg/SVGAltGlyphDefElement.idl
 ../../core/svg/SVGAltGlyphElement.idl
@@ -442,6 +442,7 @@
 ../../core/xml/XPathNSResolver.idl
 ../../core/xml/XPathResult.idl
 ../../core/xml/XSLTProcessor.idl
+../../core/testing/GarbageCollectedScriptWrappable.idl
 ../../core/testing/GCObservation.idl
 ../../core/testing/InternalProfilers.idl
 ../../core/testing/InternalSettings.idl
@@ -449,6 +450,8 @@
 ../../core/testing/LayerRect.idl
 ../../core/testing/LayerRectList.idl
 ../../core/testing/MallocStatistics.idl
+../../core/testing/PrivateScriptTest.idl
+../../core/testing/RefCountedScriptWrappable.idl
 ../../core/testing/TypeConversions.idl
 ../../core/animation/DocumentAnimation.idl
 ../../core/animation/ElementAnimation.idl
@@ -469,6 +472,7 @@
 ../../core/frame/WindowEventHandlers.idl
 ../../core/frame/WindowTimers.idl
 ../../core/html/canvas/CanvasPathMethods.idl
+../../core/html/canvas/MouseEventHitRegion.idl
 ../../core/html/canvas/WebGLRenderingContextBase.idl
 ../../core/page/WindowPagePopup.idl
 ../../core/svg/SVGDocument.idl

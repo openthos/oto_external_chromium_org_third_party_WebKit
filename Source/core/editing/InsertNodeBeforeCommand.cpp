@@ -26,8 +26,7 @@
 #include "config.h"
 #include "core/editing/InsertNodeBeforeCommand.h"
 
-#include "bindings/v8/ExceptionStatePlaceholder.h"
-#include "core/dom/Document.h"
+#include "bindings/core/v8/ExceptionStatePlaceholder.h"
 
 namespace WebCore {
 
@@ -43,7 +42,7 @@ InsertNodeBeforeCommand::InsertNodeBeforeCommand(PassRefPtrWillBeRawPtr<Node> in
     ASSERT(m_refChild);
     ASSERT(m_refChild->parentNode());
 
-    ASSERT(m_refChild->parentNode()->rendererIsEditable() || !m_refChild->parentNode()->inActiveDocument());
+    ASSERT(m_refChild->parentNode()->hasEditableStyle() || !m_refChild->parentNode()->inActiveDocument());
 }
 
 void InsertNodeBeforeCommand::doApply()

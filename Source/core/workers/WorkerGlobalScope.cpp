@@ -28,10 +28,10 @@
 #include "config.h"
 #include "core/workers/WorkerGlobalScope.h"
 
-#include "bindings/v8/ExceptionState.h"
-#include "bindings/v8/ScheduledAction.h"
-#include "bindings/v8/ScriptSourceCode.h"
-#include "bindings/v8/ScriptValue.h"
+#include "bindings/core/v8/ExceptionState.h"
+#include "bindings/core/v8/ScheduledAction.h"
+#include "bindings/core/v8/ScriptSourceCode.h"
+#include "bindings/core/v8/ScriptValue.h"
 #include "core/dom/ActiveDOMObject.h"
 #include "core/dom/AddConsoleMessageTask.h"
 #include "core/dom/ContextLifecycleNotifier.h"
@@ -56,6 +56,7 @@
 #include "platform/network/ContentSecurityPolicyParsers.h"
 #include "platform/weborigin/KURL.h"
 #include "platform/weborigin/SecurityOrigin.h"
+#include "public/platform/WebURLRequest.h"
 
 namespace WebCore {
 
@@ -249,7 +250,7 @@ void WorkerGlobalScope::importScripts(const Vector<String>& urls, ExceptionState
 
     for (Vector<KURL>::const_iterator it = completedURLs.begin(); it != end; ++it) {
         RefPtr<WorkerScriptLoader> scriptLoader(WorkerScriptLoader::create());
-        scriptLoader->setTargetType(ResourceRequest::TargetIsScript);
+        scriptLoader->setRequestContext(blink::WebURLRequest::RequestContextScript);
         scriptLoader->loadSynchronously(executionContext, *it, AllowCrossOriginRequests);
 
         // If the fetching attempt failed, throw a NetworkError exception and abort all these steps.

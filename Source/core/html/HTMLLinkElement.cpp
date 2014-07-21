@@ -25,7 +25,8 @@
 #include "config.h"
 #include "core/html/HTMLLinkElement.h"
 
-#include "bindings/v8/ScriptEventListener.h"
+#include "bindings/core/v8/ScriptEventListener.h"
+#include "bindings/core/v8/V8DOMActivityLogger.h"
 #include "core/HTMLNames.h"
 #include "core/css/MediaList.h"
 #include "core/css/MediaQueryEvaluator.h"
@@ -260,6 +261,16 @@ void HTMLLinkElement::enableIfExitTransitionStyle()
 
 Node::InsertionNotificationRequest HTMLLinkElement::insertedInto(ContainerNode* insertionPoint)
 {
+    if (insertionPoint->inDocument()) {
+        V8DOMActivityLogger* activityLogger = V8DOMActivityLogger::currentActivityLoggerIfIsolatedWorld();
+        if (activityLogger) {
+            Vector<String> argv;
+            argv.append("link");
+            argv.append(fastGetAttribute(relAttr));
+            argv.append(fastGetAttribute(hrefAttr));
+            activityLogger->logEvent("blinkAddElement", argv.size(), argv.data());
+        }
+    }
     HTMLElement::insertedInto(insertionPoint);
     if (!insertionPoint->inDocument())
         return InsertionDone;
@@ -440,6 +451,22 @@ void HTMLLinkElement::trace(Visitor* visitor)
     visitor->trace(m_link);
     visitor->trace(m_sizes);
     HTMLElement::trace(visitor);
+}
+
+void HTMLLinkElement::attributeWillChange(const QualifiedName& name, const AtomicString& oldValue, const AtomicString& newValue)
+{
+    if (name == hrefAttr && inDocument()) {
+        V8DOMActivityLogger* activityLogger = V8DOMActivityLogger::currentActivityLoggerIfIsolatedWorld();
+        if (activityLogger) {
+            Vector<String> argv;
+            argv.append("link");
+            argv.append(hrefAttr.toString());
+            argv.append(oldValue);
+            argv.append(newValue);
+            activityLogger->logEvent("blinkSetAttribute", argv.size(), argv.data());
+        }
+    }
+    HTMLElement::attributeWillChange(name, oldValue, newValue);
 }
 
 PassOwnPtrWillBeRawPtr<LinkStyle> LinkStyle::create(HTMLLinkElement* owner)
@@ -669,7 +696,7 @@ void LinkStyle::process()
             if (Document* document = loadingFrame()->document()) {
                 RefPtr<RenderStyle> documentStyle = StyleResolver::styleForDocument(*document);
                 RefPtrWillBeRawPtr<MediaQuerySet> media = MediaQuerySet::create(m_owner->media());
-                MediaQueryEvaluator evaluator(frame->view()->mediaType(), frame);
+                MediaQueryEvaluator evaluator(frame);
                 mediaQueryMatches = evaluator.eval(media.get());
             }
         }

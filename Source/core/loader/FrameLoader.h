@@ -75,6 +75,8 @@ bool isBackForwardLoadType(FrameLoadType);
 class FrameLoader {
     WTF_MAKE_NONCOPYABLE(FrameLoader);
 public:
+    static ResourceRequest requestFromHistoryItem(HistoryItem*, ResourceRequestCachePolicy);
+
     FrameLoader(LocalFrame*);
     ~FrameLoader();
 
@@ -130,8 +132,6 @@ public:
     void setLoadType(FrameLoadType loadType) { m_loadType = loadType; }
 
     void checkLoadComplete();
-
-    static void addHTTPOriginIfNeeded(ResourceRequest&, const AtomicString& origin);
 
     FrameLoaderClient* client() const;
 
@@ -212,8 +212,10 @@ private:
 
     // Calls continueLoadAfterNavigationPolicy
     void loadWithNavigationAction(const NavigationAction&, FrameLoadType, PassRefPtrWillBeRawPtr<FormState>,
-        const SubstituteData&, ClientRedirectPolicy = NotClientRedirect, const AtomicString& overrideEncoding = nullAtom);
+        const SubstituteData&, ContentSecurityPolicyCheck shouldCheckMainWorldContentSecurityPolicy, ClientRedirectPolicy = NotClientRedirect, const AtomicString& overrideEncoding = nullAtom);
 
+    bool validateTransitionNavigationMode();
+    bool dispatchNavigationTransitionData();
     void detachFromParent();
     void detachChildren();
     void detachClient();

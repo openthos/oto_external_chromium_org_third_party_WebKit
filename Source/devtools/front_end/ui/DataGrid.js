@@ -41,15 +41,15 @@ WebInspector.DataGrid = function(columnsArray, editCallback, deleteCallback, ref
     this.element.tabIndex = 0;
     this.element.addEventListener("keydown", this._keyDown.bind(this), false);
 
-    this._headerTable = document.createElement("table");
-    this._headerTable.className = "header";
+    var headerContainer = document.createElementWithClass("div", "header-container");
+    this._headerTable = headerContainer.createChild("table", "header");
     /**
      * @type {!Object.<string, !Element>}
      */
     this._headerTableHeaders = {};
 
-    this._dataTable = document.createElement("table");
-    this._dataTable.className = "data";
+    this._scrollContainer = document.createElementWithClass("div", "data-container");
+    this._dataTable = this._scrollContainer.createChild("table", "data");
 
     this._dataTable.addEventListener("mousedown", this._mouseDownInDataTable.bind(this), true);
     this._dataTable.addEventListener("click", this._clickInDataTable.bind(this), true);
@@ -65,19 +65,16 @@ WebInspector.DataGrid = function(columnsArray, editCallback, deleteCallback, ref
     this._refreshCallback = refreshCallback;
     this._contextMenuCallback = contextMenuCallback;
 
-    this._scrollContainer = document.createElement("div");
-    this._scrollContainer.className = "data-container";
-    this._scrollContainer.appendChild(this._dataTable);
-
-    this.element.appendChild(this._headerTable);
+    this.element.appendChild(headerContainer);
     this.element.appendChild(this._scrollContainer);
 
     this._headerRow = document.createElement("tr");
     this._headerTableColumnGroup = document.createElement("colgroup");
     this._dataTableColumnGroup = document.createElement("colgroup");
 
-    this._fillerRow = document.createElement("tr");
-    this._fillerRow.className = "filler";
+    this._topFillerRow = document.createElementWithClass("tr", "filler");
+    this._bottomFillerRow = document.createElementWithClass("tr", "filler");
+    this._bottomFillerRow.style.height = "auto";
 
     this._columnsArray = columnsArray;
     this._visibleColumnsArray = columnsArray;
@@ -117,7 +114,8 @@ WebInspector.DataGrid = function(columnsArray, editCallback, deleteCallback, ref
     this.headerTableBody.appendChild(this._headerRow);
 
     this._dataTable.appendChild(this._dataTableColumnGroup);
-    this.dataTableBody.appendChild(this._fillerRow);
+    this.dataTableBody.appendChild(this._topFillerRow);
+    this.dataTableBody.appendChild(this._bottomFillerRow);
 
     this._refreshHeader();
 
@@ -155,6 +153,66 @@ WebInspector.DataGrid.Align = {
     Right: "right"
 }
 
+/** @typedef {function(!WebInspector.DataGridNode, !WebInspector.DataGridNode):number} */
+WebInspector.DataGrid.NodeComparator;
+
+/**
+ * @param {!WebInspector.DataGridNode} a
+ * @param {!WebInspector.DataGridNode} b
+ * @return {number}
+ */
+WebInspector.DataGrid.TrivialComparator = function(a, b)
+{
+    return 0;
+}
+
+/**
+ * @param {string} columnIdentifier
+ * @param {!WebInspector.DataGridNode} a
+ * @param {!WebInspector.DataGridNode} b
+ * @return {number}
+ */
+WebInspector.DataGrid.NumericComparator = function(columnIdentifier, a, b)
+{
+    var aValue = a.data[columnIdentifier];
+    var bValue = b.data[columnIdentifier];
+    var aNumber = Number(aValue instanceof Node ? aValue.textContent : aValue);
+    var bNumber = Number(bValue instanceof Node ? bValue.textContent : bValue);
+    return aNumber < bNumber ? -1 : (aNumber > bNumber ? 1 : 0);
+}
+
+/**
+ * @param {string} columnIdentifier
+ * @param {!WebInspector.DataGridNode} a
+ * @param {!WebInspector.DataGridNode} b
+ * @return {number}
+ */
+WebInspector.DataGrid.StringComparator = function(columnIdentifier, a, b)
+{
+    var aValue = a.data[columnIdentifier];
+    var bValue = b.data[columnIdentifier];
+    var aString = aValue instanceof Node ? aValue.textContent : String(aValue);
+    var bString = bValue instanceof Node ? bValue.textContent : String(bValue);
+    return aString < bString ? -1 : (aString > bString ? 1 : 0);
+}
+
+/**
+ * @param {!WebInspector.DataGrid.NodeComparator} comparator
+ * @param {boolean} reverseMode
+ * @param {!WebInspector.DataGridNode} a
+ * @param {!WebInspector.DataGridNode} b
+ * @return {number}
+ */
+WebInspector.DataGrid.Comparator = function(comparator, reverseMode, a, b)
+{
+    if (a._data.summaryRow)
+        return 1;
+    if (b._data.summaryRow)
+        return -1;
+
+    return reverseMode ? comparator(b, a) : comparator(a, b);
+}
+
 /**
  * @param {!Array.<string>} columnNames
  * @param {!Array.<string>} values
@@ -190,43 +248,22 @@ WebInspector.DataGrid.createSortableDataGrid = function(columnNames, values)
 
     function sortDataGrid()
     {
-        var nodes = dataGrid._rootNode.children.slice();
+        var nodes = dataGrid._rootNode.children;
         var sortColumnIdentifier = dataGrid.sortColumnIdentifier();
-        var sortDirection = dataGrid.isSortOrderAscending() ? 1 : -1;
-        var columnIsNumeric = true;
+        if (!sortColumnIdentifier)
+            return;
 
+        var columnIsNumeric = true;
         for (var i = 0; i < nodes.length; i++) {
             var value = nodes[i].data[sortColumnIdentifier];
-            value = value instanceof Node ? Number(value.textContent) : Number(value);
-            if (isNaN(value)) {
+            if (isNaN(value instanceof Node ? value.textContent : value)) {
                 columnIsNumeric = false;
                 break;
             }
         }
 
-        function comparator(dataGridNode1, dataGridNode2)
-        {
-            var item1 = dataGridNode1.data[sortColumnIdentifier];
-            var item2 = dataGridNode2.data[sortColumnIdentifier];
-            item1 = item1 instanceof Node ? item1.textContent : String(item1);
-            item2 = item2 instanceof Node ? item2.textContent : String(item2);
-
-            var comparison;
-            if (columnIsNumeric) {
-                // Sort numbers based on comparing their values rather than a lexicographical comparison.
-                var number1 = parseFloat(item1);
-                var number2 = parseFloat(item2);
-                comparison = number1 < number2 ? -1 : (number1 > number2 ? 1 : 0);
-            } else
-                comparison = item1 < item2 ? -1 : (item1 > item2 ? 1 : 0);
-
-            return sortDirection * comparison;
-        }
-
-        nodes.sort(comparator);
-        dataGrid.rootNode().removeChildren();
-        for (var i = 0; i < nodes.length; i++)
-            dataGrid._rootNode.appendChild(nodes[i]);
+        var comparator = columnIsNumeric ? WebInspector.DataGrid.NumericComparator : WebInspector.DataGrid.StringComparator;
+        dataGrid.sortNodes(comparator.bind(null, sortColumnIdentifier), !dataGrid.isSortOrderAscending());
     }
     return dataGrid;
 }
@@ -237,7 +274,8 @@ WebInspector.DataGrid.prototype = {
         this._headerTableColumnGroup.removeChildren();
         this._dataTableColumnGroup.removeChildren();
         this._headerRow.removeChildren();
-        this._fillerRow.removeChildren();
+        this._topFillerRow.removeChildren();
+        this._bottomFillerRow.removeChildren();
 
         for (var i = 0; i < this._visibleColumnsArray.length; ++i) {
             var column = this._visibleColumnsArray[i];
@@ -249,13 +287,26 @@ WebInspector.DataGrid.prototype = {
                 dataColumn.style.width = column.width;
             }
             this._headerRow.appendChild(this._headerTableHeaders[columnIdentifier]);
-            this._fillerRow.createChild("td", columnIdentifier + "-column");
+            this._topFillerRow.createChild("td", columnIdentifier + "-column");
+            this._bottomFillerRow.createChild("td", columnIdentifier + "-column");
         }
 
         this._headerRow.createChild("th", "corner");
-        this._fillerRow.createChild("td", "corner");
+        this._topFillerRow.createChild("td", "corner");
+        this._bottomFillerRow.createChild("td", "corner");
         this._headerTableColumnGroup.createChild("col", "corner");
         this._dataTableColumnGroup.createChild("col", "corner");
+    },
+
+    /**
+     * @param {number} top
+     * @param {number} bottom
+     * @protected
+     */
+    setVerticalPadding: function(top, bottom)
+    {
+        this._topFillerRow.style.height = top + "px";
+        this._bottomFillerRow.style.height = bottom + "px";
     },
 
     /**
@@ -283,6 +334,16 @@ WebInspector.DataGrid.prototype = {
     rootNode: function()
     {
         return this._rootNode;
+    },
+
+    /**
+     * @param {!WebInspector.DataGridNode} node
+     */
+    insertChild: function(node)
+    {
+        // Currently only non-hierarchical tables are supported.
+        var parentNode = this._rootNode;
+        parentNode.insertChild(node, parentNode.children.upperBound(node, this._sortingFunction));
     },
 
     _ondblclick: function(event)
@@ -782,18 +843,18 @@ WebInspector.DataGrid.prototype = {
         this.rootNode().appendChild(this.creationNode);
     },
 
+    /**
+     * @param {!WebInspector.DataGrid.NodeComparator} comparator
+     * @param {boolean} reverseMode
+     */
     sortNodes: function(comparator, reverseMode)
     {
+        var sortingFunction = WebInspector.DataGrid.Comparator.bind(null, comparator, reverseMode);
+        this._sortingFunction = sortingFunction;
+
         function comparatorWrapper(a, b)
         {
-            if (a._dataGridNode._data.summaryRow)
-                return 1;
-            if (b._dataGridNode._data.summaryRow)
-                return -1;
-
-            var aDataGirdNode = a._dataGridNode;
-            var bDataGirdNode = b._dataGridNode;
-            return reverseMode ? comparator(bDataGirdNode, aDataGirdNode) : comparator(aDataGirdNode, bDataGirdNode);
+            return sortingFunction(a._dataGridNode, b._dataGridNode);
         }
 
         var tbody = this.dataTableBody;
@@ -801,13 +862,13 @@ WebInspector.DataGrid.prototype = {
         tbodyParent.removeChild(tbody);
 
         var childNodes = tbody.childNodes;
-        var fillerRow = childNodes[childNodes.length - 1];
-
-        var sortedRows = Array.prototype.slice.call(childNodes, 0, childNodes.length - 1);
+        var sortedRows = Array.prototype.slice.call(childNodes, 1, childNodes.length - 1);
         sortedRows.sort(comparatorWrapper);
         var sortedRowsLength = sortedRows.length;
 
+        this._rootNode.children = [];
         tbody.removeChildren();
+        tbody.appendChild(this._topFillerRow);
         var previousSiblingNode = null;
         for (var i = 0; i < sortedRowsLength; ++i) {
             var row = sortedRows[i];
@@ -815,13 +876,14 @@ WebInspector.DataGrid.prototype = {
             node.previousSibling = previousSiblingNode;
             if (previousSiblingNode)
                 previousSiblingNode.nextSibling = node;
+            this._rootNode.children.push(node);
             tbody.appendChild(row);
             previousSiblingNode = node;
         }
         if (previousSiblingNode)
             previousSiblingNode.nextSibling = null;
 
-        tbody.appendChild(fillerRow);
+        tbody.appendChild(this._bottomFillerRow);
         tbodyParent.appendChild(tbody);
     },
 
@@ -1134,8 +1196,10 @@ WebInspector.DataGrid.prototype = {
         if (!this.element.offsetWidth)
             return 0;
         for (var i = 1; i < this._visibleColumnsArray.length; ++i) {
-            if (columnId === this._visibleColumnsArray[i].identifier)
-                return this._resizers[i - 1].__position;
+            if (columnId === this._visibleColumnsArray[i].identifier) {
+                if (this._resizers[i - 1])
+                    return this._resizers[i - 1].__position;
+            }
         }
         return 0;
     },
@@ -1145,14 +1209,6 @@ WebInspector.DataGrid.prototype = {
         this._currentResizer = null;
         this._saveColumnWeights();
         this.dispatchEventToListeners(WebInspector.DataGrid.Events.ColumnsResized);
-    },
-
-    /**
-     * @return {?Element}
-     */
-    defaultAttachLocation: function()
-    {
-        return this.dataTableBody.firstChild;
     },
 
     ColumnResizePadding: 24,
@@ -1222,18 +1278,22 @@ WebInspector.DataGridNode.prototype = {
             this._element.classList.add("revealed");
 
         this.createCells();
-        this._element.createChild("td", "corner");
 
         return this._element;
     },
 
+    /**
+     * @protected
+     */
     createCells: function()
     {
+        this._element.removeChildren();
         var columnsArray = this.dataGrid._visibleColumnsArray;
         for (var i = 0; i < columnsArray.length; ++i) {
             var cell = this.createCell(columnsArray[i].identifier);
             this._element.appendChild(cell);
         }
+        this._element.createChild("td", "corner");
     },
 
     get data()
@@ -1362,12 +1422,11 @@ WebInspector.DataGridNode.prototype = {
 
     refresh: function()
     {
-        if (!this._element || !this.dataGrid)
+        if (!this.dataGrid)
+            delete this._element;
+        if (!this._element)
             return;
-
-        this._element.removeChildren();
         this.createCells();
-        this._element.createChild("td", "corner");
     },
 
     /**
@@ -1758,11 +1817,8 @@ WebInspector.DataGridNode.prototype = {
 
         var nextNode = null;
         var previousNode = this.traversePreviousNode(true, true);
-        if (previousNode && previousNode.element.parentNode && previousNode.element.nextSibling)
-            nextNode = previousNode.element.nextSibling;
-        if (!nextNode)
-            nextNode = this.dataGrid.defaultAttachLocation();
-        this.dataGrid.dataTableBody.insertBefore(this.element, nextNode);
+        var previousElement = previousNode ? previousNode.element : this.dataGrid._topFillerRow;
+        this.dataGrid.dataTableBody.insertBefore(this.element, previousElement.nextSibling);
 
         if (this.expanded)
             for (var i = 0; i < this.children.length; ++i)

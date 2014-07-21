@@ -196,7 +196,7 @@ void TextAutosizer::recalculateMultipliers()
 
 bool TextAutosizer::processSubtree(RenderObject* layoutRoot)
 {
-    TRACE_EVENT0("webkit", "TextAutosizer: check if needed");
+    TRACE_EVENT0("blink", "TextAutosizer: check if needed");
 
     if (!isApplicable() || layoutRoot->view()->document().printing())
         return false;
@@ -232,7 +232,7 @@ bool TextAutosizer::processSubtree(RenderObject* layoutRoot)
         std::numeric_limits<float>::infinity()) == 1.0f)
         return false;
 
-    TRACE_EVENT0("webkit", "TextAutosizer: process root cluster");
+    TRACE_EVENT0("blink", "TextAutosizer: process root cluster");
     UseCounter::count(*m_document, UseCounter::TextAutosizing);
 
     TextAutosizingClusterInfo clusterInfo(cluster);
@@ -453,7 +453,7 @@ void TextAutosizer::setMultiplier(RenderObject* renderer, float multiplier)
 
 void TextAutosizer::setMultiplierForList(RenderObject* renderer, float multiplier)
 {
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     Node* parentNode = renderer->generatingNode();
     ASSERT(parentNode);
     ASSERT(isHTMLOListElement(parentNode) || isHTMLUListElement(parentNode));
@@ -465,34 +465,6 @@ void TextAutosizer::setMultiplierForList(RenderObject* renderer, float multiplie
         if (child->isListItem() && child->style()->textAutosizingMultiplier() == 1)
             setMultiplier(child, multiplier);
     }
-}
-
-float TextAutosizer::computeAutosizedFontSize(float specifiedSize, float multiplier)
-{
-    // Somewhat arbitrary "pleasant" font size.
-    const float pleasantSize = 16;
-
-    // Multiply fonts that the page author has specified to be larger than
-    // pleasantSize by less and less, until huge fonts are not increased at all.
-    // For specifiedSize between 0 and pleasantSize we directly apply the
-    // multiplier; hence for specifiedSize == pleasantSize, computedSize will be
-    // multiplier * pleasantSize. For greater specifiedSizes we want to
-    // gradually fade out the multiplier, so for every 1px increase in
-    // specifiedSize beyond pleasantSize we will only increase computedSize
-    // by gradientAfterPleasantSize px until we meet the
-    // computedSize = specifiedSize line, after which we stay on that line (so
-    // then every 1px increase in specifiedSize increases computedSize by 1px).
-    const float gradientAfterPleasantSize = 0.5;
-
-    float computedSize;
-    if (specifiedSize <= pleasantSize)
-        computedSize = multiplier * specifiedSize;
-    else {
-        computedSize = multiplier * pleasantSize + gradientAfterPleasantSize * (specifiedSize - pleasantSize);
-        if (computedSize < specifiedSize)
-            computedSize = specifiedSize;
-    }
-    return computedSize;
 }
 
 bool TextAutosizer::isAutosizingContainer(const RenderObject* renderer)

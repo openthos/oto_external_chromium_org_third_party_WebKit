@@ -119,7 +119,7 @@ public:
 
     PassRefPtr<RenderStyle> styleForKeyframe(Element*, const RenderStyle&, RenderStyle* parentStyle, const StyleKeyframe*, const AtomicString& animationName);
     static PassRefPtrWillBeRawPtr<AnimatableValue> createAnimatableValueSnapshot(Element&, CSSPropertyID, CSSValue&);
-    static PassRefPtrWillBeRawPtr<AnimatableValue> createAnimatableValueSnapshot(Element&, CSSPropertyID, CSSValue&, RenderStyle&);
+    static PassRefPtrWillBeRawPtr<AnimatableValue> createAnimatableValueSnapshot(StyleResolverState&, CSSPropertyID, CSSValue&);
 
     PassRefPtr<RenderStyle> pseudoStyleForElement(Element*, const PseudoStyleRequest&, RenderStyle* parentStyle);
 
@@ -152,12 +152,6 @@ public:
     bool buildScopedStyleTreeInDocumentOrder() const { return m_styleTree.buildInDocumentOrder(); }
     bool styleTreeHasOnlyScopedResolverForDocument() const { return m_styleTree.hasOnlyScopedResolverForDocument(); }
     ScopedStyleResolver* styleTreeScopedStyleResolverForDocument() const { return m_styleTree.scopedStyleResolverForDocument(); }
-
-    ScopedStyleResolver* ensureScopedStyleResolver(ContainerNode* scope)
-    {
-        ASSERT(scope);
-        return m_styleTree.ensureScopedStyleResolver(*scope);
-    }
 
     void styleTreeResolveScopedKeyframesRules(const Element* element, Vector<ScopedStyleResolver*, 8>& resolvers)
     {
@@ -259,7 +253,6 @@ private:
     bool applyAnimatedProperties(StyleResolverState&, Element* animatingElement);
 
     enum StyleApplicationPass {
-        AnimationProperties,
         HighPriorityProperties,
         LowPriorityProperties
     };
@@ -281,7 +274,6 @@ private:
     void matchPageRules(MatchResult&, RuleSet*, bool isLeftPage, bool isFirstPage, const String& pageName);
     void matchPageRulesForList(WillBeHeapVector<RawPtrWillBeMember<StyleRulePage> >& matchedRules, const WillBeHeapVector<RawPtrWillBeMember<StyleRulePage> >&, bool isLeftPage, bool isFirstPage, const String& pageName);
     void collectViewportRules();
-    Settings* documentSettings() { return m_document.settings(); }
 
     bool isLeftPage(int pageIndex) const;
     bool isRightPage(int pageIndex) const { return !isLeftPage(pageIndex); }

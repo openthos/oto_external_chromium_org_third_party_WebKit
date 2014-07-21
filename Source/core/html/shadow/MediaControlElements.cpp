@@ -30,9 +30,8 @@
 #include "config.h"
 #include "core/html/shadow/MediaControlElements.h"
 
-#include "bindings/v8/ExceptionStatePlaceholder.h"
+#include "bindings/core/v8/ExceptionStatePlaceholder.h"
 #include "core/dom/DOMTokenList.h"
-#include "core/dom/FullscreenElementStack.h"
 #include "core/dom/shadow/ShadowRoot.h"
 #include "core/events/MouseEvent.h"
 #include "core/frame/LocalFrame.h"
@@ -284,7 +283,7 @@ void MediaControlOverlayPlayButtonElement::defaultEventHandler(Event* event)
 
 void MediaControlOverlayPlayButtonElement::updateDisplayType()
 {
-    if (mediaElement().togglePlayStateWillPlay()) {
+    if (mediaElement().shouldShowControls() && mediaElement().togglePlayStateWillPlay()) {
         show();
     } else
         hide();
@@ -492,10 +491,10 @@ PassRefPtrWillBeRawPtr<MediaControlFullscreenButtonElement> MediaControlFullscre
 void MediaControlFullscreenButtonElement::defaultEventHandler(Event* event)
 {
     if (event->type() == EventTypeNames::click) {
-        if (FullscreenElementStack::isActiveFullScreenElement(&mediaElement()))
-            FullscreenElementStack::from(document()).webkitCancelFullScreen();
+        if (mediaElement().isFullscreen())
+            mediaElement().exitFullscreen();
         else
-            FullscreenElementStack::from(document()).requestFullScreenForElement(&mediaElement(), 0, FullscreenElementStack::ExemptIFrameAllowFullScreenRequirement);
+            mediaElement().enterFullscreen();
         event->setDefaultHandled();
     }
     HTMLInputElement::defaultEventHandler(event);

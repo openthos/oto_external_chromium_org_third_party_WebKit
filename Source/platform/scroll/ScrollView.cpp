@@ -240,6 +240,18 @@ IntPoint ScrollView::adjustScrollPositionWithinRange(const IntPoint& scrollPoint
     return newScrollPosition;
 }
 
+void ScrollView::adjustScrollbarOpacity()
+{
+    if (m_horizontalScrollbar && layerForHorizontalScrollbar()) {
+        bool isOpaqueScrollbar = !m_horizontalScrollbar->isOverlayScrollbar();
+        layerForHorizontalScrollbar()->setContentsOpaque(isOpaqueScrollbar);
+    }
+    if (m_verticalScrollbar && layerForVerticalScrollbar()) {
+        bool isOpaqueScrollbar = !m_verticalScrollbar->isOverlayScrollbar();
+        layerForVerticalScrollbar()->setContentsOpaque(isOpaqueScrollbar);
+    }
+}
+
 int ScrollView::scrollSize(ScrollbarOrientation orientation) const
 {
     Scrollbar* scrollbar = ((orientation == HorizontalScrollbar) ? m_horizontalScrollbar : m_verticalScrollbar).get();
@@ -557,7 +569,7 @@ void ScrollView::scrollContents(const IntSize& scrollDelta)
 
 bool ScrollView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect)
 {
-    hostWindow()->scroll(scrollDelta, rectToScroll, clipRect);
+    hostWindow()->scroll(clipRect);
     return true;
 }
 
@@ -812,6 +824,7 @@ bool ScrollView::isScrollCornerVisible() const
 
 void ScrollView::scrollbarStyleChanged()
 {
+    adjustScrollbarOpacity();
     contentsResized();
     updateScrollbars(scrollOffset());
     positionScrollbarLayers();

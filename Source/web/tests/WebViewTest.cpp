@@ -33,6 +33,7 @@
 
 #include "core/dom/Document.h"
 #include "core/dom/Element.h"
+#include "core/frame/EventHandlerRegistry.h"
 #include "core/frame/FrameView.h"
 #include "core/frame/LocalFrame.h"
 #include "core/frame/Settings.h"
@@ -42,12 +43,14 @@
 #include "core/html/HTMLTextAreaElement.h"
 #include "core/loader/FrameLoadRequest.h"
 #include "core/page/Chrome.h"
+#include "core/page/Page.h"
 #include "core/rendering/RenderLayer.h"
 #include "core/rendering/RenderView.h"
 #include "platform/KeyboardCodes.h"
 #include "platform/geometry/IntSize.h"
 #include "platform/graphics/Color.h"
 #include "public/platform/Platform.h"
+#include "public/platform/WebClipboard.h"
 #include "public/platform/WebDragData.h"
 #include "public/platform/WebSize.h"
 #include "public/platform/WebThread.h"
@@ -213,6 +216,21 @@ protected:
     FrameTestHelpers::WebViewHelper m_webViewHelper;
 };
 
+TEST_F(WebViewTest, CopyImageAt)
+{
+    std::string url = m_baseURL + "canvas-copy-image.html";
+    URLTestHelpers::registerMockedURLLoad(toKURL(url), "canvas-copy-image.html");
+    WebView* webView = m_webViewHelper.initializeAndLoad(url, true, 0);
+    webView->resize(WebSize(400, 400));
+    webView->copyImageAt(WebPoint(50, 50));
+
+    blink::WebData data = blink::Platform::current()->clipboard()->readImage(blink::WebClipboard::Buffer());
+    blink::WebImage image = blink::WebImage::fromData(data, WebSize());
+
+    SkAutoLockPixels autoLock(image.getSkBitmap());
+    EXPECT_EQ(SkColorSetARGB(255, 255, 0, 0), image.getSkBitmap().getColor(0, 0));
+};
+
 TEST_F(WebViewTest, SetBaseBackgroundColor)
 {
     const WebColor kWhite    = 0xFFFFFFFF;
@@ -357,14 +375,14 @@ TEST_F(WebViewTest, HitTestResultAtWithPageScale)
     // Image is at top left quandrant, so should not hit it.
     WebHitTestResult negativeResult = webView->hitTestResultAt(hitPoint);
     ASSERT_EQ(WebNode::ElementNode, negativeResult.node().nodeType());
-    EXPECT_FALSE(negativeResult.node().to<WebElement>().hasTagName("img"));
+    EXPECT_FALSE(negativeResult.node().to<WebElement>().hasHTMLTagName("img"));
     negativeResult.reset();
 
     // Scale page up 2x so image should occupy the whole viewport.
     webView->setPageScaleFactor(2.0f);
     WebHitTestResult positiveResult = webView->hitTestResultAt(hitPoint);
     ASSERT_EQ(WebNode::ElementNode, positiveResult.node().nodeType());
-    EXPECT_TRUE(positiveResult.node().to<WebElement>().hasTagName("img"));
+    EXPECT_TRUE(positiveResult.node().to<WebElement>().hasHTMLTagName("img"));
     positiveResult.reset();
 }
 
@@ -510,6 +528,17 @@ TEST_F(WebViewTest, InputMode)
     testInputMode(WebString("verbatim"), "input_mode_type_search_verbatim.html");
     testInputMode(WebString(), "input_mode_type_url_verbatim.html");
     testInputMode(WebString("verbatim"), "input_mode_textarea_verbatim.html");
+}
+
+TEST_F(WebViewTest, TextInputInfoWithReplacedElements)
+{
+    std::string url = m_baseURL + "div_with_image.html";
+    URLTestHelpers::registerMockedURLLoad(toKURL(url), "div_with_image.html");
+    WebView* webView = m_webViewHelper.initializeAndLoad(url);
+    webView->setInitialFocus(false);
+    WebTextInputInfo info = webView->textInputInfo();
+
+    EXPECT_EQ("foo\xef\xbf\xbc", info.value.utf8());
 }
 
 TEST_F(WebViewTest, SetEditableSelectionOffsetsAndTextInputInfo)
@@ -809,6 +838,38 @@ TEST_F(WebViewTest, HistoryResetScrollAndScaleState)
     EXPECT_EQ(0.0f, mainFrameLocal->loader().currentItem()->pageScaleFactor());
     EXPECT_EQ(0, mainFrameLocal->loader().currentItem()->scrollPoint().x());
     EXPECT_EQ(0, mainFrameLocal->loader().currentItem()->scrollPoint().y());
+}
+
+TEST_F(WebViewTest, BackForwardRestoreScroll)
+{
+    URLTestHelpers::registerMockedURLFromBaseURL(WebString::fromUTF8(m_baseURL.c_str()), WebString::fromUTF8("back_forward_restore_scroll.html"));
+    WebViewImpl* webViewImpl = m_webViewHelper.initializeAndLoad(m_baseURL + "back_forward_restore_scroll.html");
+    webViewImpl->resize(WebSize(640, 480));
+    webViewImpl->layout();
+
+    // Emulate a user scroll
+    webViewImpl->setMainFrameScrollOffset(WebPoint(0, 900));
+    WebCore::LocalFrame* mainFrameLocal = toLocalFrame(webViewImpl->page()->mainFrame());
+    RefPtr<WebCore::HistoryItem> item1 = mainFrameLocal->loader().currentItem();
+
+    // Click an anchor
+    mainFrameLocal->loader().load(WebCore::FrameLoadRequest(mainFrameLocal->document(), WebCore::ResourceRequest(mainFrameLocal->document()->completeURL("#a"))));
+    RefPtr<WebCore::HistoryItem> item2 = mainFrameLocal->loader().currentItem();
+
+    // Go back, then forward, then back again.
+    mainFrameLocal->loader().loadHistoryItem(item1.get(), WebCore::HistorySameDocumentLoad);
+    mainFrameLocal->loader().loadHistoryItem(item2.get(), WebCore::HistorySameDocumentLoad);
+    mainFrameLocal->loader().loadHistoryItem(item1.get(), WebCore::HistorySameDocumentLoad);
+
+    // Click a different anchor
+    mainFrameLocal->loader().load(WebCore::FrameLoadRequest(mainFrameLocal->document(), WebCore::ResourceRequest(mainFrameLocal->document()->completeURL("#b"))));
+    RefPtr<WebCore::HistoryItem> item3 = mainFrameLocal->loader().currentItem();
+
+    // Go back, then forward. The scroll position should be properly set on the forward navigation.
+    mainFrameLocal->loader().loadHistoryItem(item1.get(), WebCore::HistorySameDocumentLoad);
+    mainFrameLocal->loader().loadHistoryItem(item3.get(), WebCore::HistorySameDocumentLoad);
+    EXPECT_EQ(0, webViewImpl->mainFrame()->scrollOffset().width);
+    EXPECT_GT(webViewImpl->mainFrame()->scrollOffset().height, 2000);
 }
 
 class EnterFullscreenWebViewClient : public FrameTestHelpers::TestWebViewClient {
@@ -1505,6 +1566,26 @@ TEST_F(WebViewTest, DispatchesFocusBlurOnViewToggle)
 
 TEST_F(WebViewTest, SmartClipData)
 {
+    static const char* kExpectedClipText = "\nPrice 10,000,000won";
+    static const char* kExpectedClipHtml =
+        "<div id=\"div4\" style=\"padding: 10px; margin: 10px; border: 2px "
+        "solid rgb(135, 206, 235); float: left; width: 190px; height: 30px; "
+        "color: rgb(0, 0, 0); font-family: myahem; font-size: 8px; font-style: "
+        "normal; font-variant: normal; font-weight: normal; letter-spacing: "
+        "normal; line-height: normal; orphans: auto; text-align: start; "
+        "text-indent: 0px; text-transform: none; white-space: normal; widows: "
+        "auto; word-spacing: 0px; -webkit-text-stroke-width: 0px;\">Air "
+        "conditioner</div><div id=\"div5\" style=\"padding: 10px; margin: "
+        "10px; border: 2px solid rgb(135, 206, 235); float: left; width: "
+        "190px; height: 30px; color: rgb(0, 0, 0); font-family: myahem; "
+        "font-size: 8px; font-style: normal; font-variant: normal; "
+        "font-weight: normal; letter-spacing: normal; line-height: normal; "
+        "orphans: auto; text-align: start; text-indent: 0px; text-transform: "
+        "none; white-space: normal; widows: auto; word-spacing: 0px; "
+        "-webkit-text-stroke-width: 0px;\">Price 10,000,000won</div>";
+    WebString clipText;
+    WebString clipHtml;
+    WebRect clipRect;
     URLTestHelpers::registerMockedURLFromBaseURL(WebString::fromUTF8(m_baseURL.c_str()), WebString::fromUTF8("Ahem.ttf"));
     URLTestHelpers::registerMockedURLFromBaseURL(WebString::fromUTF8(m_baseURL.c_str()), WebString::fromUTF8("smartclip.html"));
     WebView* webView = m_webViewHelper.initializeAndLoad(m_baseURL + "smartclip.html");
@@ -1512,9 +1593,9 @@ TEST_F(WebViewTest, SmartClipData)
     webView->resize(WebSize(500, 500));
     webView->layout();
     WebRect cropRect(300, 125, 100, 50);
-
-    // FIXME: We should test the structure of the data we get back.
-    EXPECT_FALSE(webView->getSmartClipData(cropRect).isEmpty());
+    webView->extractSmartClipData(cropRect, clipText, clipHtml, clipRect);
+    EXPECT_STREQ(kExpectedClipText, clipText.utf8().c_str());
+    EXPECT_STREQ(kExpectedClipHtml, clipHtml.utf8().c_str());
 }
 
 class CreateChildCounterFrameClient : public FrameTestHelpers::TestWebFrameClient {
@@ -1716,6 +1797,35 @@ TEST_F(WebViewTest, HasTouchEventHandlers)
 
     // Free the webView before the TouchEventHandlerWebViewClient gets freed.
     m_webViewHelper.reset();
+}
+
+// This test checks that deleting nodes which have only non-JS-registered touch
+// handlers also removes them from the event handler registry. Note that this
+// is different from detaching and re-attaching the same node, which is covered
+// by layout tests under fast/events/.
+TEST_F(WebViewTest, DeleteElementWithRegisteredHandler)
+{
+    std::string url = m_baseURL + "simple_div.html";
+    URLTestHelpers::registerMockedURLLoad(toKURL(url), "simple_div.html");
+    WebViewImpl* webViewImpl = m_webViewHelper.initializeAndLoad(url, true);
+
+    RefPtrWillBePersistent<WebCore::Document> document = webViewImpl->mainFrameImpl()->frame()->document();
+    WebCore::Element* div = document->getElementById("div");
+    WebCore::EventHandlerRegistry& registry = document->frameHost()->eventHandlerRegistry();
+
+    registry.didAddEventHandler(*div, WebCore::EventHandlerRegistry::ScrollEvent);
+    EXPECT_TRUE(registry.hasEventHandlers(WebCore::EventHandlerRegistry::ScrollEvent));
+
+    WebCore::TrackExceptionState exceptionState;
+    div->remove(exceptionState);
+#if ENABLE(OILPAN)
+    // For oilpan we have to force a GC to ensure the event handlers have been removed when
+    // checking below. We do a precise GC (collectAllGarbage does not scan the stack)
+    // to ensure the div element dies. This is also why the Document is in a Persistent
+    // since we want that to stay around.
+    Heap::collectAllGarbage();
+#endif
+    EXPECT_FALSE(registry.hasEventHandlers(WebCore::EventHandlerRegistry::ScrollEvent));
 }
 
 static WebRect ExpectedRootBounds(WebCore::Document* document, float scaleFactor)

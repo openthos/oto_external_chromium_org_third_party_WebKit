@@ -10,12 +10,12 @@
 
 namespace WebCore {
 
-PassRefPtrWillBeRawPtr<DOMException> PushError::from(ScriptPromiseResolverWithContext*, WebType* webErrorRaw)
+PassRefPtrWillBeRawPtr<DOMException> PushError::from(ScriptPromiseResolver*, WebType* webErrorRaw)
 {
     OwnPtr<WebType> webError = adoptPtr(webErrorRaw);
     switch (webError->errorType) {
     case blink::WebPushError::ErrorTypeAbort:
-        return DOMException::create(AbortError, "Registration failed.");
+        return DOMException::create(AbortError, webError->message);
     case blink::WebPushError::ErrorTypeUnknown:
         return DOMException::create(UnknownError);
     }

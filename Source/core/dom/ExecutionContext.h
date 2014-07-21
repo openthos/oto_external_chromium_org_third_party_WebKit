@@ -32,7 +32,6 @@
 #include "core/dom/ExecutionContextClient.h"
 #include "core/dom/SandboxFlags.h"
 #include "core/dom/SecurityContext.h"
-#include "core/events/ErrorEvent.h"
 #include "core/fetch/CrossOriginAccessControl.h"
 #include "core/frame/ConsoleTypes.h"
 #include "core/frame/DOMTimer.h"
@@ -44,17 +43,12 @@
 #include "wtf/OwnPtr.h"
 #include "wtf/PassOwnPtr.h"
 
-namespace WTF {
-class OrdinalNumber;
-}
-
 namespace WebCore {
 
 class ContextLifecycleNotifier;
 class LocalDOMWindow;
-class EventListener;
+class ErrorEvent;
 class EventQueue;
-class EventTarget;
 class ExecutionContextTask;
 class ScriptState;
 class PublicURLManager;
@@ -80,7 +74,6 @@ public:
     LocalDOMWindow* executingWindow() const;
     String userAgent(const KURL&) const;
     void postTask(PassOwnPtr<ExecutionContextTask>);
-    void postTask(const Closure&);
     double timerAlignmentInterval() const;
 
     virtual void reportBlockedScriptExecutionToInspector(const String& directiveText) = 0;

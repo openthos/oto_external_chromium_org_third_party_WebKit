@@ -26,7 +26,6 @@
 #include "core/dom/TreeScopeAdopter.h"
 
 #include "core/dom/Attr.h"
-#include "core/dom/Document.h"
 #include "core/dom/NodeRareData.h"
 #include "core/dom/NodeTraversal.h"
 #include "core/dom/shadow/ElementShadow.h"
@@ -94,7 +93,7 @@ void TreeScopeAdopter::moveTreeToNewDocument(Node& root, Document& oldDocument, 
     }
 }
 
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
 static bool didMoveToNewDocumentWasCalled = false;
 static Document* oldDocumentDidMoveToNewDocumentWasCalledWith = 0;
 
@@ -132,7 +131,7 @@ inline void TreeScopeAdopter::moveNodeToNewDocument(Node& node, Document& oldDoc
     if (node.isShadowRoot())
         toShadowRoot(node).setDocument(newDocument);
 
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     didMoveToNewDocumentWasCalled = false;
     oldDocumentDidMoveToNewDocumentWasCalledWith = &oldDocument;
 #endif

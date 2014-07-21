@@ -26,11 +26,12 @@
 #ifndef CanvasRenderingContext2D_h
 #define CanvasRenderingContext2D_h
 
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "core/css/CSSFontSelectorClient.h"
 #include "core/html/canvas/Canvas2DContextAttributes.h"
 #include "core/html/canvas/CanvasPathMethods.h"
 #include "core/html/canvas/CanvasRenderingContext.h"
+#include "core/html/canvas/HitRegion.h"
 #include "core/svg/SVGMatrixTearOff.h"
 #include "platform/fonts/Font.h"
 #include "platform/graphics/Color.h"
@@ -227,6 +228,13 @@ public:
     void drawFocusIfNeeded(Element*);
     void drawFocusIfNeeded(Path2D*, Element*);
 
+    void addHitRegion(ExceptionState&);
+    void addHitRegion(const Dictionary&, ExceptionState&);
+    void removeHitRegion(const String& id);
+    void clearHitRegions();
+    HitRegion* hitRegionAtPoint(const LayoutPoint&);
+    unsigned hitRegionsCount() const;
+
     void loseContext();
     void restoreContext();
 
@@ -275,6 +283,8 @@ private:
         String m_unparsedFont;
         Font m_font;
         bool m_realizedFont;
+
+        bool m_hasClip;
     };
 
     CanvasRenderingContext2D(HTMLCanvasElement*, const Canvas2DContextAttributes* attrs, bool usesCSSCompatibilityParseMode);
@@ -333,6 +343,9 @@ private:
     bool focusRingCallIsValid(const Path&, Element*);
     void drawFocusRing(const Path&);
 
+    void addHitRegionInternal(const HitRegionOptions&, ExceptionState&);
+    bool hasClip() { return state().m_hasClip; }
+
     void validateStateStack();
 
     virtual bool is2d() const OVERRIDE { return true; }
@@ -344,6 +357,7 @@ private:
     virtual blink::WebLayer* platformLayer() const OVERRIDE;
 
     WillBeHeapVector<OwnPtrWillBeMember<State> > m_stateStack;
+    OwnPtrWillBeMember<HitRegionManager> m_hitRegionManager;
     bool m_usesCSSCompatibilityParseMode;
     bool m_hasAlpha;
     bool m_isContextLost;

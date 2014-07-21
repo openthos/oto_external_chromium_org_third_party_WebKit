@@ -27,17 +27,12 @@ $(gyp_shared_intermediate_dir)/resources/inspector/source_frame/SourceFrame.js: 
 
 
 ### Generated for copy rule.
-$(gyp_shared_intermediate_dir)/resources/inspector/cm/cmdevtools.css: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/cm/cmdevtools.css $(GYP_TARGET_DEPENDENCIES) | $(ACP)
-	@echo Copying: $@
-	$(hide) mkdir -p $(dir $@)
-	$(hide) $(ACP) -rpf $< $@
-
 $(gyp_shared_intermediate_dir)/resources/inspector/cm/codemirror.css: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/cm/codemirror.css $(GYP_TARGET_DEPENDENCIES) | $(ACP)
 	@echo Copying: $@
 	$(hide) mkdir -p $(dir $@)
 	$(hide) $(ACP) -rpf $< $@
 
-third_party_WebKit_Source_devtools_devtools_gyp_build_source_frame_module_target_copies = $(gyp_shared_intermediate_dir)/resources/inspector/cm/cmdevtools.css $(gyp_shared_intermediate_dir)/resources/inspector/cm/codemirror.css
+third_party_WebKit_Source_devtools_devtools_gyp_build_source_frame_module_target_copies = $(gyp_shared_intermediate_dir)/resources/inspector/cm/codemirror.css
 
 GYP_GENERATED_OUTPUTS := \
 	$(gyp_shared_intermediate_dir)/resources/inspector/source_frame/SourceFrame.js \

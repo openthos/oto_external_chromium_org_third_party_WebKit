@@ -62,6 +62,7 @@ class GraphicsContext;
 class GraphicsLayer;
 class GraphicsLayerFactory;
 class Image;
+class JSONObject;
 class ScrollableArea;
 class TextStream;
 
@@ -186,9 +187,7 @@ public:
     void setBlendMode(blink::WebBlendMode);
     void setIsRootForIsolatedGroup(bool);
 
-    // Returns true if filter can be rendered by the compositor
-    bool setFilters(const FilterOperations&);
-    void setBackgroundFilters(const FilterOperations&);
+    void setFilters(const FilterOperations&);
 
     // Some GraphicsLayers paint only the foreground or the background content
     void setPaintingPhase(GraphicsLayerPaintingPhase);
@@ -222,7 +221,7 @@ public:
     blink::WebLayer* platformLayer() const;
 
     typedef HashMap<int, int> RenderingContextMap;
-    void dumpLayer(TextStream&, int indent, LayerTreeFlags, RenderingContextMap&) const;
+    PassRefPtr<JSONObject> layerTreeAsJSON(LayerTreeFlags, RenderingContextMap&) const;
 
     int paintCount() const { return m_paintCount; }
 
@@ -273,7 +272,7 @@ private:
     // can be batched before updating.
     void addChildInternal(GraphicsLayer*);
 
-#if ASSERT_ENABLED
+#if ENABLE(ASSERT)
     bool hasAncestor(GraphicsLayer*) const;
 #endif
 
@@ -285,8 +284,6 @@ private:
     void setReplicatedLayer(GraphicsLayer* layer) { m_replicatedLayer = layer; }
 
     int incrementPaintCount() { return ++m_paintCount; }
-
-    void dumpProperties(TextStream&, int indent, LayerTreeFlags, RenderingContextMap&) const;
 
     // Helper functions used by settors to keep layer's the state consistent.
     void updateChildList();

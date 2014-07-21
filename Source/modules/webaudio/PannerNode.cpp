@@ -36,8 +36,6 @@
 #include "modules/webaudio/AudioNodeOutput.h"
 #include "wtf/MathExtras.h"
 
-using namespace std;
-
 namespace WebCore {
 
 static void fixNANs(double &x)
@@ -68,8 +66,8 @@ PannerNode::PannerNode(AudioContext* context, float sampleRate)
     m_hrtfDatabaseLoader = HRTFDatabaseLoader::createAndLoadAsynchronouslyIfNecessary(context->sampleRate());
 
     ScriptWrappable::init(this);
-    addInput(adoptPtr(new AudioNodeInput(this)));
-    addOutput(adoptPtr(new AudioNodeOutput(this, 2)));
+    addInput();
+    addOutput(AudioNodeOutput::create(this, 2));
 
     // Node-specific default mixing rules.
     m_channelCount = 2;
@@ -467,8 +465,8 @@ double PannerNode::calculateDopplerRate()
                 sourceProjection = -sourceProjection;
 
                 double scaledSpeedOfSound = speedOfSound / dopplerFactor;
-                listenerProjection = min(listenerProjection, scaledSpeedOfSound);
-                sourceProjection = min(sourceProjection, scaledSpeedOfSound);
+                listenerProjection = std::min(listenerProjection, scaledSpeedOfSound);
+                sourceProjection = std::min(sourceProjection, scaledSpeedOfSound);
 
                 dopplerShift = ((speedOfSound - dopplerFactor * listenerProjection) / (speedOfSound - dopplerFactor * sourceProjection));
                 fixNANs(dopplerShift); // avoid illegal values

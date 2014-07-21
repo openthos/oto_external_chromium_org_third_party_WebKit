@@ -181,7 +181,6 @@ public:
     int maxResults() const { return m_maxResults; }
 
     const AtomicString& defaultValue() const;
-    void setDefaultValue(const AtomicString&);
 
     Vector<String> acceptMIMETypes();
     Vector<String> acceptFileExtensions();
@@ -197,7 +196,7 @@ public:
 
     bool multiple() const;
 
-    FileList* files() const;
+    FileList* files();
     void setFiles(PassRefPtrWillBeRawPtr<FileList>);
 
     // Returns true if the given DragData has more than one dropped files.
@@ -310,6 +309,7 @@ private:
 
     virtual void accessKeyAction(bool sendMouseEvents) OVERRIDE FINAL;
 
+    virtual void attributeWillChange(const QualifiedName&, const AtomicString& oldValue, const AtomicString& newValue) OVERRIDE;
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE FINAL;
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet*) OVERRIDE FINAL;

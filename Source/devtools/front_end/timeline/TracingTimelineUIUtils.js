@@ -72,7 +72,16 @@ WebInspector.TracingTimelineUIUtils.prototype = {
      */
     titleForRecord: function(record)
     {
-        return WebInspector.TracingTimelineUIUtils.styleForTraceEvent(record.traceEvent().name).title;
+        return WebInspector.TracingTimelineUIUtils._recordTitle(/** @type {!WebInspector.TracingTimelineModel.TraceEventRecord} */(record));
+    },
+
+    /**
+     * @param {!WebInspector.TimelineModel.Record} record
+     * @return {!WebInspector.TimelineCategory}
+     */
+    categoryForRecord: function(record)
+    {
+        return WebInspector.TracingTimelineUIUtils.styleForTraceEvent(record.traceEvent().name).category;
     },
 
     /**
@@ -137,6 +146,34 @@ WebInspector.TracingTimelineUIUtils.prototype = {
         return regExp.test(tokens.join("|"));
     },
 
+    /**
+     * @param {!Object} total
+     * @param {!WebInspector.TimelineModel.Record} record
+     */
+    aggregateTimeForRecord: function(total, record)
+    {
+        var traceEvent = record.traceEvent();
+        var model = record._model;
+        WebInspector.TracingTimelineUIUtils._aggregatedStatsForTraceEvent(total, model, traceEvent);
+    },
+
+    /**
+     * @return {!WebInspector.TimelineModel.Filter}
+     */
+    hiddenRecordsFilter: function()
+    {
+        return new WebInspector.TimelineRecordVisibleTypeFilter(WebInspector.TracingTimelineUIUtils._visibleTypes());
+    },
+
+    /**
+     * @return {?WebInspector.TimelineModel.Filter}
+     */
+    hiddenEmptyRecordsFilter: function()
+    {
+        var hiddenEmptyRecords = [WebInspector.TimelineModel.RecordType.EventDispatch];
+        return new WebInspector.TimelineRecordHiddenEmptyTypeFilter(hiddenEmptyRecords);
+    },
+
     __proto__: WebInspector.TimelineUIUtils.prototype
 }
 
@@ -144,11 +181,13 @@ WebInspector.TracingTimelineUIUtils.prototype = {
  * @constructor
  * @param {string} title
  * @param {!WebInspector.TimelineCategory} category
+ * @param {boolean=} hidden
  */
-WebInspector.TimelineRecordStyle = function(title, category)
+WebInspector.TimelineRecordStyle = function(title, category, hidden)
 {
     this.title = title;
     this.category = category;
+    this.hidden = !!hidden;
 }
 
 /**
@@ -165,16 +204,17 @@ WebInspector.TracingTimelineUIUtils._initEventStyles = function()
     var eventStyles = {};
     eventStyles[recordTypes.Program] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Other"), categories["other"]);
     eventStyles[recordTypes.EventDispatch] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Event"), categories["scripting"]);
-    eventStyles[recordTypes.RequestMainThreadFrame] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Request Main Thread Frame"), categories["rendering"]);
-    eventStyles[recordTypes.BeginFrame] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Frame Start"), categories["rendering"]);
-    eventStyles[recordTypes.BeginMainThreadFrame] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Frame Start (main thread)"), categories["rendering"]);
-    eventStyles[recordTypes.DrawFrame] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Draw Frame"), categories["rendering"]);
-    eventStyles[recordTypes.ScheduleStyleRecalculation] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Schedule Style Recalculation"), categories["rendering"]);
+    eventStyles[recordTypes.RequestMainThreadFrame] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Request Main Thread Frame"), categories["rendering"], true);
+    eventStyles[recordTypes.BeginFrame] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Frame Start"), categories["rendering"], true);
+    eventStyles[recordTypes.BeginMainThreadFrame] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Frame Start (main thread)"), categories["rendering"], true);
+    eventStyles[recordTypes.DrawFrame] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Draw Frame"), categories["rendering"], true);
+    eventStyles[recordTypes.ScheduleStyleRecalculation] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Schedule Style Recalculation"), categories["rendering"], true);
     eventStyles[recordTypes.RecalculateStyles] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Recalculate Style"), categories["rendering"]);
-    eventStyles[recordTypes.InvalidateLayout] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Invalidate Layout"), categories["rendering"]);
+    eventStyles[recordTypes.InvalidateLayout] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Invalidate Layout"), categories["rendering"], true);
     eventStyles[recordTypes.Layout] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Layout"), categories["rendering"]);
     eventStyles[recordTypes.PaintSetup] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Paint Setup"), categories["painting"]);
-    eventStyles[recordTypes.UpdateLayer] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Update Layer"), categories["painting"]);
+    eventStyles[recordTypes.UpdateLayer] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Update Layer"), categories["painting"], true);
+    eventStyles[recordTypes.UpdateLayerTree] = { title: WebInspector.UIString("Update Layer Tree"), category: categories["rendering"] };
     eventStyles[recordTypes.Paint] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Paint"), categories["painting"]);
     eventStyles[recordTypes.Rasterize] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Paint"), categories["painting"]);
     eventStyles[recordTypes.RasterTask] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Paint"), categories["painting"]);
@@ -187,9 +227,9 @@ WebInspector.TracingTimelineUIUtils._initEventStyles = function()
     eventStyles[recordTypes.XHRReadyStateChange] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("XHR Ready State Change"), categories["scripting"]);
     eventStyles[recordTypes.XHRLoad] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("XHR Load"), categories["scripting"]);
     eventStyles[recordTypes.EvaluateScript] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Evaluate Script"), categories["scripting"]);
-    eventStyles[recordTypes.MarkLoad] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Load event"), categories["scripting"]);
-    eventStyles[recordTypes.MarkDOMContent] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("DOMContentLoaded event"), categories["scripting"]);
-    eventStyles[recordTypes.MarkFirstPaint] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("First paint"), categories["painting"]);
+    eventStyles[recordTypes.MarkLoad] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Load event"), categories["scripting"], true);
+    eventStyles[recordTypes.MarkDOMContent] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("DOMContentLoaded event"), categories["scripting"], true);
+    eventStyles[recordTypes.MarkFirstPaint] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("First paint"), categories["painting"], true);
     eventStyles[recordTypes.TimeStamp] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Stamp"), categories["scripting"]);
     eventStyles[recordTypes.ConsoleTime] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Console Time"), categories["scripting"]);
     eventStyles[recordTypes.ResourceSendRequest] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Send Request"), categories["loading"]);
@@ -209,7 +249,6 @@ WebInspector.TracingTimelineUIUtils._initEventStyles = function()
     eventStyles[recordTypes.EmbedderCallback] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Embedder Callback"), categories["scripting"]);
     eventStyles[recordTypes.DecodeImage] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Image Decode"), categories["painting"]);
     eventStyles[recordTypes.ResizeImage] = new WebInspector.TimelineRecordStyle(WebInspector.UIString("Image Resize"), categories["painting"]);
-
     WebInspector.TracingTimelineUIUtils._eventStylesMap = eventStyles;
     return eventStyles;
 }
@@ -243,6 +282,23 @@ WebInspector.TracingTimelineUIUtils.styleForTraceEvent = function(name)
         eventStyles[name] = result;
     }
     return result;
+}
+
+/**
+ * @param {!WebInspector.TracingTimelineModel.TraceEventRecord} record
+ * @return {string}
+ */
+WebInspector.TracingTimelineUIUtils._recordTitle = function(record)
+{
+    var event = record.traceEvent();
+    if (event.name === WebInspector.TracingTimelineModel.RecordType.TimeStamp)
+        return event.args.data["message"];
+    var title = WebInspector.TracingTimelineUIUtils.eventStyle(event).title;
+    if (WebInspector.TracingTimelineUIUtils.isEventDivider(record)) {
+        var startTime = Number.millisToString(record.startTime() - record.timelineModel().minimumRecordTime());
+        return WebInspector.UIString("%s at %s", title, startTime);
+    }
+    return title;
 }
 
 /**
@@ -286,6 +342,10 @@ WebInspector.TracingTimelineUIUtils.buildDetailsNodeForTraceEvent = function(eve
     case recordType.FunctionCall:
         details = linkifyLocation(eventData["scriptId"], eventData["scriptName"], eventData["scriptLine"], 0);
         break;
+    case recordType.JSFrame:
+        details = linkifyLocation(eventData["scriptId"], eventData["url"], eventData["lineNumber"], eventData["columnNumber"]);
+        detailsText = eventData["functionName"];
+        break;
     case recordType.FireAnimationFrame:
         detailsText = eventData["id"];
         break;
@@ -293,8 +353,8 @@ WebInspector.TracingTimelineUIUtils.buildDetailsNodeForTraceEvent = function(eve
         detailsText = eventData ? eventData["type"] : null;
         break;
     case recordType.Paint:
-        var width = WebInspector.TimelineUIUtils._quadWidth(eventData.clip);
-        var height = WebInspector.TimelineUIUtils._quadHeight(eventData.clip);
+        var width = WebInspector.TimelineUIUtils.quadWidth(eventData.clip);
+        var height = WebInspector.TimelineUIUtils.quadHeight(eventData.clip);
         if (width && height)
             detailsText = WebInspector.UIString("%d\u2009\u00d7\u2009%d", width, height);
         break;
@@ -355,8 +415,12 @@ WebInspector.TracingTimelineUIUtils.buildDetailsNodeForTraceEvent = function(eve
         break;
     }
 
-    if (!details && detailsText)
-        details = document.createTextNode(detailsText);
+    if (detailsText) {
+        if (details)
+            details.textContent = detailsText;
+        else
+            details = document.createTextNode(detailsText);
+    }
     return details;
 
     /**
@@ -425,7 +489,7 @@ WebInspector.TracingTimelineUIUtils.buildTraceEventDetails = function(event, mod
         if (event.imageURL)
             WebInspector.DOMPresentationUtils.buildImagePreviewContents(target, event.imageURL, false, barrier.createCallback(saveImage));
         else if (event.picture)
-            WebInspector.TracingTimelineUIUtils._buildPicturePreviewContent(event.picture, barrier.createCallback(saveImage));
+            WebInspector.TracingTimelineUIUtils.buildPicturePreviewContent(model.target(), event.picture, barrier.createCallback(saveImage));
     }
     if (event.backendNodeId)
         target.domModel.pushNodesByBackendIdsToFrontend([event.backendNodeId], barrier.createCallback(setRelatedNode));
@@ -466,10 +530,11 @@ WebInspector.TracingTimelineUIUtils.buildTraceEventDetails = function(event, mod
 WebInspector.TracingTimelineUIUtils._buildTraceEventDetailsSynchronously = function(event, model, linkifier, relatedNode, loadedFromFile, target)
 {
     var fragment = document.createDocumentFragment();
-    var stats = WebInspector.TracingTimelineUIUtils._aggregatedStatsForTraceEvent(model, event);
-    var pieChart = stats.hasChildren ?
-        WebInspector.TimelineUIUtils.generatePieChart(stats.aggregatedStats, WebInspector.TracingTimelineUIUtils.styleForTraceEvent(event.name).category, event.selfTime) :
-        WebInspector.TimelineUIUtils.generatePieChart(stats.aggregatedStats);
+    var stats = {};
+    var hasChildren = WebInspector.TracingTimelineUIUtils._aggregatedStatsForTraceEvent(stats, model, event);
+    var pieChart = hasChildren ?
+        WebInspector.TimelineUIUtils.generatePieChart(stats, WebInspector.TracingTimelineUIUtils.styleForTraceEvent(event.name).category, event.selfTime) :
+        WebInspector.TimelineUIUtils.generatePieChart(stats);
     fragment.appendChild(pieChart);
 
     var recordTypes = WebInspector.TracingTimelineModel.RecordType;
@@ -534,8 +599,8 @@ WebInspector.TracingTimelineUIUtils._buildTraceEventDetailsSynchronously = funct
     case recordTypes.Paint:
         var clip = eventData["clip"];
         contentHelper.appendTextRow(WebInspector.UIString("Location"), WebInspector.UIString("(%d, %d)", clip[0], clip[1]));
-        var clipWidth = WebInspector.TimelineUIUtils._quadWidth(clip);
-        var clipHeight = WebInspector.TimelineUIUtils._quadHeight(clip);
+        var clipWidth = WebInspector.TimelineUIUtils.quadWidth(clip);
+        var clipHeight = WebInspector.TimelineUIUtils.quadHeight(clip);
         contentHelper.appendTextRow(WebInspector.UIString("Dimensions"), WebInspector.UIString("%d × %d", clipWidth, clipHeight));
         // Fall-through intended.
 
@@ -620,11 +685,12 @@ WebInspector.TracingTimelineUIUtils._buildTraceEventDetailsSynchronously = funct
 }
 
 /**
+ * @param {!Object} total
  * @param {!WebInspector.TracingTimelineModel} model
  * @param {!WebInspector.TracingModel.Event} event
- * @return {!{ aggregatedStats: !Object, hasChildren: boolean }}
+ * @return {boolean}
  */
-WebInspector.TracingTimelineUIUtils._aggregatedStatsForTraceEvent = function(model, event)
+WebInspector.TracingTimelineUIUtils._aggregatedStatsForTraceEvent = function(total, model, event)
 {
     var events = model.inspectedTargetEvents();
     /**
@@ -638,7 +704,6 @@ WebInspector.TracingTimelineUIUtils._aggregatedStatsForTraceEvent = function(mod
     }
     var index = events.binaryIndexOf(event.startTime, eventComparator);
     var hasChildren = false;
-    var aggregatedStats = {};
     var endTime = event.endTime;
     if (endTime) {
         for (var i = index; i < events.length; i++) {
@@ -650,52 +715,46 @@ WebInspector.TracingTimelineUIUtils._aggregatedStatsForTraceEvent = function(mod
             if (i > index)
                 hasChildren = true;
             var category = WebInspector.TracingTimelineUIUtils.styleForTraceEvent(nextEvent.name).category.name;
-            aggregatedStats[category] = (aggregatedStats[category] || 0) + nextEvent.selfTime;
+            total[category] = (total[category] || 0) + nextEvent.selfTime;
         }
     }
-    return { aggregatedStats: aggregatedStats, hasChildren: hasChildren };
+    return hasChildren;
 }
 
 /**
+ * @param {!WebInspector.Target} target
  * @param {string} encodedPicture
  * @param {function(!Element=)} callback
  */
-WebInspector.TracingTimelineUIUtils._buildPicturePreviewContent = function(encodedPicture, callback)
+WebInspector.TracingTimelineUIUtils.buildPicturePreviewContent = function(target, encodedPicture, callback)
 {
-    var snapshotId;
-
-    LayerTreeAgent.loadSnapshot(encodedPicture, onSnapshotLoaded);
+    WebInspector.PaintProfilerSnapshot.load(target, encodedPicture, onSnapshotLoaded);
     /**
-     * @param {string} error
-     * @param {string} id
+     * @param {?WebInspector.PaintProfilerSnapshot} snapshot
      */
-    function onSnapshotLoaded(error, id)
+    function onSnapshotLoaded(snapshot)
     {
-        if (error) {
-            console.error("LayerTreeAgent.loadSnapshot(): " + error);
+        if (!snapshot) {
             callback();
             return;
         }
-        snapshotId = id;
-        LayerTreeAgent.replaySnapshot(snapshotId, onSnapshotReplayed);
+        snapshot.requestImage(null, null, 1, onGotImage);
+        snapshot.dispose();
     }
 
     /**
-     * @param {string} error
-     * @param {string} encodedBitmap
+     * @param {string=} imageURL
      */
-    function onSnapshotReplayed(error, encodedBitmap)
+    function onGotImage(imageURL)
     {
-        LayerTreeAgent.releaseSnapshot(snapshotId);
-        if (error) {
-            console.error("LayerTreeAgent.replaySnapshot(): " + error);
+        if (!imageURL) {
             callback();
             return;
         }
         var container = document.createElement("div");
         container.className = "image-preview-container";
         var img = container.createChild("img");
-        img.src = encodedBitmap;
+        img.src = imageURL;
         callback(container);
     }
 }
@@ -726,4 +785,26 @@ WebInspector.TracingTimelineUIUtils._createEventDivider = function(recordType, t
         eventDivider.title = title;
 
     return eventDivider;
+}
+
+/**
+ * @return {!Array.<string>}
+ */
+WebInspector.TracingTimelineUIUtils._visibleTypes = function()
+{
+    var eventStyles = WebInspector.TracingTimelineUIUtils._initEventStyles();
+    var result = [];
+    for (var name in eventStyles) {
+        if (!eventStyles[name].hidden)
+            result.push(name);
+    }
+    return result;
+}
+
+/**
+ * @return {!WebInspector.TracingTimelineModel.Filter}
+ */
+WebInspector.TracingTimelineUIUtils.hiddenEventsFilter = function()
+{
+    return new WebInspector.TracingTimelineModel.InclusiveEventNameFilter(WebInspector.TracingTimelineUIUtils._visibleTypes());
 }

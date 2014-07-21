@@ -301,7 +301,7 @@ void SVGFontFaceElement::rebuildFontFace()
 
         unsigned srcLength = srcList ? srcList->length() : 0;
         for (unsigned i = 0; i < srcLength; i++) {
-            if (CSSFontFaceSrcValue* item = toCSSFontFaceSrcValue(srcList->itemWithoutBoundsCheck(i)))
+            if (CSSFontFaceSrcValue* item = toCSSFontFaceSrcValue(srcList->item(i)))
                 item->setSVGFontFaceElement(this);
         }
     }
@@ -343,9 +343,9 @@ void SVGFontFaceElement::removedFrom(ContainerNode* rootParent)
         ASSERT(!m_fontElement);
 }
 
-void SVGFontFaceElement::childrenChanged(bool changedByParser, Node* beforeChange, Node* afterChange, int childCountDelta)
+void SVGFontFaceElement::childrenChanged(const ChildrenChange& change)
 {
-    SVGElement::childrenChanged(changedByParser, beforeChange, afterChange, childCountDelta);
+    SVGElement::childrenChanged(change);
     rebuildFontFace();
 }
 

@@ -50,10 +50,6 @@ var kActualTextSuffix = '-actual.txt';
 var kDiffTextSuffix = '-diff.txt';
 var kCrashLogSuffix = '-crash-log.txt';
 
-var kPNGExtension = 'png';
-var kTXTExtension = 'txt';
-var kWAVExtension = 'wav';
-
 var kPreferredSuffixOrder = [
     kExpectedImageSuffix,
     kActualImageSuffix,
@@ -105,7 +101,7 @@ function possibleSuffixListFor(failureTypeList)
         // '-pretty-diff.html',
     }
 
-    $.each(failureTypeList, function(index, failureType) {
+    failureTypeList.forEach(function(failureType) {
         switch(failureType) {
         case IMAGE:
             pushImageSuffixes();
@@ -139,28 +135,7 @@ function possibleSuffixListFor(failureTypeList)
     return base.uniquifyArray(suffixList);
 }
 
-results.failureTypeToExtensionList = function(failureType)
-{
-    switch(failureType) {
-    case IMAGE:
-        return [kPNGExtension];
-    case AUDIO:
-        return [kWAVExtension];
-    case TEXT:
-        return [kTXTExtension];
-    case MISSING:
-    case IMAGE_TEXT:
-        return [kTXTExtension, kPNGExtension];
-    default:
-        // FIXME: Add support for the rest of the result types.
-        // '-expected.html',
-        // '-expected-mismatch.html',
-        // ... and possibly more.
-        return [];
-    }
-};
-
-results.failureTypeList = function(failureBlob)
+function failureTypeList(failureBlob)
 {
     return failureBlob.split(' ');
 };
@@ -182,11 +157,6 @@ function resultsSummaryURL(builderName)
     return resultsDirectoryURL(builderName) + kResultsName;
 }
 
-function resultsSummaryURLForBuildNumber(builderName, buildNumber)
-{
-    return resultsDirectoryURLForBuildNumber(builderName, buildNumber) + kResultsName;
-}
-
 var g_resultsCache = new base.AsynchronousCache(function(key) {
     return net.jsonp(key);
 });
@@ -195,8 +165,8 @@ results.ResultAnalyzer = base.extends(Object, {
     init: function(resultNode)
     {
         this._isUnexpected = resultNode.is_unexpected;
-        this._actual = resultNode ? results.failureTypeList(resultNode.actual) : [];
-        this._expected = resultNode ? this._addImpliedExpectations(results.failureTypeList(resultNode.expected)) : [];
+        this._actual = resultNode ? failureTypeList(resultNode.actual) : [];
+        this._expected = resultNode ? this._addImpliedExpectations(failureTypeList(resultNode.expected)) : [];
     },
     _addImpliedExpectations: function(resultsList)
     {
@@ -232,12 +202,6 @@ results.ResultAnalyzer = base.extends(Object, {
     }
 });
 
-function isExpectedFailure(resultNode)
-{
-    var analyzer = new results.ResultAnalyzer(resultNode);
-    return !analyzer.hasUnexpectedFailures() && !analyzer.succeeded() && !analyzer.flaky() && !analyzer.wontfix();
-}
-
 function isUnexpectedFailure(resultNode)
 {
     var analyzer = new results.ResultAnalyzer(resultNode);
@@ -249,11 +213,6 @@ function isResultNode(node)
     return !!node.actual;
 }
 
-results.expectedFailures = function(resultsTree)
-{
-    return base.filterTree(resultsTree.tests, isResultNode, isExpectedFailure);
-};
-
 results.unexpectedFailures = function(resultsTree)
 {
     return base.filterTree(resultsTree.tests, isResultNode, isUnexpectedFailure);
@@ -263,8 +222,8 @@ function resultsByTest(resultsByBuilder, filter)
 {
     var resultsByTest = {};
 
-    $.each(resultsByBuilder, function(builderName, resultsTree) {
-        $.each(filter(resultsTree), function(testName, resultNode) {
+    Object.keys(resultsByBuilder, function(builderName, resultsTree) {
+        Object.keys(filter(resultsTree), function(testName, resultNode) {
             resultsByTest[testName] = resultsByTest[testName] || {};
             resultsByTest[testName][builderName] = resultNode;
         });
@@ -273,31 +232,29 @@ function resultsByTest(resultsByBuilder, filter)
     return resultsByTest;
 }
 
-results.expectedFailuresByTest = function(resultsByBuilder)
-{
-    return resultsByTest(resultsByBuilder, results.expectedFailures);
-};
-
 results.unexpectedFailuresByTest = function(resultsByBuilder)
 {
     return resultsByTest(resultsByBuilder, results.unexpectedFailures);
 };
 
-results.failureInfoForTestAndBuilder = function(resultsByTest, testName, builderName)
+results.failureInfo = function(testName, builderName, result)
 {
-    var failureInfoForTest = {
+    return {
         'testName': testName,
         'builderName': builderName,
-        'failureTypeList': results.failureTypeList(resultsByTest[testName][builderName].actual),
+        'failureTypeList': failureTypeList(result),
     };
+}
 
-    return failureInfoForTest;
+results.failureInfoForTestAndBuilder = function(resultsByTest, testName, builderName)
+{
+    return results.failureInfo(testName, builderName, resultsByTest[testName][builderName].actual)
 };
 
 results.collectUnexpectedResults = function(dictionaryOfResultNodes)
 {
     var collectedResults = [];
-    $.each(dictionaryOfResultNodes, function(key, resultNode) {
+    Object.keys(dictionaryOfResultNodes, function(key, resultNode) {
         var analyzer = new results.ResultAnalyzer(resultNode);
         collectedResults = collectedResults.concat(analyzer.unexpectedResults());
     });
@@ -336,7 +293,7 @@ function walkHistory(builderName, testName, continueCallback)
         var resultsURL = keyList[indexOfNextKeyToFetch].url;
         ++indexOfNextKeyToFetch;
         g_resultsCache.get(resultsURL).then(function(resultsTree) {
-            if ($.isEmptyObject(resultsTree)) {
+            if (!Object.size(resultsTree)) {
                 continueWalk();
                 return;
             }
@@ -397,7 +354,7 @@ function mergeRegressionRanges(regressionRanges)
     mergedRange.oldestFailingRevision = 0;
     mergedRange.newestPassingRevision = 0;
 
-    $.each(regressionRanges, function(builderName, range) {
+    Object.keys(regressionRanges, function(builderName, range) {
         if (!range.oldestFailingRevision && !range.newestPassingRevision)
             return
 
@@ -419,7 +376,7 @@ results.unifyRegressionRanges = function(builderNameList, testName) {
     var regressionRanges = {};
 
     var rangePromises = [];
-    $.each(builderNameList, function(index, builderName) {
+    builderNameList.forEach(function(builderName) {
         rangePromises.push(results.regressionRangeForFailure(builderName, testName)
                            .then(function(result) {
                                var oldestFailingRevision = result[0];
@@ -440,7 +397,7 @@ results.resultNodeForTest = function(resultsTree, testName)
 {
     var testNamePath = testName.split('/');
     var currentNode = resultsTree['tests'];
-    $.each(testNamePath, function(index, segmentName) {
+    testNamePath.forEach(function(segmentName) {
         if (!currentNode)
             return;
         currentNode = (segmentName in currentNode) ? currentNode[segmentName] : null;
@@ -471,8 +428,8 @@ results.resultType = function(url)
 function sortResultURLsBySuffix(urls)
 {
     var sortedURLs = [];
-    $.each(kPreferredSuffixOrder, function(i, suffix) {
-        $.each(urls, function(j, url) {
+    kPreferredSuffixOrder.forEach(function(suffix) {
+        urls.forEach(function(url) {
             if (!base.endsWith(url, suffix))
                 return;
             sortedURLs.push(url);
@@ -491,7 +448,7 @@ results.fetchResultsURLs = function(failureInfo)
     var suffixList = possibleSuffixListFor(failureInfo.failureTypeList);
     var resultURLs = [];
     var probePromises = [];
-    $.each(suffixList, function(index, suffix) {
+    suffixList.forEach(function(suffix) {
         var url = urlStem + testNameStem + suffix;
         probePromises.push(net.probe(url).then(
             function() {
@@ -508,7 +465,7 @@ results.fetchResultsByBuilder = function(builderNameList)
 {
     var resultsByBuilder = {};
     var fetchPromises = [];
-    $.each(builderNameList, function(index, builderName) {
+    builderNameList.forEach(function(builderName) {
         var resultsURL = resultsSummaryURL(builderName);
         fetchPromises.push(net.jsonp(resultsURL).then(function(resultsTree) {
             resultsByBuilder[builderName] = resultsTree;

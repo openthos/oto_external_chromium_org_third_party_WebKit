@@ -118,9 +118,7 @@ public:
     virtual void invalidateContentsAndRootView(const WebCore::IntRect&) OVERRIDE;
     virtual void invalidateContentsForSlowScroll(const WebCore::IntRect&) OVERRIDE;
     virtual void scheduleAnimation() OVERRIDE;
-    virtual void scroll(
-        const WebCore::IntSize& scrollDelta, const WebCore::IntRect& rectToScroll,
-        const WebCore::IntRect& clipRect) OVERRIDE;
+    virtual void scroll() OVERRIDE;
     virtual WebCore::IntRect rootViewToScreen(const WebCore::IntRect&) const OVERRIDE;
     virtual WebScreenInfo screenInfo() const OVERRIDE;
     virtual void contentsSizeChanged(WebCore::LocalFrame*, const WebCore::IntSize&) const OVERRIDE;
@@ -149,6 +147,8 @@ public:
 
     virtual void enterFullScreenForElement(WebCore::Element*) OVERRIDE;
     virtual void exitFullScreenForElement(WebCore::Element*) OVERRIDE;
+
+    virtual void clearCompositedSelectionBounds() OVERRIDE;
 
     // ChromeClient methods:
     virtual void postAccessibilityNotification(WebCore::AXObject*, WebCore::AXObjectCache::AXNotification) OVERRIDE;
@@ -182,8 +182,7 @@ public:
     virtual void didCancelCompositionOnSelectionChange() OVERRIDE;
     virtual void willSetInputMethodState() OVERRIDE;
     virtual void didUpdateTextOfFocusedElementByNonUserInput() OVERRIDE;
-
-    virtual bool usesGpuRasterization() OVERRIDE;
+    virtual void showImeIfNeeded() OVERRIDE;
 
 private:
     virtual bool isChromeClientImpl() const OVERRIDE { return true; }

@@ -182,9 +182,9 @@ private:
     void requestPreload(Resource::Type, FetchRequest&, const String& charset);
 
     enum RevalidationPolicy { Use, Revalidate, Reload, Load };
-    RevalidationPolicy determineRevalidationPolicy(Resource::Type, ResourceRequest&, bool forPreload, Resource* existingResource, FetchRequest::DeferOption, const ResourceLoaderOptions&) const;
+    RevalidationPolicy determineRevalidationPolicy(Resource::Type, const FetchRequest&, Resource* existingResource) const;
 
-    void determineTargetType(ResourceRequest&, Resource::Type);
+    void determineRequestContext(ResourceRequest&, Resource::Type);
     ResourceRequestCachePolicy resourceRequestCachePolicy(const ResourceRequest&, Resource::Type);
     void addAdditionalRequestHeaders(ResourceRequest&, Resource::Type);
 

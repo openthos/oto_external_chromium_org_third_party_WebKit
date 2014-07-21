@@ -32,7 +32,7 @@
 #include "config.h"
 #include "web/FrameLoaderClientImpl.h"
 
-#include "bindings/v8/ScriptController.h"
+#include "bindings/core/v8/ScriptController.h"
 #include "core/HTMLNames.h"
 #include "core/dom/Document.h"
 #include "core/dom/DocumentFullscreen.h"
@@ -203,6 +203,14 @@ bool FrameLoaderClientImpl::allowImage(bool enabledPerSettings, const KURL& imag
     return enabledPerSettings;
 }
 
+bool FrameLoaderClientImpl::allowMedia(const KURL& mediaURL)
+{
+    if (m_webFrame->permissionClient())
+        return m_webFrame->permissionClient()->allowMedia(mediaURL);
+
+    return true;
+}
+
 bool FrameLoaderClientImpl::allowDisplayingInsecureContent(bool enabledPerSettings, SecurityOrigin* context, const KURL& url)
 {
     if (m_webFrame->permissionClient())
@@ -300,14 +308,6 @@ void FrameLoaderClientImpl::detachedFromParent()
     m_webFrame->setWebCoreFrame(nullptr);
 }
 
-void FrameLoaderClientImpl::dispatchWillRequestAfterPreconnect(ResourceRequest& request)
-{
-    if (m_webFrame->client()) {
-        WrappedResourceRequest webreq(request);
-        m_webFrame->client()->willRequestAfterPreconnect(m_webFrame, webreq);
-    }
-}
-
 void FrameLoaderClientImpl::dispatchWillSendRequest(
     DocumentLoader* loader, unsigned long identifier, ResourceRequest& request,
     const ResourceResponse& redirectResponse)
@@ -383,10 +383,10 @@ void FrameLoaderClientImpl::dispatchWillClose()
         m_webFrame->client()->willClose(m_webFrame);
 }
 
-void FrameLoaderClientImpl::dispatchDidStartProvisionalLoad()
+void FrameLoaderClientImpl::dispatchDidStartProvisionalLoad(bool isTransitionNavigation)
 {
     if (m_webFrame->client())
-        m_webFrame->client()->didStartProvisionalLoad(m_webFrame);
+        m_webFrame->client()->didStartProvisionalLoad(m_webFrame, isTransitionNavigation);
 }
 
 void FrameLoaderClientImpl::dispatchDidReceiveTitle(const String& title)
@@ -450,20 +450,35 @@ void FrameLoaderClientImpl::dispatchDidFirstVisuallyNonEmptyLayout()
         m_webFrame->client()->didFirstVisuallyNonEmptyLayout(m_webFrame);
 }
 
-void FrameLoaderClientImpl::dispatchDidChangeBrandColor()
+void FrameLoaderClientImpl::dispatchDidChangeThemeColor()
 {
     if (m_webFrame->client())
-        m_webFrame->client()->didChangeBrandColor();
+        m_webFrame->client()->didChangeThemeColor();
 }
 
-NavigationPolicy FrameLoaderClientImpl::decidePolicyForNavigation(const ResourceRequest& request, DocumentLoader* loader, NavigationPolicy policy)
+NavigationPolicy FrameLoaderClientImpl::decidePolicyForNavigation(const ResourceRequest& request, DocumentLoader* loader, NavigationPolicy policy, bool isTransitionNavigation)
 {
     if (!m_webFrame->client())
         return NavigationPolicyIgnore;
     WebDataSourceImpl* ds = WebDataSourceImpl::fromDocumentLoader(loader);
-    WebNavigationPolicy webPolicy = m_webFrame->client()->decidePolicyForNavigation(m_webFrame, ds->extraData(), WrappedResourceRequest(request),
-        ds->navigationType(), static_cast<WebNavigationPolicy>(policy), ds->isRedirect());
+
+    WrappedResourceRequest wrappedResourceRequest(request);
+    WebFrameClient::NavigationPolicyInfo navigationInfo(wrappedResourceRequest);
+    navigationInfo.frame = m_webFrame;
+    navigationInfo.extraData = ds->extraData();
+    navigationInfo.navigationType = ds->navigationType();
+    navigationInfo.defaultPolicy = static_cast<WebNavigationPolicy>(policy);
+    navigationInfo.isRedirect = ds->isRedirect();
+    navigationInfo.isTransitionNavigation = isTransitionNavigation;
+
+    WebNavigationPolicy webPolicy = m_webFrame->client()->decidePolicyForNavigation(navigationInfo);
     return static_cast<NavigationPolicy>(webPolicy);
+}
+
+void FrameLoaderClientImpl::dispatchAddNavigationTransitionData(const String& allowedDestinationOrigin, const String& selector, const String& markup)
+{
+    if (m_webFrame->client())
+        m_webFrame->client()->addNavigationTransitionData(allowedDestinationOrigin, selector, markup);
 }
 
 void FrameLoaderClientImpl::dispatchWillRequestResource(FetchRequest* request)

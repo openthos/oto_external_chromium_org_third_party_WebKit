@@ -50,8 +50,6 @@ public:
     LazyDecodingPixelRef(const SkImageInfo&, PassRefPtr<ImageFrameGenerator>, size_t index);
     virtual ~LazyDecodingPixelRef();
 
-    SK_DECLARE_UNFLATTENABLE_OBJECT()
-
     PassRefPtr<ImageFrameGenerator> frameGenerator() const { return m_frameGenerator; }
     size_t frameIndex() const { return m_frameIndex; }
 

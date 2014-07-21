@@ -31,7 +31,7 @@
 #ifndef InspectorInstrumentation_h
 #define InspectorInstrumentation_h
 
-#include "bindings/v8/ScriptString.h"
+#include "bindings/core/v8/ScriptString.h"
 #include "core/css/CSSSelector.h"
 #include "core/css/CSSStyleDeclaration.h"
 #include "core/css/CSSStyleSheet.h"
@@ -41,7 +41,6 @@
 #include "core/events/NodeEventContext.h"
 #include "core/frame/LocalFrame.h"
 #include "core/inspector/ConsoleAPITypes.h"
-#include "core/page/Page.h"
 #include "core/rendering/HitTestResult.h"
 #include "core/rendering/RenderImage.h"
 #include "core/storage/StorageArea.h"

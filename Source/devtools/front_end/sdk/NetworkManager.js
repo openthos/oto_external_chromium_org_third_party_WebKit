@@ -30,12 +30,12 @@
 
 /**
  * @constructor
- * @extends {WebInspector.TargetAwareObject}
+ * @extends {WebInspector.SDKObject}
  * @param {!WebInspector.Target} target
  */
 WebInspector.NetworkManager = function(target)
 {
-    WebInspector.TargetAwareObject.call(this, target);
+    WebInspector.SDKObject.call(this, target);
     this._dispatcher = new WebInspector.NetworkDispatcher(this);
     this._target = target;
     this._networkAgent = target.networkAgent();
@@ -130,7 +130,12 @@ WebInspector.NetworkManager.prototype = {
         this._networkAgent.setCacheDisabled(enabled);
     },
 
-    __proto__: WebInspector.TargetAwareObject.prototype
+    dispose: function()
+    {
+        WebInspector.settings.cacheDisabled.removeChangeListener(this._cacheDisabledSettingChanged, this)
+    },
+
+    __proto__: WebInspector.SDKObject.prototype
 }
 
 /**
@@ -496,7 +501,7 @@ WebInspector.NetworkDispatcher.prototype = {
     {
         var originalNetworkRequest = this._inflightRequestsById[requestId];
         var previousRedirects = originalNetworkRequest.redirects || [];
-        originalNetworkRequest.requestId = "redirected:" + requestId + "." + previousRedirects.length;
+        originalNetworkRequest.requestId = requestId + ":redirected." + previousRedirects.length;
         delete originalNetworkRequest.redirects;
         if (previousRedirects.length > 0)
             originalNetworkRequest.redirectSource = previousRedirects[previousRedirects.length - 1];

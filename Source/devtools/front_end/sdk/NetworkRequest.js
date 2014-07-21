@@ -30,7 +30,7 @@
 
 /**
  * @constructor
- * @extends {WebInspector.TargetAwareObject}
+ * @extends {WebInspector.SDKObject}
  * @implements {WebInspector.ContentProvider}
  * @param {!NetworkAgent.RequestId} requestId
  * @param {!WebInspector.Target} target
@@ -41,7 +41,7 @@
  */
 WebInspector.NetworkRequest = function(target, requestId, url, documentURL, frameId, loaderId)
 {
-    WebInspector.TargetAwareObject.call(this, target);
+    WebInspector.SDKObject.call(this, target);
 
     this._requestId = requestId;
     this.url = url;
@@ -86,6 +86,18 @@ WebInspector.NetworkRequest.InitiatorType = {
 WebInspector.NetworkRequest.NameValue;
 
 WebInspector.NetworkRequest.prototype = {
+    /**
+     * @param {!WebInspector.NetworkRequest} other
+     * @return {number}
+     */
+    indentityCompare: function(other) {
+        if (this._requestId > other._requestId)
+            return 1;
+        if (this._requestId < other._requestId)
+            return -1;
+        return 0;
+    },
+
     /**
      * @return {!NetworkAgent.RequestId}
      */
@@ -553,18 +565,16 @@ WebInspector.NetworkRequest.prototype = {
     },
 
     /**
-     * @return {string|undefined}
+     * @return {string}
      */
     requestHttpVersion: function()
     {
         var headersText = this.requestHeadersText();
-        if (!headersText) {
-            // SPDY header.
-            return this.requestHeaderValue(":version");
-        }
+        if (!headersText)
+            return this.requestHeaderValue("version") || this.requestHeaderValue(":version") || "unknown";
         var firstLine = headersText.split(/\r\n/)[0];
         var match = firstLine.match(/(HTTP\/\d+\.\d+)$/);
-        return match ? match[1] : undefined;
+        return match ? match[1] : "HTTP/0.9";
     },
 
     /**
@@ -689,17 +699,16 @@ WebInspector.NetworkRequest.prototype = {
     },
 
     /**
-     * @return {string|undefined}
+     * @return {string}
      */
-    get responseHttpVersion()
+    responseHttpVersion: function()
     {
         var headersText = this._responseHeadersText;
-        if (!headersText) {
-            // SPDY header.
-            return this.responseHeaderValue(":version");
-        }
-        var match = headersText.match(/^(HTTP\/\d+\.\d+)/);
-        return match ? match[1] : undefined;
+        if (!headersText)
+            return this.responseHeaderValue("version") || this.responseHeaderValue(":version") || "unknown";
+        var firstLine = headersText.split(/\r\n/)[0];
+        var match = firstLine.match(/^(HTTP\/\d+\.\d+)/);
+        return match ? match[1] : "HTTP/0.9";
     },
 
     /**
@@ -710,8 +719,11 @@ WebInspector.NetworkRequest.prototype = {
     {
         function parseNameValue(pair)
         {
-            var splitPair = pair.split("=", 2);
-            return {name: splitPair[0], value: splitPair[1] || ""};
+            var position = pair.indexOf("=");
+            if (position === -1)
+                return {name: pair, value: ""};
+            else
+                return {name: pair.substring(0, position), value: pair.substring(position + 1)};
         }
         return queryString.split("&").map(parseNameValue);
     },
@@ -981,5 +993,5 @@ WebInspector.NetworkRequest.prototype = {
         this._frames.push(frameOrError);
     },
 
-    __proto__: WebInspector.TargetAwareObject.prototype
+    __proto__: WebInspector.SDKObject.prototype
 }

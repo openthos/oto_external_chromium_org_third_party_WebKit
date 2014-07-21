@@ -62,8 +62,10 @@ DatabaseThread::~DatabaseThread()
 
 void DatabaseThread::trace(Visitor* visitor)
 {
+#if ENABLE(OILPAN)
     visitor->trace(m_openDatabaseSet);
     visitor->trace(m_transactionCoordinator);
+#endif
 }
 
 void DatabaseThread::start()
@@ -95,7 +97,7 @@ void DatabaseThread::requestTermination(TaskSynchronizer *cleanupSync)
 
 bool DatabaseThread::terminationRequested(TaskSynchronizer* taskSynchronizer) const
 {
-#ifndef NDEBUG
+#if ENABLE(ASSERT)
     if (taskSynchronizer)
         taskSynchronizer->setHasCheckedForTermination();
 #endif

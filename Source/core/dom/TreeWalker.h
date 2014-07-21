@@ -25,7 +25,7 @@
 #ifndef TreeWalker_h
 #define TreeWalker_h
 
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "core/dom/NodeFilter.h"
 #include "core/dom/NodeIteratorBase.h"
 #include "platform/heap/Handle.h"
@@ -36,7 +36,7 @@ namespace WebCore {
 
 class ExceptionState;
 
-class TreeWalker FINAL : public RefCountedWillBeGarbageCollectedFinalized<TreeWalker>, public ScriptWrappable, public NodeIteratorBase {
+class TreeWalker FINAL : public RefCountedWillBeGarbageCollected<TreeWalker>, public ScriptWrappable, public NodeIteratorBase {
     WILL_BE_USING_GARBAGE_COLLECTED_MIXIN(TreeWalker);
 public:
     static PassRefPtrWillBeRawPtr<TreeWalker> create(PassRefPtrWillBeRawPtr<Node> rootNode, unsigned whatToShow, PassRefPtrWillBeRawPtr<NodeFilter> filter)

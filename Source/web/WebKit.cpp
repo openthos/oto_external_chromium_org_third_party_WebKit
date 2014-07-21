@@ -31,9 +31,9 @@
 #include "config.h"
 #include "public/web/WebKit.h"
 
-#include "bindings/v8/V8Binding.h"
-#include "bindings/v8/V8GCController.h"
-#include "bindings/v8/V8Initializer.h"
+#include "bindings/core/v8/V8Binding.h"
+#include "bindings/core/v8/V8GCController.h"
+#include "bindings/core/v8/V8Initializer.h"
 #include "core/Init.h"
 #include "core/animation/AnimationClock.h"
 #include "core/dom/Microtask.h"
@@ -50,6 +50,7 @@
 #include "platform/heap/Heap.h"
 #include "platform/heap/glue/MessageLoopInterruptor.h"
 #include "platform/heap/glue/PendingGCRunner.h"
+#include "platform/scheduler/Scheduler.h"
 #include "public/platform/Platform.h"
 #include "public/platform/WebPrerenderingSupport.h"
 #include "public/platform/WebThread.h"
@@ -62,6 +63,8 @@
 #include "wtf/text/AtomicString.h"
 #include "wtf/text/TextEncoding.h"
 #include <v8.h>
+
+using WebCore::LayoutTestSupport;
 
 namespace blink {
 
@@ -146,7 +149,7 @@ static void cryptographicallyRandomValues(unsigned char* buffer, size_t length)
 
 static void callOnMainThreadFunction(WTF::MainThreadFunction function, void* context)
 {
-    Platform::current()->callOnMainThread(function, context);
+    WebCore::Scheduler::shared()->postTask(bind(function, context));
 }
 
 void initializeWithoutV8(Platform* platform)
@@ -161,6 +164,7 @@ void initializeWithoutV8(Platform* platform)
     WTF::initialize(currentTimeFunction, monotonicallyIncreasingTimeFunction);
     WTF::initializeMainThread(callOnMainThreadFunction);
     WebCore::Heap::init();
+    WebCore::Scheduler::initializeOnMainThread();
 
     WebCore::ThreadState::attachMainThread();
     // currentThread will always be non-null in production, but can be null in Chromium unit tests.
@@ -203,6 +207,7 @@ void shutdown()
 
     ASSERT(s_isolateInterruptor);
     WebCore::ThreadState::current()->removeInterruptor(s_isolateInterruptor);
+    WebCore::Scheduler::shutdown();
 
     // currentThread will always be non-null in production, but can be null in Chromium unit tests.
     if (Platform::current()->currentThread()) {
@@ -231,7 +236,7 @@ void shutdown()
 void shutdownWithoutV8()
 {
     ASSERT(!s_endOfTaskRunner);
-    WebCore::shutdown();
+    WebCore::CoreInitializer::shutdown();
     WebCore::Heap::shutdown();
     WTF::shutdown();
     Platform::shutdown();
@@ -240,22 +245,22 @@ void shutdownWithoutV8()
 
 void setLayoutTestMode(bool value)
 {
-    WebCore::setIsRunningLayoutTest(value);
+    LayoutTestSupport::setIsRunningLayoutTest(value);
 }
 
 bool layoutTestMode()
 {
-    return WebCore::isRunningLayoutTest();
+    return LayoutTestSupport::isRunningLayoutTest();
 }
 
 void setFontAntialiasingEnabledForTest(bool value)
 {
-    WebCore::setFontAntialiasingEnabledForTest(value);
+    LayoutTestSupport::setFontAntialiasingEnabledForTest(value);
 }
 
 bool fontAntialiasingEnabledForTest()
 {
-    return WebCore::isFontAntialiasingEnabledForTest();
+    return LayoutTestSupport::isFontAntialiasingEnabledForTest();
 }
 
 void enableLogChannel(const char* name)

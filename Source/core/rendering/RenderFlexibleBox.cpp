@@ -31,8 +31,8 @@
 #include "config.h"
 #include "core/rendering/RenderFlexibleBox.h"
 
+#include "core/frame/UseCounter.h"
 #include "core/rendering/FastTextAutosizer.h"
-#include "core/rendering/LayoutRepainter.h"
 #include "core/rendering/RenderLayer.h"
 #include "core/rendering/RenderView.h"
 #include "platform/LengthFunctions.h"
@@ -73,7 +73,7 @@ RenderFlexibleBox::RenderFlexibleBox(Element* element)
     , m_orderIterator(this)
     , m_numberOfInFlowChildrenOnFirstLine(-1)
 {
-    setChildrenInline(false); // All of our children must be block-level.
+    ASSERT(!childrenInline());
 }
 
 RenderFlexibleBox::~RenderFlexibleBox()
@@ -232,8 +232,6 @@ void RenderFlexibleBox::layoutBlock(bool relayoutChildren)
     if (!relayoutChildren && simplifiedLayout())
         return;
 
-    LayoutRepainter repainter(*this, checkForPaintInvalidationDuringLayout());
-
     if (updateLogicalWidthAndColumnWidth())
         relayoutChildren = true;
 
@@ -264,7 +262,6 @@ void RenderFlexibleBox::layoutBlock(bool relayoutChildren)
 
         computeRegionRangeForBlock(flowThreadContainingBlock());
 
-        repaintChildrenDuringLayoutIfMoved(oldChildRects);
         // FIXME: css3/flexbox/repaint-rtl-column.html seems to repaint more overflow than it needs to.
         computeOverflow(clientLogicalBottomAfterRepositioning());
     }
@@ -275,8 +272,6 @@ void RenderFlexibleBox::layoutBlock(bool relayoutChildren)
     // we overflow or not.
     updateScrollInfoAfterLayout();
 
-    repainter.repaintAfterLayout();
-
     clearNeedsLayout();
 }
 
@@ -286,23 +281,6 @@ void RenderFlexibleBox::appendChildFrameRects(ChildFrameRects& childFrameRects)
         if (!child->isOutOfFlowPositioned())
             childFrameRects.append(child->frameRect());
     }
-}
-
-void RenderFlexibleBox::repaintChildrenDuringLayoutIfMoved(const ChildFrameRects& oldChildRects)
-{
-    size_t childIndex = 0;
-    for (RenderBox* child = m_orderIterator.first(); child; child = m_orderIterator.next()) {
-        if (child->isOutOfFlowPositioned())
-            continue;
-
-        // If the child moved, we have to repaint it as well as any floating/positioned
-        // descendants. An exception is if we need a layout. In this case, we know we're going to
-        // repaint ourselves (and the child) anyway.
-        if (!selfNeedsLayout() && child->checkForPaintInvalidationDuringLayout())
-            child->repaintDuringLayoutIfMoved(oldChildRects[childIndex]);
-        ++childIndex;
-    }
-    ASSERT(childIndex == oldChildRects.size());
 }
 
 void RenderFlexibleBox::paintChildren(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
@@ -634,6 +612,9 @@ bool RenderFlexibleBox::childPreferredMainAxisContentExtentRequiresLayout(Render
 LayoutUnit RenderFlexibleBox::preferredMainAxisContentExtentForChild(RenderBox* child, bool hasInfiniteLineLength, bool relayoutChildren)
 {
     child->clearOverrideSize();
+
+    if (child->style()->hasAspectRatio() || child->isImage() || child->isVideo() || child->isCanvas())
+        UseCounter::count(document(), UseCounter::AspectRatioFlexItem);
 
     Length flexBasis = flexBasisForChild(child);
     if (preferredMainAxisExtentDependsOnLayout(flexBasis, hasInfiniteLineLength)) {
@@ -1331,6 +1312,7 @@ void RenderFlexibleBox::alignChildren(const Vector<LineContext>& lineContexts)
                     minMarginAfterBaseline = std::min(minMarginAfterBaseline, availableAlignmentSpaceForChild(lineCrossAxisExtent, child) - startOffset);
                 break;
             }
+            case ItemPositionLastBaseline:
             case ItemPositionSelfStart:
             case ItemPositionSelfEnd:
             case ItemPositionStart:

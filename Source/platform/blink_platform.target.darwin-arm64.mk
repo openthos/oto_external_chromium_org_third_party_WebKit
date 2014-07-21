@@ -82,6 +82,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/Prerender.cpp \
 	third_party/WebKit/Source/platform/PurgeableVector.cpp \
 	third_party/WebKit/Source/platform/SSLKeyGenerator.cpp \
+	third_party/WebKit/Source/platform/ScriptForbiddenScope.cpp \
 	third_party/WebKit/Source/platform/SecureTextInput.cpp \
 	third_party/WebKit/Source/platform/SharedBuffer.cpp \
 	third_party/WebKit/Source/platform/SharedBufferChunkReader.cpp \
@@ -181,11 +182,13 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/exported/WebPrerenderingSupport.cpp \
 	third_party/WebKit/Source/platform/exported/WebRTCConfiguration.cpp \
 	third_party/WebKit/Source/platform/exported/WebRTCICECandidate.cpp \
+	third_party/WebKit/Source/platform/exported/WebRTCOfferOptions.cpp \
 	third_party/WebKit/Source/platform/exported/WebRTCSessionDescription.cpp \
 	third_party/WebKit/Source/platform/exported/WebRTCSessionDescriptionRequest.cpp \
 	third_party/WebKit/Source/platform/exported/WebRTCStatsRequest.cpp \
 	third_party/WebKit/Source/platform/exported/WebRTCStatsResponse.cpp \
 	third_party/WebKit/Source/platform/exported/WebRTCVoidRequest.cpp \
+	third_party/WebKit/Source/platform/exported/WebSchedulerProxy.cpp \
 	third_party/WebKit/Source/platform/exported/WebScrollbarImpl.cpp \
 	third_party/WebKit/Source/platform/exported/WebScrollbarThemeClientImpl.cpp \
 	third_party/WebKit/Source/platform/exported/WebScrollbarThemeGeometryNative.cpp \
@@ -293,6 +296,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/graphics/Canvas2DLayerManager.cpp \
 	third_party/WebKit/Source/platform/graphics/Color.cpp \
 	third_party/WebKit/Source/platform/graphics/ColorSpace.cpp \
+	third_party/WebKit/Source/platform/graphics/CompositingReasons.cpp \
 	third_party/WebKit/Source/platform/graphics/CrossfadeGeneratedImage.cpp \
 	third_party/WebKit/Source/platform/graphics/DecodingImageGenerator.cpp \
 	third_party/WebKit/Source/platform/graphics/DeferredImageDecoder.cpp \
@@ -304,7 +308,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/graphics/Gradient.cpp \
 	third_party/WebKit/Source/platform/graphics/GradientGeneratedImage.cpp \
 	third_party/WebKit/Source/platform/graphics/GraphicsContext.cpp \
-	third_party/WebKit/Source/platform/graphics/GraphicsContextAnnotation.cpp \
 	third_party/WebKit/Source/platform/graphics/GraphicsContextRecorder.cpp \
 	third_party/WebKit/Source/platform/graphics/GraphicsContextState.cpp \
 	third_party/WebKit/Source/platform/graphics/GraphicsLayer.cpp \
@@ -319,10 +322,13 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/graphics/ImageOrientation.cpp \
 	third_party/WebKit/Source/platform/graphics/ImageSource.cpp \
 	third_party/WebKit/Source/platform/graphics/LazyDecodingPixelRef.cpp \
+	third_party/WebKit/Source/platform/graphics/LoggingCanvas.cpp \
 	third_party/WebKit/Source/platform/graphics/OpaqueRectTrackingContentLayerDelegate.cpp \
 	third_party/WebKit/Source/platform/graphics/Path.cpp \
 	third_party/WebKit/Source/platform/graphics/PathTraversalState.cpp \
 	third_party/WebKit/Source/platform/graphics/Pattern.cpp \
+	third_party/WebKit/Source/platform/graphics/ProfilingCanvas.cpp \
+	third_party/WebKit/Source/platform/graphics/ReplayingCanvas.cpp \
 	third_party/WebKit/Source/platform/graphics/ScaledImageFragment.cpp \
 	third_party/WebKit/Source/platform/graphics/StrokeData.cpp \
 	third_party/WebKit/Source/platform/graphics/ThreadSafeDataTransport.cpp \
@@ -368,6 +374,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/network/WebSocketHandshakeResponse.cpp \
 	third_party/WebKit/Source/platform/plugins/PluginData.cpp \
 	third_party/WebKit/Source/platform/plugins/PluginListBuilder.cpp \
+	third_party/WebKit/Source/platform/scheduler/Scheduler.cpp \
 	third_party/WebKit/Source/platform/scroll/FramelessScrollView.cpp \
 	third_party/WebKit/Source/platform/scroll/ScrollAnimator.cpp \
 	third_party/WebKit/Source/platform/scroll/ScrollAnimatorNone.cpp \
@@ -452,7 +459,6 @@ MY_CFLAGS_Debug := \
 	-Wno-unused-but-set-variable \
 	-Os \
 	-g \
-	-fomit-frame-pointer \
 	-fdata-sections \
 	-ffunction-sections \
 	-funwind-tables
@@ -473,6 +479,7 @@ MY_DEFS_Debug := \
 	'-DSYSTEM_NATIVELY_SIGNALS_MEMORY_PRESSURE' \
 	'-DENABLE_EGLIMAGE=1' \
 	'-DCLD_VERSION=1' \
+	'-DCLD_DATA_FROM_STATIC' \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
@@ -486,7 +493,8 @@ MY_DEFS_Debug := \
 	'-DENABLE_CUSTOM_SCHEME_HANDLER=0' \
 	'-DENABLE_SVG_FONTS=1' \
 	'-DWTF_USE_CONCATENATED_IMPULSE_RESPONSES=1' \
-	'-DENABLE_MEDIA_CAPTURE=1' \
+	'-DWTF_USE_WEBAUDIO_OPENMAX_DL_FFT=1' \
+	'-DENABLE_WEB_AUDIO=1' \
 	'-DENABLE_OPENTYPE_VERTICAL=1' \
 	'-DSK_ENABLE_INST_COUNT=0' \
 	'-DSK_SUPPORT_GPU=1' \
@@ -495,14 +503,10 @@ MY_DEFS_Debug := \
 	'-DSK_ATTR_DEPRECATED=SK_NOTHING_ARG1' \
 	'-DGR_GL_IGNORE_ES3_MSAA=0' \
 	'-DSK_WILL_NEVER_DRAW_PERSPECTIVE_TEXT' \
-	'-DSK_SUPPORT_LEGACY_GETTOPDEVICE' \
-	'-DSK_SUPPORT_LEGACY_BITMAP_CONFIG' \
-	'-DSK_SUPPORT_LEGACY_DEVICE_VIRTUAL_ISOPAQUE' \
-	'-DSK_SUPPORT_LEGACY_N32_NAME' \
-	'-DSK_SUPPORT_LEGACY_SETCONFIG' \
+	'-DSK_SUPPORT_LEGACY_PICTURE_CLONE' \
+	'-DSK_SUPPORT_LEGACY_GETDEVICE' \
 	'-DSK_IGNORE_ETC1_SUPPORT' \
 	'-DSK_IGNORE_GPU_DITHER' \
-	'-DSK_SUPPORT_LEGACY_GETTOTALCLIP' \
 	'-DSK_BUILD_FOR_ANDROID' \
 	'-DSK_USE_POSIX_THREADS' \
 	'-DSK_DEFERRED_CANVAS_USES_FACTORIES=1' \
@@ -533,6 +537,7 @@ LOCAL_C_INCLUDES_Debug := \
 	$(gyp_shared_intermediate_dir) \
 	$(LOCAL_PATH)/third_party/angle/include \
 	$(gyp_shared_intermediate_dir)/blink \
+	$(LOCAL_PATH)/third_party/openmax_dl \
 	$(LOCAL_PATH)/third_party/WebKit/Source \
 	$(LOCAL_PATH) \
 	$(LOCAL_PATH)/skia/config \
@@ -561,6 +566,7 @@ LOCAL_C_INCLUDES_Debug := \
 	$(LOCAL_PATH)/third_party/iccjpeg \
 	$(PWD)/external/jpeg \
 	$(LOCAL_PATH)/third_party/harfbuzz-ng/src \
+	$(LOCAL_PATH)/third_party/openmax_dl \
 	$(PWD)/frameworks/wilhelm/include \
 	$(PWD)/bionic \
 	$(PWD)/external/stlport/stlport
@@ -573,6 +579,9 @@ LOCAL_CPPFLAGS_Debug := \
 	-fvisibility-inlines-hidden \
 	-Wsign-compare \
 	-Wno-c++0x-compat \
+	-std=gnu++11 \
+	-Wno-narrowing \
+	-Wno-literal-suffix \
 	-Wno-non-virtual-dtor \
 	-Wno-sign-promo
 
@@ -605,7 +614,6 @@ MY_CFLAGS_Release := \
 	-fno-ident \
 	-fdata-sections \
 	-ffunction-sections \
-	-fomit-frame-pointer \
 	-funwind-tables
 
 MY_DEFS_Release := \
@@ -624,6 +632,7 @@ MY_DEFS_Release := \
 	'-DSYSTEM_NATIVELY_SIGNALS_MEMORY_PRESSURE' \
 	'-DENABLE_EGLIMAGE=1' \
 	'-DCLD_VERSION=1' \
+	'-DCLD_DATA_FROM_STATIC' \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
@@ -637,7 +646,8 @@ MY_DEFS_Release := \
 	'-DENABLE_CUSTOM_SCHEME_HANDLER=0' \
 	'-DENABLE_SVG_FONTS=1' \
 	'-DWTF_USE_CONCATENATED_IMPULSE_RESPONSES=1' \
-	'-DENABLE_MEDIA_CAPTURE=1' \
+	'-DWTF_USE_WEBAUDIO_OPENMAX_DL_FFT=1' \
+	'-DENABLE_WEB_AUDIO=1' \
 	'-DENABLE_OPENTYPE_VERTICAL=1' \
 	'-DSK_ENABLE_INST_COUNT=0' \
 	'-DSK_SUPPORT_GPU=1' \
@@ -646,14 +656,10 @@ MY_DEFS_Release := \
 	'-DSK_ATTR_DEPRECATED=SK_NOTHING_ARG1' \
 	'-DGR_GL_IGNORE_ES3_MSAA=0' \
 	'-DSK_WILL_NEVER_DRAW_PERSPECTIVE_TEXT' \
-	'-DSK_SUPPORT_LEGACY_GETTOPDEVICE' \
-	'-DSK_SUPPORT_LEGACY_BITMAP_CONFIG' \
-	'-DSK_SUPPORT_LEGACY_DEVICE_VIRTUAL_ISOPAQUE' \
-	'-DSK_SUPPORT_LEGACY_N32_NAME' \
-	'-DSK_SUPPORT_LEGACY_SETCONFIG' \
+	'-DSK_SUPPORT_LEGACY_PICTURE_CLONE' \
+	'-DSK_SUPPORT_LEGACY_GETDEVICE' \
 	'-DSK_IGNORE_ETC1_SUPPORT' \
 	'-DSK_IGNORE_GPU_DITHER' \
-	'-DSK_SUPPORT_LEGACY_GETTOTALCLIP' \
 	'-DSK_BUILD_FOR_ANDROID' \
 	'-DSK_USE_POSIX_THREADS' \
 	'-DSK_DEFERRED_CANVAS_USES_FACTORIES=1' \
@@ -685,6 +691,7 @@ LOCAL_C_INCLUDES_Release := \
 	$(gyp_shared_intermediate_dir) \
 	$(LOCAL_PATH)/third_party/angle/include \
 	$(gyp_shared_intermediate_dir)/blink \
+	$(LOCAL_PATH)/third_party/openmax_dl \
 	$(LOCAL_PATH)/third_party/WebKit/Source \
 	$(LOCAL_PATH) \
 	$(LOCAL_PATH)/skia/config \
@@ -713,6 +720,7 @@ LOCAL_C_INCLUDES_Release := \
 	$(LOCAL_PATH)/third_party/iccjpeg \
 	$(PWD)/external/jpeg \
 	$(LOCAL_PATH)/third_party/harfbuzz-ng/src \
+	$(LOCAL_PATH)/third_party/openmax_dl \
 	$(PWD)/frameworks/wilhelm/include \
 	$(PWD)/bionic \
 	$(PWD)/external/stlport/stlport
@@ -725,6 +733,9 @@ LOCAL_CPPFLAGS_Release := \
 	-fvisibility-inlines-hidden \
 	-Wsign-compare \
 	-Wno-c++0x-compat \
+	-std=gnu++11 \
+	-Wno-narrowing \
+	-Wno-literal-suffix \
 	-Wno-non-virtual-dtor \
 	-Wno-sign-promo
 

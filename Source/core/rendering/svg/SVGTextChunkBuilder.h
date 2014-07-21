@@ -40,7 +40,7 @@ public:
     SVGTextChunkBuilder();
 
     const Vector<SVGTextChunk>& textChunks() const { return m_textChunks; }
-    void transformationForTextBox(SVGInlineTextBox*, AffineTransform&) const;
+    AffineTransform transformationForTextBox(SVGInlineTextBox*) const;
 
     void buildTextChunks(Vector<SVGInlineTextBox*>& lineLayoutBoxes);
     void layoutTextChunks(Vector<SVGInlineTextBox*>& lineLayoutBoxes);
@@ -51,7 +51,6 @@ private:
 
     void processTextLengthSpacingCorrection(bool isVerticalText, float textLengthShift, Vector<SVGTextFragment>&, unsigned& atCharacter);
     void processTextAnchorCorrection(bool isVerticalText, float textAnchorShift, Vector<SVGTextFragment>&);
-    void buildSpacingAndGlyphsTransform(bool isVerticalText, float scale, const SVGTextFragment&, AffineTransform&);
 
 private:
     Vector<SVGTextChunk> m_textChunks;

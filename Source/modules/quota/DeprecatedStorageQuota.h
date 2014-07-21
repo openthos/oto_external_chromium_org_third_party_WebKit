@@ -31,7 +31,7 @@
 #ifndef DeprecatedStorageQuota_h
 #define DeprecatedStorageQuota_h
 
-#include "bindings/v8/ScriptWrappable.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "platform/heap/Handle.h"
 #include "wtf/PassOwnPtr.h"
 
@@ -42,7 +42,7 @@ class StorageErrorCallback;
 class StorageQuotaCallback;
 class StorageUsageCallback;
 
-class DeprecatedStorageQuota : public GarbageCollectedFinalized<DeprecatedStorageQuota>, public ScriptWrappable {
+class DeprecatedStorageQuota FINAL : public GarbageCollectedFinalized<DeprecatedStorageQuota>, public ScriptWrappable {
 public:
     enum Type {
         Temporary,

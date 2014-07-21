@@ -27,19 +27,11 @@
 
 module('ui.actions');
 
-test('Buttons', 6, function() {
+test('Buttons', 2, function() {
     var buttonInfos = [{
-        view: new ui.actions.Rollout(),
-        text: 'Roll out',
-        event: 'rollout'
-    }, {
         view: new ui.actions.Examine(),
         text: 'Examine',
         event: 'examine'
-    }, {
-        view: new ui.actions.Rebaseline(),
-        text: 'Rebaseline',
-        event: 'rebaseline'
     }];
     buttonInfos.forEach(function(buttonInfo) {
         equal(buttonInfo.view.textContent, buttonInfo.text);
@@ -63,12 +55,10 @@ test('default', 2, function() {
 
 test('List', 1, function() {
     var list = new ui.actions.List([
-        new ui.actions.Rebaseline(),
         new ui.actions.Previous(),
         new ui.actions.Next()
     ]);
     equal(list.innerHTML,
-        '<li><button class="action">Rebaseline</button></li>' +
         '<li><button class="action previous">\u25C0</button></li>' +
         '<li><button class="action next">\u25B6</button></li>');
 });

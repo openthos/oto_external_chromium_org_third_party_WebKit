@@ -140,6 +140,7 @@ public:
     virtual void loadHTMLString(
         const WebData& html, const WebURL& baseURL, const WebURL& unreachableURL,
         bool replace) OVERRIDE;
+    virtual void sendPings(const WebNode& linkNode, const WebURL& destinationURL) OVERRIDE;
     virtual bool isLoading() const OVERRIDE;
     virtual void stopLoading() OVERRIDE;
     virtual WebDataSource* provisionalDataSource() const OVERRIDE;
@@ -234,8 +235,7 @@ public:
     static WebLocalFrameImpl* create(WebFrameClient*);
     virtual ~WebLocalFrameImpl();
 
-    // Called by the WebViewImpl to initialize the main frame for the page.
-    void initializeAsMainFrame(WebCore::Page*);
+    PassRefPtr<WebCore::LocalFrame> initializeWebCoreFrame(WebCore::FrameHost*, WebCore::FrameOwner*, const AtomicString& name, const AtomicString& fallbackName);
 
     PassRefPtr<WebCore::LocalFrame> createChildFrame(
         const WebCore::FrameLoadRequest&, WebCore::HTMLFrameOwnerElement*);
@@ -311,7 +311,8 @@ public:
     // Invalidates both content area and the scrollbar.
     void invalidateAll() const;
 
-    PassRefPtr<WebCore::LocalFrame> initializeAsChildFrame(WebCore::FrameHost*, WebCore::FrameOwner*, const AtomicString& name, const AtomicString& fallbackName);
+    // Returns a hit-tested VisiblePosition for the given point
+    WebCore::VisiblePosition visiblePositionForWindowPoint(const WebPoint&);
 
 private:
     friend class FrameLoaderClientImpl;
@@ -322,9 +323,6 @@ private:
     void setWebCoreFrame(PassRefPtr<WebCore::LocalFrame>);
 
     void loadJavaScriptURL(const WebCore::KURL&);
-
-    // Returns a hit-tested VisiblePosition for the given point
-    WebCore::VisiblePosition visiblePositionForWindowPoint(const WebPoint&);
 
     WebPlugin* focusedPluginIfInputMethodSupported();
 
@@ -348,7 +346,7 @@ private:
 
     // Valid between calls to BeginPrint() and EndPrint(). Containts the print
     // information. Is used by PrintPage().
-    OwnPtr<ChromePrintContext> m_printContext;
+    OwnPtrWillBePersistent<ChromePrintContext> m_printContext;
 
     // Stores the additional input events offset and scale when device metrics emulation is enabled.
     WebCore::IntSize m_inputEventsOffsetForEmulation;
