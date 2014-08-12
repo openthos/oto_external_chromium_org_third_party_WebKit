@@ -79,7 +79,7 @@
 #include "wtf/text/StringBuilder.h"
 #include "wtf/text/TextPosition.h"
 
-namespace WebCore {
+namespace blink {
 
 bool ScriptController::canAccessFromCurrentOrigin(LocalFrame *frame)
 {
@@ -174,6 +174,10 @@ v8::Local<v8::Value> ScriptController::executeScriptAndReturnValue(v8::Handle<v8
 
     v8::Local<v8::Value> result;
     {
+        V8CacheOptions v8CacheOptions(V8CacheOptionsOff);
+        if (m_frame->settings())
+            v8CacheOptions = m_frame->settings()->v8CacheOptions();
+
         // Isolate exceptions that occur when compiling and executing
         // the code. These exceptions should not interfere with
         // javascript code we might evaluate from C++ when returning
@@ -181,7 +185,7 @@ v8::Local<v8::Value> ScriptController::executeScriptAndReturnValue(v8::Handle<v8
         v8::TryCatch tryCatch;
         tryCatch.SetVerbose(true);
 
-        v8::Handle<v8::Script> script = V8ScriptRunner::compileScript(source, m_isolate, corsStatus);
+        v8::Handle<v8::Script> script = V8ScriptRunner::compileScript(source, m_isolate, corsStatus, v8CacheOptions);
 
         // Keep LocalFrame (and therefore ScriptController) alive.
         RefPtr<LocalFrame> protect(m_frame);
@@ -414,10 +418,10 @@ void ScriptController::clearWindowShell()
     double start = currentTime();
     // V8 binding expects ScriptController::clearWindowShell only be called
     // when a frame is loading a new page. This creates a new context for the new page.
+    clearScriptObjects();
     m_windowShell->clearForNavigation();
     for (IsolatedWorldMap::iterator iter = m_isolatedWorlds.begin(); iter != m_isolatedWorlds.end(); ++iter)
         iter->value->clearForNavigation();
-    clearScriptObjects();
     blink::Platform::current()->histogramCustomCounts("WebCore.ScriptController.clearWindowShell", (currentTime() - start) * 1000, 0, 10000, 50);
 }
 
@@ -634,4 +638,4 @@ void ScriptController::executeScriptInIsolatedWorld(int worldID, const Vector<Sc
     }
 }
 
-} // namespace WebCore
+} // namespace blink

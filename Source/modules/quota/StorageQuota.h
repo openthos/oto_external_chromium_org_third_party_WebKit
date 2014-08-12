@@ -36,11 +36,11 @@
 #include "platform/heap/Handle.h"
 #include "wtf/Forward.h"
 
-namespace WebCore {
+namespace blink {
 
 class ExecutionContext;
 
-class StorageQuota FINAL : public GarbageCollectedFinalized<StorageQuota>, public ScriptWrappable {
+class StorageQuota FINAL : public GarbageCollected<StorageQuota>, public ScriptWrappable {
 public:
     static StorageQuota* create()
     {
@@ -52,14 +52,12 @@ public:
     ScriptPromise queryInfo(ScriptState*, String type);
     ScriptPromise requestPersistentQuota(ScriptState*, unsigned long long newQuota);
 
-    ~StorageQuota();
-
     void trace(Visitor*) { }
 
 private:
     StorageQuota();
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // StorageQuota_h

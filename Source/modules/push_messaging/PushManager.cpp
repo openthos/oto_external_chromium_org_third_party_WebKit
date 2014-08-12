@@ -22,15 +22,11 @@
 #include "public/platform/WebPushClient.h"
 #include "wtf/RefPtr.h"
 
-namespace WebCore {
+namespace blink {
 
 PushManager::PushManager()
 {
     ScriptWrappable::init(this);
-}
-
-PushManager::~PushManager()
-{
 }
 
 ScriptPromise PushManager::registerPushMessaging(ScriptState* scriptState, const String& senderId)
@@ -54,4 +50,4 @@ ScriptPromise PushManager::registerPushMessaging(ScriptState* scriptState, const
     return promise;
 }
 
-} // namespace WebCore
+} // namespace blink

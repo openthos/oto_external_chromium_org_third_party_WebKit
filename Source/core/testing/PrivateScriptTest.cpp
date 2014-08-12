@@ -9,12 +9,28 @@
 #include "core/frame/LocalFrame.h"
 #include <v8.h>
 
-namespace WebCore {
+namespace blink {
 
 PrivateScriptTest::PrivateScriptTest(LocalFrame* frame)
 {
+    ScriptWrappable::init(this);
     v8::Handle<v8::Value> classObject = PrivateScriptRunner::installClassIfNeeded(frame, "PrivateScriptTest");
     RELEASE_ASSERT(!classObject.IsEmpty());
 }
 
-} // namespace WebCore
+int PrivateScriptTest::addIntegerImplementedInCPPForPrivateScriptOnly(int value1, int value2)
+{
+    return value1 + value2;
+}
+
+String PrivateScriptTest::stringAttributeImplementedInCPPForPrivateScriptOnly()
+{
+    return m_stringAttributeImplementedInCPPForPrivateSriptOnly;
+}
+
+void PrivateScriptTest::setStringAttributeImplementedInCPPForPrivateScriptOnly(String value)
+{
+    m_stringAttributeImplementedInCPPForPrivateSriptOnly = value;
+}
+
+} // namespace blink

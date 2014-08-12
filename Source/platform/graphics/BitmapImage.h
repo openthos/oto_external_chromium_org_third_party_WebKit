@@ -36,7 +36,7 @@
 #include "platform/graphics/ImageSource.h"
 #include "wtf/Forward.h"
 
-namespace WebCore {
+namespace blink {
 
 class NativeImageSkia;
 template <typename T> class Timer;
@@ -79,6 +79,7 @@ public:
     virtual bool maybeAnimated() OVERRIDE;
 
     virtual PassRefPtr<NativeImageSkia> nativeImageForCurrentFrame() OVERRIDE;
+    virtual PassRefPtr<Image> imageForDefaultFrame() OVERRIDE;
     virtual bool currentFrameKnownToBeOpaque() OVERRIDE;
 
     ImageOrientation currentFrameOrientation();

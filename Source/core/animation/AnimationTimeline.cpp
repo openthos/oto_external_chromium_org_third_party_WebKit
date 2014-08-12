@@ -38,13 +38,13 @@
 #include "core/page/Page.h"
 #include "platform/TraceEvent.h"
 
-namespace WebCore {
+namespace blink {
 
 namespace {
 
-bool compareAnimationPlayers(const RefPtrWillBeMember<WebCore::AnimationPlayer>& left, const RefPtrWillBeMember<WebCore::AnimationPlayer>& right)
+bool compareAnimationPlayers(const RefPtrWillBeMember<blink::AnimationPlayer>& left, const RefPtrWillBeMember<blink::AnimationPlayer>& right)
 {
-    return left->sortInfo().hasLowerSequenceNumber(right->sortInfo());
+    return AnimationPlayer::hasLowerPriority(left.get(), right.get());
 }
 
 }
@@ -62,6 +62,7 @@ PassRefPtrWillBeRawPtr<AnimationTimeline> AnimationTimeline::create(Document* do
 AnimationTimeline::AnimationTimeline(Document* document, PassOwnPtrWillBeRawPtr<PlatformTiming> timing)
     : m_document(document)
 {
+    ScriptWrappable::init(this);
     if (!timing)
         m_timing = adoptPtrWillBeNoop(new AnimationTimelineTiming(this));
     else
@@ -221,19 +222,6 @@ void AnimationTimeline::setOutdatedAnimationPlayer(AnimationPlayer* player)
     m_playersNeedingUpdate.add(player);
     if (m_document && m_document->page() && !m_document->page()->animator().isServicingAnimations())
         m_timing->serviceOnNextFrame();
-}
-
-size_t AnimationTimeline::numberOfActiveAnimationsForTesting() const
-{
-    // Includes all players whose directly associated timed items
-    // are current or in effect.
-    size_t count = 0;
-    for (WillBeHeapHashSet<RefPtrWillBeMember<AnimationPlayer> >::iterator it = m_playersNeedingUpdate.begin(); it != m_playersNeedingUpdate.end(); ++it) {
-        const AnimationNode* animationNode = (*it)->source();
-        if ((*it)->hasStartTime())
-            count += (animationNode && (animationNode->isCurrent() || animationNode->isInEffect()));
-    }
-    return count;
 }
 
 #if !ENABLE(OILPAN)

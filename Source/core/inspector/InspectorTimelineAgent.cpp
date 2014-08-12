@@ -62,7 +62,7 @@
 #include "wtf/CurrentTime.h"
 #include "wtf/DateMath.h"
 
-namespace WebCore {
+namespace blink {
 
 namespace TimelineAgentState {
 static const char enabled[] = "enabled";
@@ -141,6 +141,37 @@ static const char EmbedderCallback[] = "EmbedderCallback";
 
 using TypeBuilder::Timeline::TimelineEvent;
 
+class InspectorTimelineAgentTraceEventListener : public TraceEventDispatcher::TraceEventListener {
+public:
+    typedef void (InspectorTimelineAgent::*TraceEventHandlerMethod)(const TraceEventDispatcher::TraceEvent&);
+    static PassOwnPtrWillBeRawPtr<InspectorTimelineAgentTraceEventListener> create(InspectorTimelineAgent* instance, TraceEventHandlerMethod method)
+    {
+        return adoptPtrWillBeNoop(new InspectorTimelineAgentTraceEventListener(instance, method));
+    }
+    virtual void call(const TraceEventDispatcher::TraceEvent& event) OVERRIDE
+    {
+        (m_instance->*m_method)(event);
+    }
+    virtual void* target() OVERRIDE
+    {
+        return m_instance;
+    }
+    virtual void trace(Visitor* visitor) OVERRIDE
+    {
+        visitor->trace(m_instance);
+        TraceEventDispatcher::TraceEventListener::trace(visitor);
+    }
+
+private:
+    InspectorTimelineAgentTraceEventListener(InspectorTimelineAgent* instance, TraceEventHandlerMethod method)
+        : m_instance(instance)
+        , m_method(method)
+    {
+    }
+    RawPtrWillBeMember<InspectorTimelineAgent> m_instance;
+    TraceEventHandlerMethod m_method;
+};
+
 struct TimelineRecordEntry {
     TimelineRecordEntry(PassRefPtr<TimelineEvent> record, PassRefPtr<JSONObject> data, PassRefPtr<TypeBuilder::Array<TimelineEvent> > children, const String& type)
         : record(record)
@@ -158,6 +189,7 @@ struct TimelineRecordEntry {
 };
 
 class TimelineRecordStack {
+    DISALLOW_ALLOCATION();
 private:
     struct Entry {
         Entry(PassRefPtr<TimelineEvent> record, const String& type)
@@ -177,8 +209,8 @@ private:
     };
 
 public:
-    TimelineRecordStack() : m_timelineAgent(0) { }
-    TimelineRecordStack(InspectorTimelineAgent*);
+    TimelineRecordStack() : m_timelineAgent(nullptr) { }
+    explicit TimelineRecordStack(InspectorTimelineAgent*);
 
     void addScopedRecord(PassRefPtr<TimelineEvent> record, const String& type);
     void closeScopedRecord(double endTime);
@@ -188,14 +220,18 @@ public:
     bool isOpenRecordOfType(const String& type);
 #endif
 
+    void trace(Visitor*);
+
 private:
     void send(PassRefPtr<JSONObject>);
 
-    InspectorTimelineAgent* m_timelineAgent;
+    RawPtrWillBeMember<InspectorTimelineAgent> m_timelineAgent;
     Vector<Entry> m_stack;
 };
 
 struct TimelineThreadState {
+    ALLOW_ONLY_INLINE_ALLOCATION();
+public:
     TimelineThreadState() { }
 
     TimelineThreadState(InspectorTimelineAgent* timelineAgent)
@@ -204,6 +240,8 @@ struct TimelineThreadState {
         , decodedPixelRefId(0)
     {
     }
+
+    void trace(Visitor*);
 
     TimelineRecordStack recordStack;
     bool inKnownLayerTask;
@@ -261,6 +299,16 @@ InspectorTimelineAgent::~InspectorTimelineAgent()
 {
 }
 
+void InspectorTimelineAgent::trace(Visitor* visitor)
+{
+    visitor->trace(m_pageAgent);
+    visitor->trace(m_layerTreeAgent);
+#if ENABLE(OILPAN)
+    visitor->trace(m_threadStates);
+#endif
+    InspectorBaseAgent::trace(visitor);
+}
+
 void InspectorTimelineAgent::setFrontend(InspectorFrontend* frontend)
 {
     m_frontend = frontend->timeline();
@@ -269,8 +317,7 @@ void InspectorTimelineAgent::setFrontend(InspectorFrontend* frontend)
 void InspectorTimelineAgent::clearFrontend()
 {
     ErrorString error;
-    RefPtr<TypeBuilder::Array<TimelineEvent> > events;
-    stop(&error, events);
+    stop(&error);
     disable(&error);
     m_frontend = 0;
 }
@@ -288,7 +335,7 @@ void InspectorTimelineAgent::restore()
         // Tell front-end timline is no longer collecting.
         m_state->setBoolean(TimelineAgentState::started, false);
         bool fromConsole = true;
-        m_frontend->stopped(&fromConsole);
+        m_frontend->stopped(&fromConsole, nullptr);
     }
 }
 
@@ -318,7 +365,7 @@ void InspectorTimelineAgent::start(ErrorString* errorString, const int* maxCallS
     else
         m_maxCallStackDepth = 5;
 
-    if (bufferEvents && *bufferEvents) {
+    if (asBool(bufferEvents)) {
         m_bufferedEvents = TypeBuilder::Array<TimelineEvent>::create();
         m_lastProgressTimestamp = timestamp();
     }
@@ -327,9 +374,9 @@ void InspectorTimelineAgent::start(ErrorString* errorString, const int* maxCallS
         setLiveEvents(*liveEvents);
 
     m_state->setLong(TimelineAgentState::timelineMaxCallStackDepth, m_maxCallStackDepth);
-    m_state->setBoolean(TimelineAgentState::includeCounters, includeCounters && *includeCounters);
-    m_state->setBoolean(TimelineAgentState::includeGPUEvents, includeGPUEvents && *includeGPUEvents);
-    m_state->setBoolean(TimelineAgentState::bufferEvents, bufferEvents && *bufferEvents);
+    m_state->setBoolean(TimelineAgentState::includeCounters, asBool(includeCounters));
+    m_state->setBoolean(TimelineAgentState::includeGPUEvents, asBool(includeGPUEvents));
+    m_state->setBoolean(TimelineAgentState::bufferEvents, asBool(bufferEvents));
     m_state->setString(TimelineAgentState::liveEvents, liveEvents ? *liveEvents : "");
 
     innerStart();
@@ -351,23 +398,23 @@ void InspectorTimelineAgent::innerStart()
     ScriptGCEvent::addEventListener(this);
     if (m_client) {
         TraceEventDispatcher* dispatcher = TraceEventDispatcher::instance();
-        dispatcher->addListener(InstrumentationEvents::BeginFrame, TRACE_EVENT_PHASE_INSTANT, this, &InspectorTimelineAgent::onBeginImplSideFrame, m_client);
-        dispatcher->addListener(InstrumentationEvents::PaintSetup, TRACE_EVENT_PHASE_BEGIN, this, &InspectorTimelineAgent::onPaintSetupBegin, m_client);
-        dispatcher->addListener(InstrumentationEvents::PaintSetup, TRACE_EVENT_PHASE_END, this, &InspectorTimelineAgent::onPaintSetupEnd, m_client);
-        dispatcher->addListener(InstrumentationEvents::RasterTask, TRACE_EVENT_PHASE_BEGIN, this, &InspectorTimelineAgent::onRasterTaskBegin, m_client);
-        dispatcher->addListener(InstrumentationEvents::RasterTask, TRACE_EVENT_PHASE_END, this, &InspectorTimelineAgent::onRasterTaskEnd, m_client);
-        dispatcher->addListener(InstrumentationEvents::Layer, TRACE_EVENT_PHASE_DELETE_OBJECT, this, &InspectorTimelineAgent::onLayerDeleted, m_client);
-        dispatcher->addListener(InstrumentationEvents::RequestMainThreadFrame, TRACE_EVENT_PHASE_INSTANT, this, &InspectorTimelineAgent::onRequestMainThreadFrame, m_client);
-        dispatcher->addListener(InstrumentationEvents::ActivateLayerTree, TRACE_EVENT_PHASE_INSTANT, this, &InspectorTimelineAgent::onActivateLayerTree, m_client);
-        dispatcher->addListener(InstrumentationEvents::DrawFrame, TRACE_EVENT_PHASE_INSTANT, this, &InspectorTimelineAgent::onDrawFrame, m_client);
-        dispatcher->addListener(PlatformInstrumentation::ImageDecodeEvent, TRACE_EVENT_PHASE_BEGIN, this, &InspectorTimelineAgent::onImageDecodeBegin, m_client);
-        dispatcher->addListener(PlatformInstrumentation::ImageDecodeEvent, TRACE_EVENT_PHASE_END, this, &InspectorTimelineAgent::onImageDecodeEnd, m_client);
-        dispatcher->addListener(PlatformInstrumentation::DrawLazyPixelRefEvent, TRACE_EVENT_PHASE_INSTANT, this, &InspectorTimelineAgent::onDrawLazyPixelRef, m_client);
-        dispatcher->addListener(PlatformInstrumentation::DecodeLazyPixelRefEvent, TRACE_EVENT_PHASE_BEGIN, this, &InspectorTimelineAgent::onDecodeLazyPixelRefBegin, m_client);
-        dispatcher->addListener(PlatformInstrumentation::DecodeLazyPixelRefEvent, TRACE_EVENT_PHASE_END, this, &InspectorTimelineAgent::onDecodeLazyPixelRefEnd, m_client);
-        dispatcher->addListener(PlatformInstrumentation::LazyPixelRef, TRACE_EVENT_PHASE_DELETE_OBJECT, this, &InspectorTimelineAgent::onLazyPixelRefDeleted, m_client);
-        dispatcher->addListener(InstrumentationEvents::EmbedderCallback, TRACE_EVENT_PHASE_BEGIN, this, &InspectorTimelineAgent::onEmbedderCallbackBegin, m_client);
-        dispatcher->addListener(InstrumentationEvents::EmbedderCallback, TRACE_EVENT_PHASE_END, this, &InspectorTimelineAgent::onEmbedderCallbackEnd, m_client);
+        dispatcher->addListener(InstrumentationEvents::BeginFrame, TRACE_EVENT_PHASE_INSTANT, InspectorTimelineAgentTraceEventListener::create(this, &InspectorTimelineAgent::onBeginImplSideFrame), m_client);
+        dispatcher->addListener(InstrumentationEvents::PaintSetup, TRACE_EVENT_PHASE_BEGIN, InspectorTimelineAgentTraceEventListener::create(this, &InspectorTimelineAgent::onPaintSetupBegin), m_client);
+        dispatcher->addListener(InstrumentationEvents::PaintSetup, TRACE_EVENT_PHASE_END, InspectorTimelineAgentTraceEventListener::create(this, &InspectorTimelineAgent::onPaintSetupEnd), m_client);
+        dispatcher->addListener(InstrumentationEvents::RasterTask, TRACE_EVENT_PHASE_BEGIN, InspectorTimelineAgentTraceEventListener::create(this, &InspectorTimelineAgent::onRasterTaskBegin), m_client);
+        dispatcher->addListener(InstrumentationEvents::RasterTask, TRACE_EVENT_PHASE_END, InspectorTimelineAgentTraceEventListener::create(this, &InspectorTimelineAgent::onRasterTaskEnd), m_client);
+        dispatcher->addListener(InstrumentationEvents::Layer, TRACE_EVENT_PHASE_DELETE_OBJECT, InspectorTimelineAgentTraceEventListener::create(this, &InspectorTimelineAgent::onLayerDeleted), m_client);
+        dispatcher->addListener(InstrumentationEvents::RequestMainThreadFrame, TRACE_EVENT_PHASE_INSTANT, InspectorTimelineAgentTraceEventListener::create(this, &InspectorTimelineAgent::onRequestMainThreadFrame), m_client);
+        dispatcher->addListener(InstrumentationEvents::ActivateLayerTree, TRACE_EVENT_PHASE_INSTANT, InspectorTimelineAgentTraceEventListener::create(this, &InspectorTimelineAgent::onActivateLayerTree), m_client);
+        dispatcher->addListener(InstrumentationEvents::DrawFrame, TRACE_EVENT_PHASE_INSTANT, InspectorTimelineAgentTraceEventListener::create(this, &InspectorTimelineAgent::onDrawFrame), m_client);
+        dispatcher->addListener(PlatformInstrumentation::ImageDecodeEvent, TRACE_EVENT_PHASE_BEGIN, InspectorTimelineAgentTraceEventListener::create(this, &InspectorTimelineAgent::onImageDecodeBegin), m_client);
+        dispatcher->addListener(PlatformInstrumentation::ImageDecodeEvent, TRACE_EVENT_PHASE_END, InspectorTimelineAgentTraceEventListener::create(this, &InspectorTimelineAgent::onImageDecodeEnd), m_client);
+        dispatcher->addListener(PlatformInstrumentation::DrawLazyPixelRefEvent, TRACE_EVENT_PHASE_INSTANT, InspectorTimelineAgentTraceEventListener::create(this, &InspectorTimelineAgent::onDrawLazyPixelRef), m_client);
+        dispatcher->addListener(PlatformInstrumentation::DecodeLazyPixelRefEvent, TRACE_EVENT_PHASE_BEGIN, InspectorTimelineAgentTraceEventListener::create(this, &InspectorTimelineAgent::onDecodeLazyPixelRefBegin), m_client);
+        dispatcher->addListener(PlatformInstrumentation::DecodeLazyPixelRefEvent, TRACE_EVENT_PHASE_END, InspectorTimelineAgentTraceEventListener::create(this, &InspectorTimelineAgent::onDecodeLazyPixelRefEnd), m_client);
+        dispatcher->addListener(PlatformInstrumentation::LazyPixelRef, TRACE_EVENT_PHASE_DELETE_OBJECT, InspectorTimelineAgentTraceEventListener::create(this, &InspectorTimelineAgent::onLazyPixelRefDeleted), m_client);
+        dispatcher->addListener(InstrumentationEvents::EmbedderCallback, TRACE_EVENT_PHASE_BEGIN, InspectorTimelineAgentTraceEventListener::create(this, &InspectorTimelineAgent::onEmbedderCallbackBegin), m_client);
+        dispatcher->addListener(InstrumentationEvents::EmbedderCallback, TRACE_EVENT_PHASE_END, InspectorTimelineAgentTraceEventListener::create(this, &InspectorTimelineAgent::onEmbedderCallbackEnd), m_client);
 
         if (m_state->getBoolean(TimelineAgentState::includeGPUEvents)) {
             m_pendingGPURecord.clear();
@@ -376,7 +423,7 @@ void InspectorTimelineAgent::innerStart()
     }
 }
 
-void InspectorTimelineAgent::stop(ErrorString* errorString, RefPtr<TypeBuilder::Array<TimelineEvent> >& events)
+void InspectorTimelineAgent::stop(ErrorString* errorString)
 {
     m_state->setBoolean(TimelineAgentState::startedFromProtocol, false);
     m_state->setBoolean(TimelineAgentState::bufferEvents, false);
@@ -387,8 +434,6 @@ void InspectorTimelineAgent::stop(ErrorString* errorString, RefPtr<TypeBuilder::
         return;
     }
     innerStop(false);
-    if (m_bufferedEvents)
-        events = m_bufferedEvents.release();
     m_liveEvents.clear();
 }
 
@@ -419,7 +464,7 @@ void InspectorTimelineAgent::innerStop(bool fromConsole)
     }
     m_consoleTimelines.clear();
 
-    m_frontend->stopped(&fromConsole);
+    m_frontend->stopped(&fromConsole, m_bufferedEvents.release());
     if (m_overlay)
         m_overlay->finishedRecordingProfile();
 }
@@ -782,6 +827,9 @@ void InspectorTimelineAgent::consoleTimeline(ExecutionContext* context, const St
     mainFrame()->console().addMessage(JSMessageSource, DebugMessageLevel, message, String(), 0, 0, nullptr, scriptState);
     m_consoleTimelines.append(title);
     if (!isStarted()) {
+        m_state->setBoolean(TimelineAgentState::bufferEvents, true);
+        m_bufferedEvents = TypeBuilder::Array<TimelineEvent>::create();
+
         innerStart();
         bool fromConsole = true;
         m_frontend->started(&fromConsole);
@@ -1311,5 +1359,15 @@ bool TimelineRecordStack::isOpenRecordOfType(const String& type)
 }
 #endif
 
-} // namespace WebCore
+void TimelineRecordStack::trace(Visitor* visitor)
+{
+    visitor->trace(m_timelineAgent);
+}
+
+void TimelineThreadState::trace(Visitor* visitor)
+{
+    visitor->trace(recordStack);
+}
+
+} // namespace blink
 

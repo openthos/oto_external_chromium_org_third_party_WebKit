@@ -39,13 +39,12 @@
 #include "wtf/HashMap.h"
 #include "wtf/Noncopyable.h"
 #include "wtf/PassOwnPtr.h"
-#include "wtf/Vector.h"
 #include "wtf/text/StringHash.h"
 #include "wtf/text/WTFString.h"
 #include <v8-debug.h>
 #include <v8.h>
 
-namespace WebCore {
+namespace blink {
 
 class ScriptState;
 class ScriptController;
@@ -81,10 +80,10 @@ public:
     bool setScriptSource(const String& sourceID, const String& newContent, bool preview, String* error, RefPtr<TypeBuilder::Debugger::SetScriptSourceError>&, ScriptValue* newCallFrames, RefPtr<JSONObject>* result);
     ScriptValue currentCallFrames();
     ScriptValue currentCallFramesForAsyncStack();
-    PassRefPtrWillBeRawPtr<JavaScriptCallFrame> topCallFrameNoScopes();
+    PassRefPtrWillBeRawPtr<JavaScriptCallFrame> callFrameNoScopes(int index);
     int frameCount();
 
-    static PassRefPtrWillBeRawPtr<JavaScriptCallFrame> toJavaScriptCallFrame(const ScriptValue&);
+    static PassRefPtrWillBeRawPtr<JavaScriptCallFrame> toJavaScriptCallFrameUnsafe(const ScriptValue&);
 
     class Task {
     public:
@@ -157,7 +156,7 @@ private:
     bool m_runningNestedMessageLoop;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 
 #endif // ScriptDebugServer_h

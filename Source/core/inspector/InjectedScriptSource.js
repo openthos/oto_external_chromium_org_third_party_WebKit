@@ -359,6 +359,8 @@ InjectedScript.prototype = {
      */
     releaseObjectGroup: function(objectGroupName)
     {
+        if (objectGroupName === "console")
+            delete this._lastResult;
         var group = this._objectGroups[objectGroupName];
         if (!group)
             return;
@@ -617,7 +619,7 @@ InjectedScript.prototype = {
                      result: this._wrapObject(func.apply(object, resolvedArgs), objectGroup, returnByValue),
                      __proto__: null };
         } catch (e) {
-            return this._createThrownValue(e, objectGroup);
+            return this._createThrownValue(e, objectGroup, false);
         }
     },
 
@@ -670,21 +672,24 @@ InjectedScript.prototype = {
                      result: this._wrapObject(wrappedResult.result, objectGroup, returnByValue, generatePreview),
                      __proto__: null };
         }
-        return this._createThrownValue(wrappedResult.result, objectGroup, wrappedResult.exceptionDetails);
+        return this._createThrownValue(wrappedResult.result, objectGroup, generatePreview, wrappedResult.exceptionDetails);
     },
 
     /**
      * @param {*} value
      * @param {string} objectGroup
+     * @param {boolean} generatePreview
      * @param {!DebuggerAgent.ExceptionDetails=} exceptionDetails
      * @return {!Object}
      */
-    _createThrownValue: function(value, objectGroup, exceptionDetails)
+    _createThrownValue: function(value, objectGroup, generatePreview, exceptionDetails)
     {
-        var remoteObject = this._wrapObject(value, objectGroup);
-        try {
-            remoteObject.description = toStringDescription(value);
-        } catch (e) {}
+        var remoteObject = this._wrapObject(value, objectGroup, false, generatePreview && !(value instanceof Error));
+        if (!remoteObject.description){
+            try {
+                remoteObject.description = toStringDescription(value);
+            } catch (e) {}
+        }
         return { wasThrown: true, result: remoteObject, exceptionDetails: exceptionDetails, __proto__: null };
     },
 
@@ -1041,6 +1046,9 @@ InjectedScript.prototype = {
                 return "Symbol";
             }
         }
+
+        if (obj instanceof Error && !!obj.message)
+            return className + ": " + obj.message;
 
         return className;
     }

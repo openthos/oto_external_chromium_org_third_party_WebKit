@@ -90,7 +90,7 @@
 #include "web/WebViewImpl.h"
 
 
-using namespace WebCore;
+using namespace blink;
 
 namespace blink {
 
@@ -328,13 +328,18 @@ bool WebPluginContainerImpl::isPrintScalingDisabled() const
     return m_webPlugin->isPrintScalingDisabled();
 }
 
+int WebPluginContainerImpl::getCopiesToPrint() const
+{
+    return m_webPlugin->getCopiesToPrint();
+}
+
 int WebPluginContainerImpl::printBegin(const WebPrintParams& printParams) const
 {
     return m_webPlugin->printBegin(printParams);
 }
 
 bool WebPluginContainerImpl::printPage(int pageNumber,
-                                       WebCore::GraphicsContext* gc)
+                                       blink::GraphicsContext* gc)
 {
     if (gc->paintingDisabled())
         return true;
@@ -392,18 +397,6 @@ void WebPluginContainerImpl::invalidateRect(const WebRect& rect)
 
 void WebPluginContainerImpl::scrollRect(const WebRect& rect)
 {
-    Widget* parentWidget = parent();
-    if (parentWidget->isFrameView()) {
-        FrameView* parentFrameView = toFrameView(parentWidget);
-        if (!parentFrameView->isOverlapped()) {
-            // FIXME: parameter is unused. Remove once popups scroll like everything else.
-            static const IntRect dummy;
-            parent()->hostWindow()->scroll(dummy);
-            return;
-        }
-    }
-
-    // Use slow scrolling instead.
     invalidateRect(rect);
 }
 
@@ -656,8 +649,8 @@ bool WebPluginContainerImpl::paintCustomOverhangArea(GraphicsContext* context, c
 
 // Private methods -------------------------------------------------------------
 
-WebPluginContainerImpl::WebPluginContainerImpl(WebCore::HTMLPlugInElement* element, WebPlugin* webPlugin)
-    : WebCore::FrameDestructionObserver(element->document().frame())
+WebPluginContainerImpl::WebPluginContainerImpl(blink::HTMLPlugInElement* element, WebPlugin* webPlugin)
+    : blink::FrameDestructionObserver(element->document().frame())
     , m_element(element)
     , m_webPlugin(webPlugin)
     , m_webLayer(0)
@@ -683,6 +676,8 @@ WebPluginContainerImpl::~WebPluginContainerImpl()
     if (m_touchEventRequestType != TouchEventRequestTypeNone)
         m_element->document().didRemoveTouchEventHandler(m_element);
 #endif
+
+    ScriptForbiddenScope::AllowSuperUnsafeScript thisShouldBeRemoved;
 
     for (size_t i = 0; i < m_pluginLoadObservers.size(); ++i)
         m_pluginLoadObservers[i]->clearPluginContainer();
@@ -921,7 +916,7 @@ void WebPluginContainerImpl::calculateGeometry(const IntRect& frameRect,
         cutOutRects[i].move(-frameRect.x(), -frameRect.y());
 }
 
-WebCore::IntRect WebPluginContainerImpl::windowClipRect() const
+blink::IntRect WebPluginContainerImpl::windowClipRect() const
 {
     // Start by clipping to our bounds.
     IntRect clipRect =

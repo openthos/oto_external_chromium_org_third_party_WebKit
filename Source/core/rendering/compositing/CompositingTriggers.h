@@ -22,15 +22,13 @@
 #ifndef CompositingTriggers_h
 #define CompositingTriggers_h
 
-namespace WebCore {
+namespace blink {
 
 enum CompositingTrigger {
-    VideoTrigger = 1 << 1,
-    CanvasTrigger = 1 << 3,
-    FilterTrigger = 1 << 5,
-    ScrollableInnerFrameTrigger = 1 << 6,
-    OverflowScrollTrigger = 1 << 7,
-    ViewportConstrainedPositionedTrigger = 1 << 8,
+    CanvasTrigger = 1 << 1,
+    ScrollableInnerFrameTrigger = 1 << 2,
+    OverflowScrollTrigger = 1 << 3,
+    ViewportConstrainedPositionedTrigger = 1 << 4,
     AllCompositingTriggers = 0xFFFFFFFF,
 };
 

@@ -41,7 +41,7 @@
 #include "core/page/EventHandler.h"
 #include "core/rendering/RenderObject.h"
 
-namespace WebCore {
+namespace blink {
 
 InputMethodController::SelectionOffsetsScope::SelectionOffsetsScope(InputMethodController* inputMethodController)
     : m_inputMethodController(inputMethodController)
@@ -367,7 +367,7 @@ PlainTextRange InputMethodController::getSelectionOffsets() const
     RefPtrWillBeRawPtr<Range> range = m_frame.selection().selection().firstRange();
     if (!range)
         return PlainTextRange();
-    Node* editable = m_frame.selection().rootEditableElementOrTreeScopeRootNode();
+    ContainerNode* editable = m_frame.selection().rootEditableElementOrTreeScopeRootNode();
     ASSERT(editable);
     return PlainTextRange::create(*editable, *range.get());
 }
@@ -417,9 +417,11 @@ void InputMethodController::extendSelectionAndDelete(int before, int after)
     do {
         if (!setSelectionOffsets(PlainTextRange(std::max(static_cast<int>(selectionOffsets.start()) - before, 0), selectionOffsets.end() + after)))
             return;
+        if (before == 0)
+            break;
         ++before;
     } while (m_frame.selection().start() == m_frame.selection().end() && before <= static_cast<int>(selectionOffsets.start()));
     TypingCommand::deleteSelection(*m_frame.document());
 }
 
-} // namespace WebCore
+} // namespace blink

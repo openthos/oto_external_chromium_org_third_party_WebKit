@@ -9,11 +9,11 @@
 #include "core/html/canvas/WebGLExtension.h"
 #include "wtf/PassRefPtr.h"
 
-namespace WebCore {
+namespace blink {
 
 class EXTBlendMinMax FINAL : public WebGLExtension, public ScriptWrappable {
 public:
-    static PassRefPtr<EXTBlendMinMax> create(WebGLRenderingContextBase*);
+    static PassRefPtrWillBeRawPtr<EXTBlendMinMax> create(WebGLRenderingContextBase*);
     static bool supported(WebGLRenderingContextBase*);
     static const char* extensionName();
 
@@ -21,9 +21,9 @@ public:
     virtual WebGLExtensionName name() const OVERRIDE;
 
 private:
-    EXTBlendMinMax(WebGLRenderingContextBase*);
+    explicit EXTBlendMinMax(WebGLRenderingContextBase*);
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // EXTBlendMinMax_h

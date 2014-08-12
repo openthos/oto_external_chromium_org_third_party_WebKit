@@ -31,7 +31,7 @@
 #include "platform/heap/Handle.h"
 #include "wtf/text/AtomicString.h"
 
-namespace WebCore {
+namespace blink {
 
 class ContainerNode;
 class DOMSelection;
@@ -41,6 +41,7 @@ class HTMLLabelElement;
 class HTMLMapElement;
 class HitTestResult;
 class IdTargetObserverRegistry;
+class ScopedStyleResolver;
 class Node;
 
 // A class which inherits both Node and TreeScope must call clearRareData() in its destructor
@@ -136,6 +137,10 @@ public:
 
     virtual void trace(Visitor*);
 
+    ScopedStyleResolver* scopedStyleResolver() const { return m_scopedStyleResolver.get(); }
+    ScopedStyleResolver& ensureScopedStyleResolver();
+    void clearScopedStyleResolver();
+
 protected:
     TreeScope(ContainerNode&, Document&);
     TreeScope(Document&);
@@ -185,6 +190,8 @@ private:
 
     OwnPtrWillBeMember<IdTargetObserverRegistry> m_idTargetObserverRegistry;
 
+    OwnPtrWillBeMember<ScopedStyleResolver> m_scopedStyleResolver;
+
     mutable RefPtrWillBeMember<DOMSelection> m_selection;
 };
 
@@ -204,6 +211,6 @@ DEFINE_COMPARISON_OPERATORS_WITH_REFERENCES(TreeScope)
 HitTestResult hitTestInDocument(const Document*, int x, int y);
 TreeScope* commonTreeScope(Node*, Node*);
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // TreeScope_h

@@ -70,7 +70,6 @@
     [RaisesException] unsigned long hitTestCount(Document document);
 
     // CSS Animation and Transition testing.
-    unsigned long numberOfActiveAnimations();
     [RaisesException] void pauseAnimations(double pauseTime);
 
     [RaisesException] Node nextSiblingByWalker(Node node);
@@ -81,7 +80,7 @@
 
     DOMString visiblePlaceholder(Element element);
 
-    void selectColorInColorChooser(Element element, DOMString colorValue);
+    [TypeChecking=Interface] void selectColorInColorChooser(Element element, DOMString colorValue);
 
     // If the argument is omitted, the top-level document is used.
     boolean hasAutofocusRequest(optional Document document);
@@ -210,7 +209,6 @@
     void registerURLSchemeAsBypassingContentSecurityPolicy(DOMString scheme);
     void removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(DOMString scheme);
 
-    MallocStatistics mallocStatistics();
     TypeConversions typeConversions();
 
     // This is enabled only in Debug builds.
@@ -251,6 +249,8 @@
     [RaisesException] DOMString getImageSourceURL(Element element);
 
     boolean isSelectPopupVisible(Node node);
+    boolean selectPopupItemStyleIsRtl(Node select, long itemIndex);
+    long selectPopupItemStyleFontHeight(Node select, long itemIndex);
 
     [RaisesException] ClientRect selectionBounds();
 

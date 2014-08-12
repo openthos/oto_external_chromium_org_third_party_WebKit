@@ -26,14 +26,15 @@
 #include "core/rendering/RenderDeprecatedFlexibleBox.h"
 
 #include "core/frame/UseCounter.h"
-#include "core/rendering/FastTextAutosizer.h"
 #include "core/rendering/RenderLayer.h"
 #include "core/rendering/RenderView.h"
+#include "core/rendering/TextAutosizer.h"
+#include "core/rendering/TextRunConstructor.h"
 #include "platform/fonts/Font.h"
 #include "wtf/StdLibExtras.h"
 #include "wtf/unicode/CharacterNames.h"
 
-namespace WebCore {
+namespace blink {
 
 class FlexBoxIterator {
 public:
@@ -118,8 +119,8 @@ private:
     int m_ordinalIteration;
 };
 
-RenderDeprecatedFlexibleBox::RenderDeprecatedFlexibleBox(Element* element)
-    : RenderBlock(element)
+RenderDeprecatedFlexibleBox::RenderDeprecatedFlexibleBox(Element& element)
+    : RenderBlock(&element)
 {
     ASSERT(!childrenInline());
     m_stretchingChildren = false;
@@ -136,13 +137,6 @@ RenderDeprecatedFlexibleBox::RenderDeprecatedFlexibleBox(Element* element)
 
 RenderDeprecatedFlexibleBox::~RenderDeprecatedFlexibleBox()
 {
-}
-
-RenderDeprecatedFlexibleBox* RenderDeprecatedFlexibleBox::createAnonymous(Document* document)
-{
-    RenderDeprecatedFlexibleBox* renderer = new RenderDeprecatedFlexibleBox(0);
-    renderer->setDocumentForAnonymous(document);
-    return renderer;
 }
 
 static LayoutUnit marginWidthForChild(RenderBox* child)
@@ -266,7 +260,7 @@ void RenderDeprecatedFlexibleBox::layoutBlock(bool relayoutChildren)
         updateLogicalWidth();
         updateLogicalHeight();
 
-        FastTextAutosizer::LayoutScope fastTextAutosizerLayoutScope(this);
+        TextAutosizer::LayoutScope textAutosizerLayoutScope(this);
 
         if (previousSize != size()
             || (parent()->isDeprecatedFlexibleBox() && parent()->style()->boxOrient() == HORIZONTAL
@@ -940,10 +934,10 @@ void RenderDeprecatedFlexibleBox::applyLineClamp(FlexBoxIterator& iterator, bool
         float totalWidth;
         InlineBox* anchorBox = lastLine->lastChild();
         if (anchorBox && anchorBox->renderer().style()->isLink())
-            totalWidth = anchorBox->logicalWidth() + font.width(RenderBlockFlow::constructTextRun(this, font, ellipsisAndSpace, 2, style(), style()->direction()));
+            totalWidth = anchorBox->logicalWidth() + font.width(constructTextRun(this, font, ellipsisAndSpace, 2, style(), style()->direction()));
         else {
             anchorBox = 0;
-            totalWidth = font.width(RenderBlockFlow::constructTextRun(this, font, &horizontalEllipsis, 1, style(), style()->direction()));
+            totalWidth = font.width(constructTextRun(this, font, &horizontalEllipsis, 1, style(), style()->direction()));
         }
 
         // See if this width can be accommodated on the last visible line
@@ -1074,4 +1068,4 @@ const char* RenderDeprecatedFlexibleBox::renderName() const
     return "RenderDeprecatedFlexibleBox";
 }
 
-} // namespace WebCore
+} // namespace blink

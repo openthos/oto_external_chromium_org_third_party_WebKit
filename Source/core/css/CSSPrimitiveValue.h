@@ -30,7 +30,7 @@
 #include "wtf/MathExtras.h"
 #include "wtf/PassRefPtr.h"
 
-namespace WebCore {
+namespace blink {
 
 class CSSBasicShape;
 class CSSCalcValue;
@@ -273,21 +273,7 @@ public:
     UnitType primitiveType() const;
 
     double computeDegrees();
-
-    enum TimeUnit { Seconds, Milliseconds };
-    template <typename T, TimeUnit timeUnit> T computeTime()
-    {
-        if (timeUnit == Seconds && m_primitiveUnitType == CSS_S)
-            return getValue<T>();
-        if (timeUnit == Seconds && m_primitiveUnitType == CSS_MS)
-            return getValue<T>() / 1000;
-        if (timeUnit == Milliseconds && m_primitiveUnitType == CSS_MS)
-            return getValue<T>();
-        if (timeUnit == Milliseconds && m_primitiveUnitType == CSS_S)
-            return getValue<T>() * 1000;
-        ASSERT_NOT_REACHED();
-        return 0;
-    }
+    double computeSeconds();
 
     /*
      * Computes a length in pixels out of the given CSSValue
@@ -429,6 +415,6 @@ typedef CSSPrimitiveValue::CSSLengthArray CSSLengthArray;
 
 DEFINE_CSS_VALUE_TYPE_CASTS(CSSPrimitiveValue, isPrimitiveValue());
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // CSSPrimitiveValue_h

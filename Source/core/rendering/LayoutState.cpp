@@ -31,11 +31,12 @@
 #include "core/rendering/RenderView.h"
 #include "platform/Partitions.h"
 
-namespace WebCore {
+namespace blink {
 
 LayoutState::LayoutState(LayoutUnit pageLogicalHeight, bool pageLogicalHeightChanged, RenderView& view)
     : m_isPaginated(pageLogicalHeight)
     , m_pageLogicalHeightChanged(pageLogicalHeightChanged)
+    , m_containingBlockLogicalWidthChanged(false)
     , m_columnInfo(0)
     , m_next(0)
     , m_pageLogicalHeight(pageLogicalHeight)
@@ -45,8 +46,9 @@ LayoutState::LayoutState(LayoutUnit pageLogicalHeight, bool pageLogicalHeightCha
     view.pushLayoutState(*this);
 }
 
-LayoutState::LayoutState(RenderBox& renderer, const LayoutSize& offset, LayoutUnit pageLogicalHeight, bool pageLogicalHeightChanged, ColumnInfo* columnInfo)
-    : m_columnInfo(columnInfo)
+LayoutState::LayoutState(RenderBox& renderer, const LayoutSize& offset, LayoutUnit pageLogicalHeight, bool pageLogicalHeightChanged, ColumnInfo* columnInfo, bool containingBlockLogicalWidthChanged)
+    : m_containingBlockLogicalWidthChanged(containingBlockLogicalWidthChanged)
+    , m_columnInfo(columnInfo)
     , m_next(renderer.view()->layoutState())
     , m_renderer(renderer)
 {
@@ -100,6 +102,7 @@ LayoutState::LayoutState(RenderBox& renderer, const LayoutSize& offset, LayoutUn
 LayoutState::LayoutState(RenderObject& root)
     : m_isPaginated(false)
     , m_pageLogicalHeightChanged(false)
+    , m_containingBlockLogicalWidthChanged(false)
     , m_columnInfo(0)
     , m_next(root.view()->layoutState())
     , m_pageLogicalHeight(0)
@@ -147,4 +150,4 @@ void LayoutState::addForcedColumnBreak(const RenderBox& child, const LayoutUnit&
     m_columnInfo->addForcedBreak(pageLogicalOffset(child, childLogicalOffset));
 }
 
-} // namespace WebCore
+} // namespace blink

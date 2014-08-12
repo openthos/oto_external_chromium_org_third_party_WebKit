@@ -30,11 +30,11 @@
 #include "core/html/canvas/WebGLExtension.h"
 #include "wtf/PassRefPtr.h"
 
-namespace WebCore {
+namespace blink {
 
 class WebGLCompressedTexturePVRTC FINAL : public WebGLExtension, public ScriptWrappable {
 public:
-    static PassRefPtr<WebGLCompressedTexturePVRTC> create(WebGLRenderingContextBase*);
+    static PassRefPtrWillBeRawPtr<WebGLCompressedTexturePVRTC> create(WebGLRenderingContextBase*);
     static bool supported(WebGLRenderingContextBase*);
     static const char* extensionName();
 
@@ -42,9 +42,9 @@ public:
     virtual WebGLExtensionName name() const OVERRIDE;
 
 private:
-    WebGLCompressedTexturePVRTC(WebGLRenderingContextBase*);
+    explicit WebGLCompressedTexturePVRTC(WebGLRenderingContextBase*);
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // WebGLCompressedTexturePVRTC_h

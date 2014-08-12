@@ -34,7 +34,7 @@
 #include "wtf/text/AtomicStringHash.h"
 #include "wtf/text/StringHash.h"
 
-namespace WebCore {
+namespace blink {
 
 struct SameSizeAsFontDescription {
     FontFamily familyList;
@@ -101,12 +101,34 @@ FontTraits FontDescription::traits() const
     return FontTraits(style(), variant(), weight(), stretch());
 }
 
+FontDescription::VariantLigatures FontDescription::variantLigatures() const
+{
+    VariantLigatures ligatures;
+
+    ligatures.common = commonLigaturesState();
+    ligatures.discretionary = discretionaryLigaturesState();
+    ligatures.historical = historicalLigaturesState();
+    ligatures.contextual = contextualLigaturesState();
+
+    return ligatures;
+}
+
 void FontDescription::setTraits(FontTraits traits)
 {
     setStyle(traits.style());
     setVariant(traits.variant());
     setWeight(traits.weight());
     setStretch(traits.stretch());
+}
+
+void FontDescription::setVariantLigatures(const VariantLigatures& ligatures)
+{
+    m_commonLigaturesState = ligatures.common;
+    m_discretionaryLigaturesState = ligatures.discretionary;
+    m_historicalLigaturesState = ligatures.historical;
+    m_contextualLigaturesState = ligatures.contextual;
+
+    updateTypesettingFeatures();
 }
 
 FontDescription FontDescription::makeNormalFeatureSettings() const
@@ -161,20 +183,20 @@ void FontDescription::updateTypesettingFeatures() const
     case AutoTextRendering:
         break;
     case OptimizeSpeed:
-        m_typesettingFeatures &= ~(WebCore::Kerning | Ligatures);
+        m_typesettingFeatures &= ~(blink::Kerning | Ligatures);
         break;
     case GeometricPrecision:
     case OptimizeLegibility:
-        m_typesettingFeatures |= WebCore::Kerning | Ligatures;
+        m_typesettingFeatures |= blink::Kerning | Ligatures;
         break;
     }
 
     switch (kerning()) {
     case FontDescription::NoneKerning:
-        m_typesettingFeatures &= ~WebCore::Kerning;
+        m_typesettingFeatures &= ~blink::Kerning;
         break;
     case FontDescription::NormalKerning:
-        m_typesettingFeatures |= WebCore::Kerning;
+        m_typesettingFeatures |= blink::Kerning;
         break;
     case FontDescription::AutoKerning:
         break;
@@ -199,9 +221,9 @@ void FontDescription::updateTypesettingFeatures() const
         if (discretionaryLigaturesState() == FontDescription::EnabledLigaturesState
             || historicalLigaturesState() == FontDescription::EnabledLigaturesState
             || contextualLigaturesState() == FontDescription::EnabledLigaturesState) {
-            m_typesettingFeatures |= WebCore::Ligatures;
+            m_typesettingFeatures |= blink::Ligatures;
         }
     }
 }
 
-} // namespace WebCore
+} // namespace blink

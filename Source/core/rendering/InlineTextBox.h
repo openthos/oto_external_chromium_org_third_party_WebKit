@@ -28,7 +28,7 @@
 #include "platform/text/TextRun.h"
 #include "wtf/Forward.h"
 
-namespace WebCore {
+namespace blink {
 
 struct CompositionUnderline;
 class DocumentMarker;
@@ -48,6 +48,8 @@ public:
         , m_truncation(cNoTruncation)
     {
     }
+
+    RenderText& renderer() const { return toRenderText(InlineBox::renderer()); }
 
     virtual void destroy() OVERRIDE FINAL;
 
@@ -114,9 +116,6 @@ public:
 protected:
     virtual void paint(PaintInfo&, const LayoutPoint&, LayoutUnit lineTop, LayoutUnit lineBottom) OVERRIDE;
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom) OVERRIDE;
-
-public:
-    RenderText& textRenderer() const { return toRenderText(renderer()); }
 
 private:
     virtual void deleteLine() OVERRIDE FINAL;
@@ -203,6 +202,6 @@ inline AffineTransform InlineTextBox::rotation(const FloatRect& boxRect, Rotatio
         : AffineTransform(0, -1, 1, 0, boxRect.x() - boxRect.maxY(), boxRect.x() + boxRect.maxY());
 }
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // InlineTextBox_h

@@ -50,7 +50,7 @@
 #include "wtf/text/StringBuilder.h"
 #include "wtf/text/StringHash.h"
 
-namespace WebCore {
+namespace blink {
 
 ScriptLoader::ScriptLoader(Element* element, bool parserInserted, bool alreadyStarted)
     : m_element(element)
@@ -184,7 +184,7 @@ bool ScriptLoader::prepareScript(const TextPosition& scriptStartPosition, Legacy
         m_forceAsync = true;
 
     // FIXME: HTML5 spec says we should check that all children are either comments or empty text nodes.
-    if (!client->hasSourceAttribute() && !m_element->firstChild())
+    if (!client->hasSourceAttribute() && !m_element->hasChildren())
         return false;
 
     if (!m_element->inDocument())

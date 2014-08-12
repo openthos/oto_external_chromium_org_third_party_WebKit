@@ -36,7 +36,6 @@
 #include "wtf/Deque.h"
 #include "wtf/Forward.h"
 #include "wtf/Noncopyable.h"
-#include "wtf/Vector.h"
 #include "wtf/text/WTFString.h"
 
 namespace blink {
@@ -62,7 +61,7 @@ public:
 private:
     class InspectorFrontendResumeObserver;
     void resume();
-    void maybeDispatch(WebCore::Timer<WebDevToolsFrontendImpl>*);
+    void maybeDispatch(blink::Timer<WebDevToolsFrontendImpl>*);
     void doDispatchOnInspectorFrontend(const WebString& message);
 
     blink::WebViewImpl* m_webViewImpl;
@@ -70,7 +69,7 @@ private:
     String m_applicationLocale;
     OwnPtr<InspectorFrontendResumeObserver> m_inspectorFrontendResumeObserver;
     Deque<WebString> m_messages;
-    WebCore::Timer<WebDevToolsFrontendImpl> m_inspectorFrontendDispatchTimer;
+    blink::Timer<WebDevToolsFrontendImpl> m_inspectorFrontendDispatchTimer;
 };
 
 } // namespace blink

@@ -28,8 +28,9 @@
 #include "core/dom/Document.h"
 #include "core/frame/FrameView.h"
 #include "core/frame/LocalFrame.h"
+#include "wtf/Vector.h"
 
-namespace WebCore {
+namespace blink {
 
 PassRefPtrWillBeRawPtr<MediaQueryMatcher> MediaQueryMatcher::create(Document& document)
 {
@@ -48,14 +49,6 @@ void MediaQueryMatcher::documentDetached()
 {
     m_document = nullptr;
     m_evaluator = nullptr;
-
-    // Take a ref to each MediaQueryList as removing the listeners in documentDetached
-    // could release the last ref and mutate the m_mediaLists.
-    WillBeHeapVector<RefPtrWillBeMember<MediaQueryList> > lists;
-    copyToVector(m_mediaLists, lists);
-
-    for (size_t i = 0; i < lists.size(); ++i)
-        lists[i]->documentDetached();
 }
 
 PassOwnPtr<MediaQueryEvaluator> MediaQueryMatcher::createEvaluator() const
@@ -91,7 +84,7 @@ PassRefPtrWillBeRawPtr<MediaQueryList> MediaQueryMatcher::matchMedia(const Strin
     RefPtrWillBeRawPtr<MediaQuerySet> media = MediaQuerySet::create(query);
     // Add warning message to inspector whenever dpi/dpcm values are used for "screen" media.
     reportMediaQueryWarningIfNeeded(m_document, media.get());
-    return MediaQueryList::create(this, media);
+    return MediaQueryList::create(m_document, this, media);
 }
 
 void MediaQueryMatcher::addMediaQueryList(MediaQueryList* query)
@@ -108,6 +101,20 @@ void MediaQueryMatcher::removeMediaQueryList(MediaQueryList* query)
     m_mediaLists.remove(query);
 }
 
+void MediaQueryMatcher::addViewportListener(MediaQueryListListener* listener)
+{
+    if (!m_document)
+        return;
+    m_viewportListeners.add(listener);
+}
+
+void MediaQueryMatcher::removeViewportListener(MediaQueryListListener* listener)
+{
+    if (!m_document)
+        return;
+    m_viewportListeners.remove(listener);
+}
+
 void MediaQueryMatcher::mediaFeaturesChanged()
 {
     if (!m_document)
@@ -116,6 +123,17 @@ void MediaQueryMatcher::mediaFeaturesChanged()
     WillBeHeapVector<RefPtrWillBeMember<MediaQueryListListener> > listenersToNotify;
     for (MediaQueryListSet::iterator it = m_mediaLists.begin(); it != m_mediaLists.end(); ++it)
         (*it)->mediaFeaturesChanged(&listenersToNotify);
+    m_document->enqueueMediaQueryChangeListeners(listenersToNotify);
+}
+
+void MediaQueryMatcher::viewportChanged()
+{
+    if (!m_document)
+        return;
+
+    WillBeHeapVector<RefPtrWillBeMember<MediaQueryListListener> > listenersToNotify;
+    for (ViewportListenerSet::iterator it = m_viewportListeners.begin(); it != m_viewportListeners.end(); ++it)
+        listenersToNotify.append(*it);
 
     m_document->enqueueMediaQueryChangeListeners(listenersToNotify);
 }
@@ -125,6 +143,7 @@ void MediaQueryMatcher::trace(Visitor* visitor)
 #if ENABLE(OILPAN)
     visitor->trace(m_document);
     visitor->trace(m_mediaLists);
+    visitor->trace(m_viewportListeners);
 #endif
 }
 

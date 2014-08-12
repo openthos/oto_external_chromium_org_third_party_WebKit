@@ -56,8 +56,9 @@
 #include "web/WebLocalFrameImpl.h"
 #include "web/WebViewImpl.h"
 #include "wtf/OwnPtr.h"
+#include "wtf/Vector.h"
 
-using namespace WebCore;
+using namespace blink;
 
 namespace blink {
 
@@ -97,7 +98,7 @@ WebDevToolsFrontendImpl::WebDevToolsFrontendImpl(
     , m_applicationLocale(applicationLocale)
     , m_inspectorFrontendDispatchTimer(this, &WebDevToolsFrontendImpl::maybeDispatch)
 {
-    m_webViewImpl->page()->inspectorController().setInspectorFrontendClient(adoptPtr(new InspectorFrontendClientImpl(m_webViewImpl->page(), m_client, this)));
+    m_webViewImpl->page()->inspectorController().setInspectorFrontendClient(adoptPtrWillBeNoop(new InspectorFrontendClientImpl(m_webViewImpl->page(), m_client, this)));
 }
 
 WebDevToolsFrontendImpl::~WebDevToolsFrontendImpl()
@@ -118,7 +119,7 @@ void WebDevToolsFrontendImpl::resume()
         m_inspectorFrontendDispatchTimer.startOneShot(0, FROM_HERE);
 }
 
-void WebDevToolsFrontendImpl::maybeDispatch(WebCore::Timer<WebDevToolsFrontendImpl>*)
+void WebDevToolsFrontendImpl::maybeDispatch(blink::Timer<WebDevToolsFrontendImpl>*)
 {
     while (!m_messages.isEmpty()) {
         Document* document = m_webViewImpl->page()->deprecatedLocalMainFrame()->document();

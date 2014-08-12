@@ -34,7 +34,7 @@
 #include "platform/JSONValues.h"
 #include "platform/graphics/InterceptingCanvas.h"
 
-namespace WebCore {
+namespace blink {
 
 class LoggingCanvas : public InterceptingCanvas {
 public:
@@ -128,9 +128,6 @@ private:
     PassRefPtr<JSONArray> arrayForSkMatrix(const SkMatrix&);
     PassRefPtr<JSONArray> arrayForSkScalars(size_t n, const SkScalar scalars[]);
     String regionOpName(SkRegion::Op);
-    void translate(SkScalar dx, SkScalar dy);
-    void scale(SkScalar scaleX, SkScalar scaleY);
-    void concat(const SkMatrix&);
     String saveFlagsToString(SkCanvas::SaveFlags);
     String textEncodingCanonicalName(SkPaint::TextEncoding);
     String stringForUTFText(const void* text, size_t length, SkPaint::TextEncoding);

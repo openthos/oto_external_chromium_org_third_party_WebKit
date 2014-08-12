@@ -34,7 +34,7 @@
 #include "wtf/RefVector.h"
 #include "wtf/text/AtomicString.h"
 
-namespace WebCore {
+namespace blink {
 
 class AppliedTextDecoration;
 class CursorData;
@@ -127,7 +127,7 @@ public:
     unsigned m_lineBoxContain: 7; // LineBoxContain
     // CSS Image Values Level 3
     unsigned m_imageRendering : 3; // EImageRendering
-    unsigned m_textUnderlinePosition : 2; // TextUnderlinePosition
+    unsigned m_textUnderlinePosition : 1; // TextUnderlinePosition
     unsigned m_rubyPosition : 1; // RubyPosition
     unsigned m_touchActionDelay : 1; // TouchActionDelay
 
@@ -156,6 +156,6 @@ private:
     StyleRareInheritedData(const StyleRareInheritedData&);
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // StyleRareInheritedData_h

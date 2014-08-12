@@ -26,7 +26,7 @@
 
 #include "core/html/HTMLCollection.h"
 
-namespace WebCore {
+namespace blink {
 
 class ExceptionState;
 class HTMLOptionElement;
@@ -39,7 +39,6 @@ public:
     void add(PassRefPtrWillBeRawPtr<HTMLOptionElement>, ExceptionState&);
     void add(PassRefPtrWillBeRawPtr<HTMLOptionElement>, int index, ExceptionState&);
     void remove(int index);
-    void remove(HTMLOptionElement*);
 
     int selectedIndex() const;
     void setSelectedIndex(int);

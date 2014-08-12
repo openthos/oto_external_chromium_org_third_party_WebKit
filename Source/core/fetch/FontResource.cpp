@@ -43,7 +43,7 @@
 #include "core/svg/SVGFontElement.h"
 #endif
 
-namespace WebCore {
+namespace blink {
 
 static const double fontLoadWaitLimitSec = 3.0;
 
@@ -85,6 +85,14 @@ FontResource::FontResource(const ResourceRequest& resourceRequest)
 
 FontResource::~FontResource()
 {
+}
+
+void FontResource::trace(Visitor* visitor)
+{
+#if ENABLE(SVG_FONTS)
+    visitor->trace(m_externalSVGDocument);
+#endif
+    Resource::trace(visitor);
 }
 
 void FontResource::load(ResourceFetcher*, const ResourceLoaderOptions& options)

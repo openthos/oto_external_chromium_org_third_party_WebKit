@@ -167,7 +167,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/exported/WebDeviceOrientationData.cpp \
 	third_party/WebKit/Source/platform/exported/WebFileSystemCallbacks.cpp \
 	third_party/WebKit/Source/platform/exported/WebFilterKeyframe.cpp \
-	third_party/WebKit/Source/platform/exported/WebFloatQuad.cpp \
 	third_party/WebKit/Source/platform/exported/WebHTTPBody.cpp \
 	third_party/WebKit/Source/platform/exported/WebHTTPLoadInfo.cpp \
 	third_party/WebKit/Source/platform/exported/WebImageSkia.cpp \
@@ -234,7 +233,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/fonts/harfbuzz/HarfBuzzFace.cpp \
 	third_party/WebKit/Source/platform/fonts/harfbuzz/HarfBuzzFaceSkia.cpp \
 	third_party/WebKit/Source/platform/fonts/harfbuzz/HarfBuzzShaper.cpp \
-	third_party/WebKit/Source/platform/fonts/linux/FontPlatformDataLinuxHarfBuzz.cpp \
+	third_party/WebKit/Source/platform/fonts/linux/FontPlatformDataLinux.cpp \
 	third_party/WebKit/Source/platform/fonts/opentype/OpenTypeSanitizer.cpp \
 	third_party/WebKit/Source/platform/fonts/opentype/OpenTypeVerticalData.cpp \
 	third_party/WebKit/Source/platform/fonts/skia/FontCacheSkia.cpp \
@@ -289,7 +288,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/graphics/media/MediaPlayer.cpp \
 	third_party/WebKit/Source/platform/graphics/skia/GaneshUtils.cpp \
 	third_party/WebKit/Source/platform/graphics/skia/NativeImageSkia.cpp \
-	third_party/WebKit/Source/platform/graphics/skia/OpaqueRegionSkia.cpp \
 	third_party/WebKit/Source/platform/graphics/skia/SkiaUtils.cpp \
 	third_party/WebKit/Source/platform/graphics/BitmapImage.cpp \
 	third_party/WebKit/Source/platform/graphics/Canvas2DLayerBridge.cpp \
@@ -328,6 +326,8 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/graphics/PathTraversalState.cpp \
 	third_party/WebKit/Source/platform/graphics/Pattern.cpp \
 	third_party/WebKit/Source/platform/graphics/ProfilingCanvas.cpp \
+	third_party/WebKit/Source/platform/graphics/RecordingImageBufferSurface.cpp \
+	third_party/WebKit/Source/platform/graphics/RegionTracker.cpp \
 	third_party/WebKit/Source/platform/graphics/ReplayingCanvas.cpp \
 	third_party/WebKit/Source/platform/graphics/ScaledImageFragment.cpp \
 	third_party/WebKit/Source/platform/graphics/StrokeData.cpp \
@@ -376,6 +376,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/plugins/PluginListBuilder.cpp \
 	third_party/WebKit/Source/platform/scheduler/Scheduler.cpp \
 	third_party/WebKit/Source/platform/scroll/FramelessScrollView.cpp \
+	third_party/WebKit/Source/platform/scroll/ProgrammaticScrollAnimator.cpp \
 	third_party/WebKit/Source/platform/scroll/ScrollAnimator.cpp \
 	third_party/WebKit/Source/platform/scroll/ScrollAnimatorNone.cpp \
 	third_party/WebKit/Source/platform/scroll/ScrollView.cpp \
@@ -484,7 +485,6 @@ MY_DEFS_Debug := \
 	'-DSYSTEM_NATIVELY_SIGNALS_MEMORY_PRESSURE' \
 	'-DENABLE_EGLIMAGE=1' \
 	'-DCLD_VERSION=1' \
-	'-DCLD_DATA_FROM_STATIC' \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
@@ -516,6 +516,7 @@ MY_DEFS_Debug := \
 	'-DSK_USE_POSIX_THREADS' \
 	'-DSK_DEFERRED_CANVAS_USES_FACTORIES=1' \
 	'-DU_USING_ICU_NAMESPACE=0' \
+	'-DU_ENABLE_DYLOAD=0' \
 	'-DCHROME_PNG_WRITE_SUPPORT' \
 	'-DPNG_USER_CONFIG' \
 	'-DCHROME_PNG_READ_PACK_SUPPORT' \
@@ -560,8 +561,8 @@ LOCAL_C_INCLUDES_Debug := \
 	$(LOCAL_PATH)/third_party/skia/include/ports \
 	$(LOCAL_PATH)/third_party/skia/include/utils \
 	$(LOCAL_PATH)/skia/ext \
-	$(PWD)/external/icu4c/common \
-	$(PWD)/external/icu4c/i18n \
+	$(PWD)/external/icu/icu4c/source/common \
+	$(PWD)/external/icu/icu4c/source/i18n \
 	$(LOCAL_PATH)/third_party/libpng \
 	$(LOCAL_PATH)/third_party/zlib \
 	$(LOCAL_PATH)/third_party/libwebp \
@@ -643,7 +644,6 @@ MY_DEFS_Release := \
 	'-DSYSTEM_NATIVELY_SIGNALS_MEMORY_PRESSURE' \
 	'-DENABLE_EGLIMAGE=1' \
 	'-DCLD_VERSION=1' \
-	'-DCLD_DATA_FROM_STATIC' \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
@@ -675,6 +675,7 @@ MY_DEFS_Release := \
 	'-DSK_USE_POSIX_THREADS' \
 	'-DSK_DEFERRED_CANVAS_USES_FACTORIES=1' \
 	'-DU_USING_ICU_NAMESPACE=0' \
+	'-DU_ENABLE_DYLOAD=0' \
 	'-DCHROME_PNG_WRITE_SUPPORT' \
 	'-DPNG_USER_CONFIG' \
 	'-DCHROME_PNG_READ_PACK_SUPPORT' \
@@ -720,8 +721,8 @@ LOCAL_C_INCLUDES_Release := \
 	$(LOCAL_PATH)/third_party/skia/include/ports \
 	$(LOCAL_PATH)/third_party/skia/include/utils \
 	$(LOCAL_PATH)/skia/ext \
-	$(PWD)/external/icu4c/common \
-	$(PWD)/external/icu4c/i18n \
+	$(PWD)/external/icu/icu4c/source/common \
+	$(PWD)/external/icu/icu4c/source/i18n \
 	$(LOCAL_PATH)/third_party/libpng \
 	$(LOCAL_PATH)/third_party/zlib \
 	$(LOCAL_PATH)/third_party/libwebp \

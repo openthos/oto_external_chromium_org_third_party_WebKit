@@ -34,7 +34,7 @@
 #include "bindings/core/v8/ScriptPromiseResolver.h"
 #include "public/platform/WebCallbacks.h"
 
-namespace WebCore {
+namespace blink {
 
 // This class provides an easy way to convert from a Script-exposed
 // class (i.e. a class that has a toV8() overload) that uses Promises
@@ -46,7 +46,7 @@ namespace WebCore {
 //
 // class MyClass ... {
 //    typedef blink::WebMyClass WebType;
-//    static PassRefPtr<MyClass> from(ScriptPromiseResolver* resolver,
+//    static PassRefPtr<MyClass> take(ScriptPromiseResolver* resolver,
 //                                    blink::WebMyClass* webInstance) {
 //        // convert/create as appropriate, but often it's just:
 //        return MyClass::create(adoptPtr(webInstance));
@@ -58,6 +58,13 @@ namespace WebCore {
 //        // after resolving:
 //        ScriptState::Scope scope(resolver->scriptState());
 //        resolver->promise().then(...);
+//    }
+//
+//    // Called when aborting to resolve/reject a promise due to an empty
+//    // execution context.
+//    static void dispose(blink::WebMyClass* webInstance) {
+//        // delete as appropriate, but often it's just:
+//        delete webInstance;
 //    }
 //
 // Now when calling into a WebKit API that requires a WebCallbacks<blink::WebMyClass, blink::WebMyClass>*:
@@ -74,22 +81,33 @@ public:
     CallbackPromiseAdapter(PassRefPtr<ScriptPromiseResolver> resolver)
         : m_resolver(resolver)
     {
+        ASSERT(m_resolver);
     }
     virtual ~CallbackPromiseAdapter() { }
 
     virtual void onSuccess(typename S::WebType* result) OVERRIDE
     {
-        m_resolver->resolve(S::from(m_resolver.get(), result));
+        if (!m_resolver->executionContext() || m_resolver->executionContext()->activeDOMObjectsAreStopped()) {
+            S::dispose(result);
+            return;
+        }
+        m_resolver->resolve(S::take(m_resolver.get(), result));
     }
+
     virtual void onError(typename T::WebType* error) OVERRIDE
     {
-        m_resolver->reject(T::from(m_resolver.get(), error));
+        if (!m_resolver->executionContext() || m_resolver->executionContext()->activeDOMObjectsAreStopped()) {
+            T::dispose(error);
+            return;
+        }
+        m_resolver->reject(T::take(m_resolver.get(), error));
     }
+
 private:
     RefPtr<ScriptPromiseResolver> m_resolver;
     WTF_MAKE_NONCOPYABLE(CallbackPromiseAdapter);
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif

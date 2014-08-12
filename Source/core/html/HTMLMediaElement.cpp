@@ -91,7 +91,7 @@ using blink::WebMediaPlayer;
 using blink::WebMimeRegistry;
 using blink::WebMediaPlayerClient;
 
-namespace WebCore {
+namespace blink {
 
 #if !LOG_DISABLED
 static String urlForLoggingMedia(const KURL& url)
@@ -167,6 +167,30 @@ public:
 
 private:
     RawPtrWillBeMember<HTMLMediaElement> m_mediaElement;
+};
+
+class AudioSourceProviderClientLockScope {
+    STACK_ALLOCATED();
+public:
+#if ENABLE(WEB_AUDIO)
+    AudioSourceProviderClientLockScope(HTMLMediaElement& element)
+        : m_client(element.audioSourceNode())
+    {
+        if (m_client)
+            m_client->lock();
+    }
+    ~AudioSourceProviderClientLockScope()
+    {
+        if (m_client)
+            m_client->unlock();
+    }
+
+private:
+    RawPtrWillBeMember<AudioSourceProviderClient> m_client;
+#else
+    explicit AudioSourceProviderClientLockScope(HTMLMediaElement&) { }
+    ~AudioSourceProviderClientLockScope() { }
+#endif
 };
 
 static const AtomicString& AudioKindToString(WebMediaPlayerClient::AudioTrackKind kind)
@@ -2081,7 +2105,10 @@ void HTMLMediaElement::setCurrentTime(double time, ExceptionState& exceptionStat
 
 double HTMLMediaElement::duration() const
 {
-    if (m_readyState < HAVE_METADATA)
+    // FIXME: remove m_player check once we figure out how m_player is going
+    // out of sync with readystate. m_player is cleared but readystate is not set
+    // to HAVE_NOTHING
+    if (!m_player || m_readyState < HAVE_METADATA)
         return std::numeric_limits<double>::quiet_NaN();
 
     // FIXME: Refactor so m_duration is kept current (in both MSE and
@@ -3405,17 +3432,10 @@ void HTMLMediaElement::clearMediaPlayer(int flags)
 
     cancelDeferredLoad();
 
-#if ENABLE(WEB_AUDIO)
-    if (m_audioSourceNode)
-        m_audioSourceNode->lock();
-#endif
-
-    clearMediaPlayerAndAudioSourceProviderClientWithoutLocking();
-
-#if ENABLE(WEB_AUDIO)
-    if (m_audioSourceNode)
-        m_audioSourceNode->unlock();
-#endif
+    {
+        AudioSourceProviderClientLockScope scope(*this);
+        clearMediaPlayerAndAudioSourceProviderClientWithoutLocking();
+    }
 
     stopPeriodicTimers();
     m_loadTimer.stop();
@@ -3479,7 +3499,7 @@ void HTMLMediaElement::exitFullscreen()
 {
     WTF_LOG(Media, "HTMLMediaElement::exitFullscreen");
 
-    FullscreenElementStack::from(document()).fullyExitFullscreen();
+    FullscreenElementStack::from(document()).exitFullscreen();
 }
 
 void HTMLMediaElement::didBecomeFullscreenElement()
@@ -3700,22 +3720,16 @@ void* HTMLMediaElement::preDispatchEventHandler(Event* event)
 
 void HTMLMediaElement::createMediaPlayer()
 {
-#if ENABLE(WEB_AUDIO)
-    if (m_audioSourceNode)
-        m_audioSourceNode->lock();
-#endif
+    AudioSourceProviderClientLockScope scope(*this);
 
     closeMediaSource();
 
     m_player = MediaPlayer::create(this);
 
 #if ENABLE(WEB_AUDIO)
-    if (m_audioSourceNode) {
+    if (m_audioSourceNode && audioSourceProvider()) {
         // When creating the player, make sure its AudioSourceProvider knows about the client.
-        if (audioSourceProvider())
-            audioSourceProvider()->setClient(m_audioSourceNode);
-
-        m_audioSourceNode->unlock();
+        audioSourceProvider()->setClient(m_audioSourceNode);
     }
 #endif
 }
@@ -3725,14 +3739,9 @@ void HTMLMediaElement::setAudioSourceNode(AudioSourceProviderClient* sourceNode)
 {
     m_audioSourceNode = sourceNode;
 
-    if (m_audioSourceNode)
-        m_audioSourceNode->lock();
-
+    AudioSourceProviderClientLockScope scope(*this);
     if (audioSourceProvider())
         audioSourceProvider()->setClient(m_audioSourceNode);
-
-    if (m_audioSourceNode)
-        m_audioSourceNode->unlock();
 }
 
 AudioSourceProvider* HTMLMediaElement::audioSourceProvider()

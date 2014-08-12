@@ -29,7 +29,7 @@
 #include "core/rendering/svg/SVGResourcesCache.h"
 #include "core/svg/SVGElement.h"
 
-namespace WebCore {
+namespace blink {
 
 RenderSVGBlock::RenderSVGBlock(SVGElement* element)
     : RenderBlockFlow(element)
@@ -114,7 +114,7 @@ bool RenderSVGBlock::nodeAtPoint(const HitTestRequest&, HitTestResult&, const Hi
 
 void RenderSVGBlock::invalidateTreeIfNeeded(const PaintInvalidationState& paintInvalidationState)
 {
-    if (!shouldCheckForPaintInvalidation())
+    if (!shouldCheckForPaintInvalidation(paintInvalidationState))
         return;
 
     ForceHorriblySlowRectMapping slowRectMapping(&paintInvalidationState);

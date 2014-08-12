@@ -28,7 +28,7 @@
 #include "core/dom/FullscreenElementStack.h"
 #include "core/rendering/RenderBlockFlow.h"
 
-using namespace WebCore;
+using namespace blink;
 
 class RenderFullScreenPlaceholder FINAL : public RenderBlockFlow {
 public:
@@ -74,10 +74,10 @@ void RenderFullScreen::willBeDestroyed()
     }
 
     // RenderObjects are unretained, so notify the document (which holds a pointer to a RenderFullScreen)
-    // if it's RenderFullScreen is destroyed.
-    FullscreenElementStack& controller = FullscreenElementStack::from(document());
-    if (controller.fullScreenRenderer() == this)
-        controller.fullScreenRendererDestroyed();
+    // if its RenderFullScreen is destroyed.
+    FullscreenElementStack& fullscreen = FullscreenElementStack::from(document());
+    if (fullscreen.fullScreenRenderer() == this)
+        fullscreen.fullScreenRendererDestroyed();
 
     RenderFlexibleBox::willBeDestroyed();
 }
@@ -100,8 +100,8 @@ static PassRefPtr<RenderStyle> createFullScreenStyle()
     fullscreenStyle->setPosition(FixedPosition);
     fullscreenStyle->setWidth(Length(100.0, Percent));
     fullscreenStyle->setHeight(Length(100.0, Percent));
-    fullscreenStyle->setLeft(Length(0, WebCore::Fixed));
-    fullscreenStyle->setTop(Length(0, WebCore::Fixed));
+    fullscreenStyle->setLeft(Length(0, blink::Fixed));
+    fullscreenStyle->setTop(Length(0, blink::Fixed));
 
     fullscreenStyle->setBackgroundColor(StyleColor(Color::black));
 
@@ -169,7 +169,7 @@ void RenderFullScreen::unwrapRenderer()
     if (placeholder())
         placeholder()->remove();
     remove();
-    FullscreenElementStack::from(document()).setFullScreenRenderer(0);
+    destroy();
 }
 
 void RenderFullScreen::setPlaceholder(RenderBlock* placeholder)

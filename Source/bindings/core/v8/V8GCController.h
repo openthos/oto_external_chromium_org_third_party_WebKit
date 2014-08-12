@@ -31,10 +31,9 @@
 #ifndef V8GCController_h
 #define V8GCController_h
 
-#include "wtf/Vector.h"
 #include <v8.h>
 
-namespace WebCore {
+namespace blink {
 
 class Node;
 

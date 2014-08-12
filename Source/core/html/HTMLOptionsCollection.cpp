@@ -29,7 +29,7 @@
 #include "core/html/HTMLOptionElement.h"
 #include "core/html/HTMLSelectElement.h"
 
-namespace WebCore {
+namespace blink {
 
 HTMLOptionsCollection::HTMLOptionsCollection(ContainerNode& select)
     : HTMLCollection(select, SelectOptions, DoesNotOverrideItemAfter)
@@ -101,11 +101,6 @@ void HTMLOptionsCollection::add(PassRefPtrWillBeRawPtr<HTMLOptionElement> elemen
 void HTMLOptionsCollection::remove(int index)
 {
     toHTMLSelectElement(ownerNode()).remove(index);
-}
-
-void HTMLOptionsCollection::remove(HTMLOptionElement* option)
-{
-    return remove(option->index());
 }
 
 int HTMLOptionsCollection::selectedIndex() const

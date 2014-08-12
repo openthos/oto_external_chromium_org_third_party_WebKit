@@ -81,7 +81,7 @@
 #include "wtf/FastMalloc.h"
 #include <limits>
 
-namespace WebCore {
+namespace blink {
 
 // Allocates new storage via fastMalloc.
 // Returns 0 if array failed to convert for any reason.
@@ -343,7 +343,7 @@ void V8WebGLRenderingContext::getExtensionMethodCustom(const v8::FunctionCallbac
         return;
     }
     TOSTRING_VOID(V8StringResource<>, name, info[0]);
-    RefPtr<WebGLExtension> extension(impl->getExtension(name));
+    RefPtrWillBeRawPtr<WebGLExtension> extension(impl->getExtension(name));
     v8SetReturnValue(info, toV8Object(extension.get(), info.Holder(), info.GetIsolate()));
 }
 
@@ -473,12 +473,12 @@ void V8WebGLRenderingContext::getUniformMethodCustom(const v8::FunctionCallbackI
         v8::TryCatch block;
         V8RethrowTryCatchScope rethrow(block);
         if (info.Length() > 0 && !isUndefinedOrNull(info[0]) && !V8WebGLProgram::hasInstance(info[0], info.GetIsolate())) {
-            throwTypeError(ExceptionMessages::failedToExecute("getUniform", "WebGLRenderingContext", "parameter 1 is not of type 'WebGLProgram'."), info.GetIsolate());
+            V8ThrowException::throwTypeError(ExceptionMessages::failedToExecute("getUniform", "WebGLRenderingContext", "parameter 1 is not of type 'WebGLProgram'."), info.GetIsolate());
             return;
         }
         TONATIVE_VOID_INTERNAL(program, V8WebGLProgram::toNativeWithTypeCheck(info.GetIsolate(), info[0]));
         if (info.Length() > 1 && !isUndefinedOrNull(info[1]) && !V8WebGLUniformLocation::hasInstance(info[1], info.GetIsolate())) {
-            throwTypeError(ExceptionMessages::failedToExecute("getUniform", "WebGLRenderingContext", "parameter 2 is not of type 'WebGLUniformLocation'."), info.GetIsolate());
+            V8ThrowException::throwTypeError(ExceptionMessages::failedToExecute("getUniform", "WebGLRenderingContext", "parameter 2 is not of type 'WebGLUniformLocation'."), info.GetIsolate());
             return;
         }
         TONATIVE_VOID_INTERNAL(location, V8WebGLUniformLocation::toNativeWithTypeCheck(info.GetIsolate(), info[1]));
@@ -828,4 +828,4 @@ void V8WebGLRenderingContext::vertexAttrib4fvMethodCustom(const v8::FunctionCall
     vertexAttribAndUniformHelperf(info, kVertexAttrib4v, exceptionState);
 }
 
-} // namespace WebCore
+} // namespace blink

@@ -33,7 +33,7 @@
 #include "core/timing/PerformanceMeasure.h"
 #include "public/platform/Platform.h"
 
-namespace WebCore {
+namespace blink {
 
 namespace {
 
@@ -207,9 +207,11 @@ PerformanceEntryVector UserTiming::getMeasures(const String& name) const
 
 void UserTiming::trace(Visitor* visitor)
 {
+#if ENABLE(OILPAN)
     visitor->trace(m_performance);
     visitor->trace(m_marksMap);
     visitor->trace(m_measuresMap);
+#endif
 }
 
-} // namespace WebCore
+} // namespace blink

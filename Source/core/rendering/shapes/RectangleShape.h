@@ -35,9 +35,8 @@
 #include "platform/geometry/FloatRect.h"
 #include "platform/geometry/FloatSize.h"
 #include "wtf/Assertions.h"
-#include "wtf/Vector.h"
 
-namespace WebCore {
+namespace blink {
 
 class RectangleShape FINAL : public Shape {
 public:
@@ -67,6 +66,6 @@ private:
     FloatSize m_radii;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // RectangleShape_h

@@ -9,7 +9,7 @@
 #include "wtf/Assertions.h"
 #include "wtf/TemporaryChange.h"
 
-namespace WebCore {
+namespace blink {
 
 class PLATFORM_EXPORT ScriptForbiddenScope {
 public:
@@ -24,9 +24,23 @@ public:
         TemporaryChange<unsigned> m_change;
     };
 
+    // FIXME: This should be removed. AllowSuperUnsafeScript is used
+    // to exceptionally allow script execution in ScriptForbiddenScope, because
+    // some real-world plugins try to execute script in ScriptForbiddenScope.
+    // This is unsafe and we should get rid of all the unsafe script executions.
+    class PLATFORM_EXPORT AllowSuperUnsafeScript {
+    public:
+        AllowSuperUnsafeScript();
+        ~AllowSuperUnsafeScript();
+    private:
+        TemporaryChange<unsigned> m_change;
+    };
+
+    static void enter();
+    static void exit();
     static bool isScriptForbidden();
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // ScriptForbiddenScope_h

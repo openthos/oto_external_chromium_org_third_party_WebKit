@@ -35,7 +35,7 @@
 #include "core/rendering/compositing/CompositedLayerMapping.h"
 #include "core/rendering/compositing/RenderLayerCompositor.h"
 
-namespace WebCore {
+namespace blink {
 
 GraphicsLayerTreeBuilder::GraphicsLayerTreeBuilder()
 {
@@ -127,7 +127,7 @@ void GraphicsLayerTreeBuilder::rebuild(RenderLayer& layer, AncestorInfo info)
 
     if (layer.scrollParent()
         && layer.scrollParent()->hasCompositedLayerMapping()
-        && layer.scrollParent()->scrollableArea()->hasOverlayScrollbars()
+        && layer.scrollParent()->compositedLayerMapping()->needsToReparentOverflowControls()
         && layer.scrollParent()->scrollableArea()->topmostScrollChild() == &layer)
         info.childLayersOfEnclosingCompositedLayer->append(layer.scrollParent()->compositedLayerMapping()->detachLayerForOverflowControls(*info.enclosingCompositedLayer));
 }

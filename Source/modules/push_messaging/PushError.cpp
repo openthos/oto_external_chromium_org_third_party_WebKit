@@ -8,9 +8,9 @@
 #include "core/dom/ExceptionCode.h"
 #include "wtf/OwnPtr.h"
 
-namespace WebCore {
+namespace blink {
 
-PassRefPtrWillBeRawPtr<DOMException> PushError::from(ScriptPromiseResolver*, WebType* webErrorRaw)
+PassRefPtrWillBeRawPtr<DOMException> PushError::take(ScriptPromiseResolver*, WebType* webErrorRaw)
 {
     OwnPtr<WebType> webError = adoptPtr(webErrorRaw);
     switch (webError->errorType) {
@@ -23,4 +23,9 @@ PassRefPtrWillBeRawPtr<DOMException> PushError::from(ScriptPromiseResolver*, Web
     return DOMException::create(UnknownError);
 }
 
-} // namespace WebCore
+void PushError::dispose(WebType* webErrorRaw)
+{
+    delete webErrorRaw;
+}
+
+} // namespace blink

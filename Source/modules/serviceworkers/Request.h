@@ -17,7 +17,7 @@
 
 namespace blink { class WebServiceWorkerRequest; }
 
-namespace WebCore {
+namespace blink {
 
 class RequestInit;
 class ResourceRequest;
@@ -46,8 +46,6 @@ public:
     String mode() const;
     String credentials() const;
 
-    PassOwnPtr<ResourceRequest> createResourceRequest() const;
-
     void trace(Visitor*);
 
 private:
@@ -58,6 +56,6 @@ private:
     RefPtrWillBeMember<Headers> m_headers;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // Request_h

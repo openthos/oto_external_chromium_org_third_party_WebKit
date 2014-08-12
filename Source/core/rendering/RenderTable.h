@@ -30,7 +30,7 @@
 #include "core/rendering/style/CollapsedBorderValue.h"
 #include "wtf/Vector.h"
 
-namespace WebCore {
+namespace blink {
 
 class RenderTableCol;
 class RenderTableCaption;
@@ -277,8 +277,6 @@ private:
 
     virtual bool isTable() const OVERRIDE { return true; }
 
-    virtual bool avoidsFloats() const OVERRIDE { return true; }
-
     virtual void paint(PaintInfo&, const LayoutPoint&) OVERRIDE;
     virtual void paintObject(PaintInfo&, const LayoutPoint&) OVERRIDE;
     virtual void paintBoxDecorationBackground(PaintInfo&, const LayoutPoint&) OVERRIDE;
@@ -362,6 +360,6 @@ inline RenderTableSection* RenderTable::topSection() const
 
 DEFINE_RENDER_OBJECT_TYPE_CASTS(RenderTable, isTable());
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // RenderTable_h

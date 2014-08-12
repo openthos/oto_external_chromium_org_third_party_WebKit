@@ -101,9 +101,9 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/animation/css/CSSPropertyEquality.cpp \
 	third_party/WebKit/Source/core/animation/css/CSSTimingData.cpp \
 	third_party/WebKit/Source/core/animation/css/CSSTransitionData.cpp \
-	third_party/WebKit/Source/core/animation/interpolation/DeferredLegacyStyleInterpolation.cpp \
-	third_party/WebKit/Source/core/animation/interpolation/Interpolation.cpp \
-	third_party/WebKit/Source/core/animation/interpolation/LengthStyleInterpolation.cpp \
+	third_party/WebKit/Source/core/animation/DeferredLegacyStyleInterpolation.cpp \
+	third_party/WebKit/Source/core/animation/Interpolation.cpp \
+	third_party/WebKit/Source/core/animation/LengthStyleInterpolation.cpp \
 	third_party/WebKit/Source/core/clipboard/DataObject.cpp \
 	third_party/WebKit/Source/core/clipboard/DataObjectItem.cpp \
 	third_party/WebKit/Source/core/clipboard/DataTransfer.cpp \
@@ -239,7 +239,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/css/resolver/MatchResult.cpp \
 	third_party/WebKit/Source/core/css/resolver/MatchedPropertiesCache.cpp \
 	third_party/WebKit/Source/core/css/resolver/ScopedStyleResolver.cpp \
-	third_party/WebKit/Source/core/css/resolver/ScopedStyleTree.cpp \
 	third_party/WebKit/Source/core/css/resolver/SharedStyleFinder.cpp \
 	third_party/WebKit/Source/core/css/resolver/StyleAdjuster.cpp \
 	third_party/WebKit/Source/core/css/resolver/StyleBuilderConverter.cpp \
@@ -316,6 +315,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/fetch/DocumentResource.cpp \
 	third_party/WebKit/Source/core/fetch/FetchContext.cpp \
 	third_party/WebKit/Source/core/fetch/FetchRequest.cpp \
+	third_party/WebKit/Source/core/fetch/FetchUtils.cpp \
 	third_party/WebKit/Source/core/fetch/FontResource.cpp \
 	third_party/WebKit/Source/core/fetch/ImageResource.cpp \
 	third_party/WebKit/Source/core/fetch/MemoryCache.cpp \
@@ -346,10 +346,10 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/frame/DOMWindowProperty.cpp \
 	third_party/WebKit/Source/core/frame/DOMWindowTimers.cpp \
 	third_party/WebKit/Source/core/frame/DeprecatedScheduleStyleRecalcDuringLayout.cpp \
-	third_party/WebKit/Source/core/frame/DeviceEventControllerBase.cpp \
-	third_party/WebKit/Source/core/frame/DeviceEventDispatcherBase.cpp \
 	third_party/WebKit/Source/core/frame/DeviceSingleWindowEventController.cpp \
 	third_party/WebKit/Source/core/frame/EventHandlerRegistry.cpp \
+	third_party/WebKit/Source/core/frame/PlatformEventController.cpp \
+	third_party/WebKit/Source/core/frame/PlatformEventDispatcher.cpp \
 	third_party/WebKit/Source/core/frame/Frame.cpp \
 	third_party/WebKit/Source/core/frame/FrameConsole.cpp \
 	third_party/WebKit/Source/core/frame/FrameDestructionObserver.cpp \
@@ -379,6 +379,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/frame/csp/ContentSecurityPolicy.cpp \
 	third_party/WebKit/Source/core/frame/csp/MediaListDirective.cpp \
 	third_party/WebKit/Source/core/frame/csp/SourceListDirective.cpp \
+	third_party/WebKit/Source/core/imagebitmap/ImageBitmapFactories.cpp \
 	third_party/WebKit/Source/core/inspector/AsyncCallStackTracker.cpp \
 	third_party/WebKit/Source/core/inspector/InspectorConsoleMessage.cpp \
 	third_party/WebKit/Source/core/inspector/ContentSearchUtils.cpp \
@@ -518,6 +519,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/storage/StorageArea.cpp \
 	third_party/WebKit/Source/core/storage/StorageEvent.cpp \
 	third_party/WebKit/Source/core/storage/StorageNamespace.cpp \
+	third_party/WebKit/Source/core/streams/ReadableStream.cpp \
 	third_party/WebKit/Source/core/streams/Stream.cpp \
 	third_party/WebKit/Source/core/timing/MemoryInfo.cpp \
 	third_party/WebKit/Source/core/timing/Performance.cpp \
@@ -540,7 +542,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/workers/WorkerMessagingProxy.cpp \
 	third_party/WebKit/Source/core/workers/WorkerNavigator.cpp \
 	third_party/WebKit/Source/core/workers/WorkerObjectProxy.cpp \
-	third_party/WebKit/Source/core/workers/WorkerRunLoop.cpp \
 	third_party/WebKit/Source/core/workers/WorkerScriptLoader.cpp \
 	third_party/WebKit/Source/core/workers/WorkerThread.cpp \
 	third_party/WebKit/Source/core/workers/WorkerThreadStartupData.cpp \
@@ -631,7 +632,6 @@ MY_DEFS_Debug := \
 	'-DSYSTEM_NATIVELY_SIGNALS_MEMORY_PRESSURE' \
 	'-DENABLE_EGLIMAGE=1' \
 	'-DCLD_VERSION=1' \
-	'-DCLD_DATA_FROM_STATIC' \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
@@ -649,6 +649,7 @@ MY_DEFS_Debug := \
 	'-DENABLE_WEB_AUDIO=1' \
 	'-DENABLE_OPENTYPE_VERTICAL=1' \
 	'-DU_USING_ICU_NAMESPACE=0' \
+	'-DU_ENABLE_DYLOAD=0' \
 	'-DSK_ENABLE_INST_COUNT=0' \
 	'-DSK_SUPPORT_GPU=1' \
 	'-DGR_GL_CUSTOM_SETUP_HEADER="GrGLConfig_chrome.h"' \
@@ -696,8 +697,8 @@ LOCAL_C_INCLUDES_Debug := \
 	$(gyp_shared_intermediate_dir)/blink \
 	$(LOCAL_PATH)/third_party/openmax_dl \
 	$(LOCAL_PATH)/third_party/angle/include \
-	$(PWD)/external/icu4c/common \
-	$(PWD)/external/icu4c/i18n \
+	$(PWD)/external/icu/icu4c/source/common \
+	$(PWD)/external/icu/icu4c/source/i18n \
 	$(LOCAL_PATH)/third_party/WebKit \
 	$(LOCAL_PATH)/third_party/skia/src/core \
 	$(LOCAL_PATH)/third_party/skia/include/core \
@@ -795,7 +796,6 @@ MY_DEFS_Release := \
 	'-DSYSTEM_NATIVELY_SIGNALS_MEMORY_PRESSURE' \
 	'-DENABLE_EGLIMAGE=1' \
 	'-DCLD_VERSION=1' \
-	'-DCLD_DATA_FROM_STATIC' \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
@@ -813,6 +813,7 @@ MY_DEFS_Release := \
 	'-DENABLE_WEB_AUDIO=1' \
 	'-DENABLE_OPENTYPE_VERTICAL=1' \
 	'-DU_USING_ICU_NAMESPACE=0' \
+	'-DU_ENABLE_DYLOAD=0' \
 	'-DSK_ENABLE_INST_COUNT=0' \
 	'-DSK_SUPPORT_GPU=1' \
 	'-DGR_GL_CUSTOM_SETUP_HEADER="GrGLConfig_chrome.h"' \
@@ -861,8 +862,8 @@ LOCAL_C_INCLUDES_Release := \
 	$(gyp_shared_intermediate_dir)/blink \
 	$(LOCAL_PATH)/third_party/openmax_dl \
 	$(LOCAL_PATH)/third_party/angle/include \
-	$(PWD)/external/icu4c/common \
-	$(PWD)/external/icu4c/i18n \
+	$(PWD)/external/icu/icu4c/source/common \
+	$(PWD)/external/icu/icu4c/source/i18n \
 	$(LOCAL_PATH)/third_party/WebKit \
 	$(LOCAL_PATH)/third_party/skia/src/core \
 	$(LOCAL_PATH)/third_party/skia/include/core \

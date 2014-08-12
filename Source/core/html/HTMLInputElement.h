@@ -29,7 +29,7 @@
 #include "core/html/forms/StepRange.h"
 #include "platform/FileChooser.h"
 
-namespace WebCore {
+namespace blink {
 
 class DragData;
 class ExceptionState;
@@ -269,6 +269,8 @@ public:
     void setShouldRevealPassword(bool value);
     bool shouldRevealPassword() const { return m_shouldRevealPassword; }
 
+    virtual void didNotifySubtreeInsertionsToDocument() OVERRIDE;
+
 protected:
     HTMLInputElement(Document&, HTMLFormElement*, bool createdByParser);
 
@@ -293,7 +295,6 @@ private:
     virtual bool isEnumeratable() const OVERRIDE FINAL;
     virtual bool isInteractiveContent() const OVERRIDE FINAL;
     virtual bool supportLabels() const OVERRIDE FINAL;
-    virtual bool shouldUseInputMethod() OVERRIDE FINAL;
 
     virtual bool isTextFormControl() const OVERRIDE FINAL { return isTextField(); }
 

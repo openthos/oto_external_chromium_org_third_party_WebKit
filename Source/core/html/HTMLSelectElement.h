@@ -32,7 +32,7 @@
 #include "core/html/forms/TypeAhead.h"
 #include "wtf/Vector.h"
 
-namespace WebCore {
+namespace blink {
 
 class AutoscrollController;
 class ExceptionState;
@@ -101,8 +101,6 @@ public:
 
     void scrollToSelection();
     void scrollTo(int listIndex);
-
-    void listBoxSelectItem(int listIndex, bool allowMultiplySelections, bool shift, bool fireOnChangeNow = true);
 
     bool canSelectAll() const;
     void selectAll();

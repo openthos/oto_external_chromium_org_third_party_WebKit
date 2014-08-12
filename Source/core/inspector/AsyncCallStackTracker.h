@@ -39,7 +39,7 @@
 #include "wtf/PassRefPtr.h"
 #include "wtf/RefPtr.h"
 
-namespace WebCore {
+namespace blink {
 
 class Event;
 class EventListener;
@@ -108,6 +108,10 @@ public:
     void didEnqueueV8AsyncTask(ExecutionContext*, const String& eventName, int id, const ScriptValue& callFrames);
     void willHandleV8AsyncTask(ExecutionContext*, const String& eventName, int id);
 
+    int traceAsyncOperationStarting(ExecutionContext*, const String& operationName, const ScriptValue& callFrames);
+    void traceAsyncOperationCompleted(ExecutionContext*, int operationId);
+    void traceAsyncCallbackStarting(ExecutionContext*, int operationId);
+
     void didFireAsyncCall();
     void clear();
 
@@ -130,6 +134,6 @@ private:
     ExecutionContextDataMap m_executionContextDataMap;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // !defined(AsyncCallStackTracker_h)

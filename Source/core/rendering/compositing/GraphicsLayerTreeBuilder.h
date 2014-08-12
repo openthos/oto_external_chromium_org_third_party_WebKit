@@ -28,9 +28,8 @@
 #define GraphicsLayerTreeBuilder_h
 
 #include "platform/graphics/GraphicsLayer.h"
-#include "wtf/Vector.h"
 
-namespace WebCore {
+namespace blink {
 
 class RenderLayer;
 
@@ -53,6 +52,6 @@ public:
     void rebuild(RenderLayer&, AncestorInfo);
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // GraphicsLayerTreeBuilder_h

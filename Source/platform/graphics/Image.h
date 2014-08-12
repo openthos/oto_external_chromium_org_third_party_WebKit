@@ -41,7 +41,7 @@
 #include "wtf/RetainPtr.h"
 #include "wtf/text/WTFString.h"
 
-namespace WebCore {
+namespace blink {
 
 class FloatPoint;
 class FloatRect;
@@ -114,6 +114,8 @@ public:
     enum TileRule { StretchTile, RoundTile, SpaceTile, RepeatTile };
 
     virtual PassRefPtr<NativeImageSkia> nativeImageForCurrentFrame() { return nullptr; }
+
+    virtual PassRefPtr<Image> imageForDefaultFrame();
 
     virtual void drawPattern(GraphicsContext*, const FloatRect&,
         const FloatSize&, const FloatPoint& phase, CompositeOperator,

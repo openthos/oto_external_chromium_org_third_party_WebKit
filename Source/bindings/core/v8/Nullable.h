@@ -5,12 +5,14 @@
 #ifndef Nullable_h
 #define Nullable_h
 
+#include "platform/heap/Handle.h"
 #include "wtf/Assertions.h"
 
-namespace WebCore {
+namespace blink {
 
 template <typename T>
 class Nullable {
+    DISALLOW_ALLOCATION();
 public:
     Nullable()
         : m_value()
@@ -31,7 +33,7 @@ public:
         return *this;
     }
 
-    T get() const { ASSERT(!m_isNull); return m_value; }
+    const T& get() const { ASSERT(!m_isNull); return m_value; }
     bool isNull() const { return m_isNull; }
 
     operator bool() const { return !m_isNull && m_value; }
@@ -41,11 +43,16 @@ public:
         return (m_isNull && other.m_isNull) || (!m_isNull && !other.m_isNull && m_value == other.m_value);
     }
 
+    void trace(Visitor* visitor)
+    {
+        TraceIfNeeded<T>::trace(visitor, &m_value);
+    }
+
 private:
     T m_value;
     bool m_isNull;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // Nullable_h

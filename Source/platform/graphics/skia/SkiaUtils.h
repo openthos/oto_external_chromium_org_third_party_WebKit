@@ -48,7 +48,7 @@
 class SkCanvas;
 class SkRegion;
 
-namespace WebCore {
+namespace blink {
 
 class GraphicsContext;
 
@@ -91,6 +91,20 @@ bool PLATFORM_EXPORT SkPathContainsPoint(const SkPath&, const FloatPoint&, SkPat
 
 SkMatrix PLATFORM_EXPORT affineTransformToSkMatrix(const AffineTransform&);
 
-}  // namespace WebCore
+bool nearlyIntegral(float value);
+
+InterpolationQuality limitInterpolationQuality(const GraphicsContext*, InterpolationQuality resampling);
+
+InterpolationQuality computeInterpolationQuality(
+    const SkMatrix&,
+    float srcWidth,
+    float srcHeight,
+    float destWidth,
+    float destHeight,
+    bool isDataComplete = true);
+
+bool shouldDrawAntiAliased(const GraphicsContext*, const SkRect& destRect);
+
+}  // namespace blink
 
 #endif  // SkiaUtils_h

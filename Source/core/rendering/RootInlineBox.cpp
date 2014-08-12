@@ -34,7 +34,7 @@
 #include "platform/text/BidiResolver.h"
 #include "wtf/unicode/Unicode.h"
 
-namespace WebCore {
+namespace blink {
 
 struct SameSizeAsRootInlineBox : public InlineFlowBox {
     unsigned unsignedVariable;
@@ -88,18 +88,6 @@ void RootInlineBox::clearTruncation()
         detachEllipsisBox();
         InlineFlowBox::clearTruncation();
     }
-}
-
-bool RootInlineBox::isHyphenated() const
-{
-    for (InlineBox* box = firstLeafChild(); box; box = box->nextLeafChild()) {
-        if (box->isInlineTextBox()) {
-            if (toInlineTextBox(box)->hasHyphen())
-                return true;
-        }
-    }
-
-    return false;
 }
 
 int RootInlineBox::baselinePosition(FontBaseline baselineType) const
@@ -883,4 +871,4 @@ const char* RootInlineBox::boxName() const
 }
 #endif
 
-} // namespace WebCore
+} // namespace blink

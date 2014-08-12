@@ -33,11 +33,11 @@
 
 #include "wtf/CurrentTime.h"
 
-namespace WebCore {
+namespace blink {
 
 class AutoStamper {
 public:
-    AutoStamper(ProfilingCanvas*);
+    explicit AutoStamper(ProfilingCanvas*);
     ~AutoStamper();
 
 private:

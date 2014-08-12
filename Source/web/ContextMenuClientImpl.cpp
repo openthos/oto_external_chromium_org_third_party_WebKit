@@ -80,7 +80,7 @@
 #include "web/WebViewImpl.h"
 #include "wtf/text/WTFString.h"
 
-using namespace WebCore;
+using namespace blink;
 
 namespace blink {
 
@@ -179,7 +179,7 @@ static String selectMisspellingAsync(LocalFrame* selectedFrame, String& descript
     return markerRange->text();
 }
 
-void ContextMenuClientImpl::showContextMenu(const WebCore::ContextMenu* defaultMenu)
+void ContextMenuClientImpl::showContextMenu(const blink::ContextMenu* defaultMenu)
 {
     // Displaying the context menu in this function is a big hack as we don't
     // have context, i.e. whether this is being invoked via a script or in
@@ -219,8 +219,10 @@ void ContextMenuClientImpl::showContextMenu(const WebCore::ContextMenu* defaultM
         data.editFlags |= WebContextMenuData::CanPaste;
     if (toLocalFrame(m_webView->focusedWebCoreFrame())->editor().canDelete())
         data.editFlags |= WebContextMenuData::CanDelete;
-    // We can always select all...
-    data.editFlags |= WebContextMenuData::CanSelectAll;
+    if (isHTMLTextFormControlElement(r.innerNonSharedNode())) {
+        if (!toHTMLTextFormControlElement(r.innerNonSharedNode())->value().isEmpty())
+            data.editFlags |= WebContextMenuData::CanSelectAll;
+    }
     data.editFlags |= WebContextMenuData::CanTranslate;
 
     // Links, Images, Media tags, and Image/Media-Links take preference over
@@ -438,7 +440,7 @@ static void populateSubMenuItems(const Vector<ContextMenuItem>& inputMenu, WebVe
     subMenuItems.swap(outputItems);
 }
 
-void ContextMenuClientImpl::populateCustomMenuItems(const WebCore::ContextMenu* defaultMenu, WebContextMenuData* data)
+void ContextMenuClientImpl::populateCustomMenuItems(const blink::ContextMenu* defaultMenu, WebContextMenuData* data)
 {
     populateSubMenuItems(defaultMenu->items(), data->customItems);
 }

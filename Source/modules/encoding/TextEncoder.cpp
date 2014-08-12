@@ -36,7 +36,7 @@
 #include "wtf/text/CString.h"
 #include "wtf/text/TextEncodingRegistry.h"
 
-namespace WebCore {
+namespace blink {
 
 TextEncoder* TextEncoder::create(const String& utfLabel, ExceptionState& exceptionState)
 {
@@ -59,6 +59,7 @@ TextEncoder::TextEncoder(const WTF::TextEncoding& encoding)
     : m_encoding(encoding)
     , m_codec(newTextCodec(encoding))
 {
+    ScriptWrappable::init(this);
 }
 
 TextEncoder::~TextEncoder()
@@ -86,4 +87,4 @@ PassRefPtr<Uint8Array> TextEncoder::encode(const String& input)
     return Uint8Array::create(unsignedBuffer, result.length());
 }
 
-} // namespace WebCore
+} // namespace blink

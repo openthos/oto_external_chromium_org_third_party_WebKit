@@ -13,7 +13,7 @@
 #include "core/page/Page.h"
 #include "core/svg/SVGDocumentExtensions.h"
 
-namespace WebCore {
+namespace blink {
 
 PageAnimator::PageAnimator(Page* page)
     : m_page(page)
@@ -31,7 +31,7 @@ void PageAnimator::serviceScriptedAnimations(double monotonicAnimationStartTime)
     for (RefPtr<Frame> frame = m_page->mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (frame->isLocalFrame()) {
             RefPtr<LocalFrame> localFrame = toLocalFrame(frame.get());
-            localFrame->view()->serviceScrollAnimations();
+            localFrame->view()->serviceScrollAnimations(monotonicAnimationStartTime);
 
             DocumentAnimations::updateAnimationTimingForAnimationFrame(*localFrame->document(), monotonicAnimationStartTime);
             SVGDocumentExtensions::serviceOnAnimationFrame(*localFrame->document(), monotonicAnimationStartTime);

@@ -57,7 +57,7 @@
 #include "web/WebLocalFrameImpl.h"
 #include "web/WebViewImpl.h"
 
-using namespace WebCore;
+using namespace blink;
 
 static NSAttributedString* attributedSubstringFromRange(const Range* range)
 {
@@ -155,7 +155,8 @@ NSAttributedString* WebSubstringUtil::attributedSubstringInRange(WebLocalFrame* 
         frame->view()->layout();
 
     Element* editable = frame->selection().rootEditableElementOrDocumentElement();
-    ASSERT(editable);
+    if (!editable)
+        return nil;
     RefPtrWillBeRawPtr<Range> range(PlainTextRange(location, location + length).createRange(*editable));
     if (!range)
         return nil;

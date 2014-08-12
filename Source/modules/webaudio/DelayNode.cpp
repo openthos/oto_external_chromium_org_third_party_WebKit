@@ -33,7 +33,7 @@
 #include "core/dom/ExceptionCode.h"
 #include "wtf/MathExtras.h"
 
-namespace WebCore {
+namespace blink {
 
 const double maximumAllowedDelayTime = 180;
 
@@ -49,7 +49,7 @@ DelayNode::DelayNode(AudioContext* context, float sampleRate, double maxDelayTim
             + ", exclusive.");
         return;
     }
-    m_processor = adoptPtr(new DelayProcessor(context, sampleRate, 1, maxDelayTime));
+    m_processor = adoptPtrWillBeNoop(new DelayProcessor(context, sampleRate, 1, maxDelayTime));
     setNodeType(NodeTypeDelay);
 }
 
@@ -58,6 +58,6 @@ AudioParam* DelayNode::delayTime()
     return delayProcessor()->delayTime();
 }
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // ENABLE(WEB_AUDIO)

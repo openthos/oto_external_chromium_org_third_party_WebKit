@@ -28,7 +28,7 @@
 #include "core/rendering/RenderImageResource.h"
 #include "core/rendering/RenderReplaced.h"
 
-namespace WebCore {
+namespace blink {
 
 class HTMLAreaElement;
 class HTMLMapElement;
@@ -53,8 +53,6 @@ public:
     HTMLMapElement* imageMap() const;
     void areaElementFocusChanged(HTMLAreaElement*);
 
-    void highQualityRepaintTimerFired(Timer<RenderImage>*);
-
     void setIsGeneratedContent(bool generated = true) { m_isGeneratedContent = generated; }
 
     bool isGeneratedContent() const { return m_isGeneratedContent; }
@@ -63,6 +61,12 @@ public:
 
     inline void setImageDevicePixelRatio(float factor) { m_imageDevicePixelRatio = factor; }
     float imageDevicePixelRatio() const { return m_imageDevicePixelRatio; }
+
+    virtual void intrinsicSizeChanged() OVERRIDE
+    {
+        if (m_imageResource)
+            imageChanged(m_imageResource->imagePtr());
+    }
 
 protected:
     virtual bool needsPreferredWidthsRecalculation() const OVERRIDE FINAL;
@@ -75,12 +79,6 @@ protected:
     virtual void paint(PaintInfo&, const LayoutPoint&) OVERRIDE FINAL;
     virtual void layout() OVERRIDE;
     virtual bool updateImageLoadingPriorities() OVERRIDE FINAL;
-
-    virtual void intrinsicSizeChanged() OVERRIDE
-    {
-        if (m_imageResource)
-            imageChanged(m_imageResource->imagePtr());
-    }
 
 private:
     virtual const char* renderName() const OVERRIDE { return "RenderImage"; }
@@ -120,6 +118,6 @@ private:
 
 DEFINE_RENDER_OBJECT_TYPE_CASTS(RenderImage, isRenderImage());
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // RenderImage_h

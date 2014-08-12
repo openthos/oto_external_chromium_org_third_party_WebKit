@@ -46,12 +46,13 @@
 #include "wtf/HashMap.h"
 #include "wtf/ListHashSet.h"
 #include "wtf/StdLibExtras.h"
+#include "wtf/Vector.h"
 #include "wtf/text/AtomicStringHash.h"
 #include "wtf/text/StringHash.h"
 
 using namespace WTF;
 
-namespace WebCore {
+namespace blink {
 
 #if !OS(WIN)
 FontCache::FontCache()
@@ -289,4 +290,4 @@ void FontCache::invalidate()
     purge(ForcePurge);
 }
 
-} // namespace WebCore
+} // namespace blink

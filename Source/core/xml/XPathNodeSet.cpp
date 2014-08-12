@@ -31,7 +31,7 @@
 #include "core/dom/Element.h"
 #include "core/dom/NodeTraversal.h"
 
-namespace WebCore {
+namespace blink {
 namespace XPath {
 
 // When a node set is large, sorting it by traversing the whole document is
@@ -234,9 +234,6 @@ void NodeSet::traversalSort() const
             continue;
 
         Element* element = toElement(n);
-        if (!element->hasAttributes())
-            continue;
-
         AttributeCollection attributes = element->attributes();
         AttributeCollection::const_iterator end = attributes.end();
         for (AttributeCollection::const_iterator it = attributes.begin(); it != end; ++it) {

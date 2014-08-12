@@ -35,7 +35,7 @@
 #include "core/dom/QualifiedName.h"
 #include "wtf/Vector.h"
 
-namespace WebCore {
+namespace blink {
 
 struct SameSizeAsElementData : public RefCountedWillBeGarbageCollectedFinalized<SameSizeAsElementData> {
     unsigned bitfield;
@@ -83,25 +83,25 @@ ElementData::ElementData(const ElementData& other, bool isUnique)
 void ElementData::finalizeGarbageCollectedObject()
 {
     if (m_isUnique)
-        static_cast<UniqueElementData*>(this)->~UniqueElementData();
+        toUniqueElementData(this)->~UniqueElementData();
     else
-        static_cast<ShareableElementData*>(this)->~ShareableElementData();
+        toShareableElementData(this)->~ShareableElementData();
 }
 #else
 void ElementData::destroy()
 {
     if (m_isUnique)
-        delete static_cast<UniqueElementData*>(this);
+        delete toUniqueElementData(this);
     else
-        delete static_cast<ShareableElementData*>(this);
+        delete toShareableElementData(this);
 }
 #endif
 
 PassRefPtrWillBeRawPtr<UniqueElementData> ElementData::makeUniqueCopy() const
 {
     if (isUnique())
-        return adoptRefWillBeNoop(new UniqueElementData(static_cast<const UniqueElementData&>(*this)));
-    return adoptRefWillBeNoop(new UniqueElementData(static_cast<const ShareableElementData&>(*this)));
+        return adoptRefWillBeNoop(new UniqueElementData(toUniqueElementData(*this)));
+    return adoptRefWillBeNoop(new UniqueElementData(toShareableElementData(*this)));
 }
 
 bool ElementData::isEquivalent(const ElementData* other) const
@@ -126,9 +126,9 @@ bool ElementData::isEquivalent(const ElementData* other) const
 void ElementData::trace(Visitor* visitor)
 {
     if (m_isUnique)
-        static_cast<UniqueElementData*>(this)->traceAfterDispatch(visitor);
+        toUniqueElementData(this)->traceAfterDispatch(visitor);
     else
-        static_cast<ShareableElementData*>(this)->traceAfterDispatch(visitor);
+        toShareableElementData(this)->traceAfterDispatch(visitor);
 }
 
 void ElementData::traceAfterDispatch(Visitor* visitor)
@@ -212,20 +212,10 @@ PassRefPtrWillBeRawPtr<ShareableElementData> UniqueElementData::makeShareableCop
     return adoptRefWillBeNoop(new (slot) ShareableElementData(*this));
 }
 
-Attribute* UniqueElementData::findAttributeByName(const QualifiedName& name)
-{
-    unsigned length = m_attributeVector.size();
-    for (unsigned i = 0; i < length; ++i) {
-        if (m_attributeVector.at(i).name().matches(name))
-            return &m_attributeVector.at(i);
-    }
-    return 0;
-}
-
 void UniqueElementData::traceAfterDispatch(Visitor* visitor)
 {
     visitor->trace(m_presentationAttributeStyle);
     ElementData::traceAfterDispatch(visitor);
 }
 
-} // namespace WebCore
+} // namespace blink

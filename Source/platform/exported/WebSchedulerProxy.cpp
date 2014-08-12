@@ -6,7 +6,9 @@
 
 #include "public/platform/WebSchedulerProxy.h"
 
+#include "platform/TraceLocation.h"
 #include "platform/scheduler/Scheduler.h"
+#include "public/platform/WebTraceLocation.h"
 #include "wtf/Assertions.h"
 #include "wtf/PassOwnPtr.h"
 
@@ -26,7 +28,7 @@ WebSchedulerProxy WebSchedulerProxy::create()
 }
 
 WebSchedulerProxy::WebSchedulerProxy()
-    : m_scheduler(WebCore::Scheduler::shared())
+    : m_scheduler(blink::Scheduler::shared())
 {
     ASSERT(m_scheduler);
 }
@@ -35,14 +37,16 @@ WebSchedulerProxy::~WebSchedulerProxy()
 {
 }
 
-void WebSchedulerProxy::postInputTask(WebThread::Task* task)
+void WebSchedulerProxy::postInputTask(const WebTraceLocation& webLocation, WebThread::Task* task)
 {
-    m_scheduler->postInputTask(bind(&runTask, adoptPtr(task)));
+    TraceLocation location(webLocation.functionName(), webLocation.fileName());
+    m_scheduler->postInputTask(location, bind(&runTask, adoptPtr(task)));
 }
 
-void WebSchedulerProxy::postCompositorTask(WebThread::Task* task)
+void WebSchedulerProxy::postCompositorTask(const WebTraceLocation& webLocation, WebThread::Task* task)
 {
-    m_scheduler->postCompositorTask(bind(&runTask, adoptPtr(task)));
+    TraceLocation location(webLocation.functionName(), webLocation.fileName());
+    m_scheduler->postCompositorTask(location, bind(&runTask, adoptPtr(task)));
 }
 
 } // namespace blink

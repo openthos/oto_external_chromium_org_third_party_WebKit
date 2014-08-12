@@ -36,7 +36,7 @@
 #include "wtf/ListHashSet.h"
 #include "wtf/PassRefPtr.h"
 
-namespace WebCore {
+namespace blink {
 
 struct LayerFragment;
 typedef Vector<LayerFragment, 1> LayerFragments;
@@ -84,7 +84,6 @@ public:
 
     LayoutPoint adjustedPositionRelativeToOffsetParent(const RenderBoxModelObject&, const LayoutPoint&);
 
-    LayoutUnit pageLogicalTopForOffset(LayoutUnit);
     LayoutUnit pageLogicalHeightForOffset(LayoutUnit);
     LayoutUnit pageRemainingLogicalHeightForOffset(LayoutUnit, PageBoundaryRule = IncludePageBoundary);
 
@@ -221,6 +220,6 @@ template <> struct ValueToString<RenderMultiColumnSet*> {
 };
 #endif
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // RenderFlowThread_h

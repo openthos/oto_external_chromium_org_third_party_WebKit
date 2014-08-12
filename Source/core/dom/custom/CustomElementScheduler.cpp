@@ -45,7 +45,7 @@
 #include "core/html/imports/HTMLImportChild.h"
 #include "core/html/imports/HTMLImportsController.h"
 
-namespace WebCore {
+namespace blink {
 
 DEFINE_EMPTY_DESTRUCTOR_WILL_BE_REMOVED(CustomElementScheduler)
 
@@ -158,7 +158,9 @@ CustomElementCallbackQueue& CustomElementScheduler::schedule(PassRefPtrWillBeRaw
 
 void CustomElementScheduler::trace(Visitor* visitor)
 {
+#if ENABLE(OILPAN)
     visitor->trace(m_elementCallbackQueueMap);
+#endif
 }
 
-} // namespace WebCore
+} // namespace blink

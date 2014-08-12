@@ -41,7 +41,7 @@
 #include "wtf/PassRefPtr.h"
 #include "wtf/RefCounted.h"
 
-namespace WebCore {
+namespace blink {
 
 class ScriptState;
 class ScriptPromiseResolver;
@@ -54,14 +54,14 @@ public:
 
     // For CallbackPromiseAdapter
     typedef blink::WebServiceWorker WebType;
-    static PassRefPtrWillBeRawPtr<ServiceWorker> from(ScriptPromiseResolver*, WebType* worker);
+    static PassRefPtrWillBeRawPtr<ServiceWorker> take(ScriptPromiseResolver*, WebType* worker);
 
     static PassRefPtrWillBeRawPtr<ServiceWorker> from(ExecutionContext*, WebType*);
+    static void dispose(WebType*);
 
     void postMessage(ExecutionContext*, PassRefPtr<SerializedScriptValue> message, const MessagePortArray*, ExceptionState&);
 
-    String scope() const;
-    String url() const;
+    String scriptURL() const;
     const AtomicString& state() const;
     DEFINE_ATTRIBUTE_EVENT_LISTENER(statechange);
 
@@ -96,6 +96,6 @@ private:
     ProxyState m_proxyState;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // ServiceWorker_h

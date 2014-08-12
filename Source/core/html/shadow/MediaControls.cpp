@@ -34,11 +34,16 @@
 #include "core/html/MediaController.h"
 #include "core/rendering/RenderTheme.h"
 
-namespace WebCore {
+namespace blink {
 
 // If you change this value, then also update the corresponding value in
 // LayoutTests/media/media-controls.js.
 static const double timeWithoutMouseMovementBeforeHidingMediaControls = 3;
+
+static bool fullscreenIsSupported(const Document& document)
+{
+    return !document.settings() || document.settings()->fullscreenSupported();
+}
 
 MediaControls::MediaControls(HTMLMediaElement& mediaElement)
     : HTMLDivElement(mediaElement.document())
@@ -178,7 +183,7 @@ void MediaControls::reset()
 
     refreshClosedCaptionsButtonVisibility();
 
-    if (mediaElement().hasVideo())
+    if (mediaElement().hasVideo() && fullscreenIsSupported(document()))
         m_fullScreenButton->show();
     else
         m_fullScreenButton->hide();

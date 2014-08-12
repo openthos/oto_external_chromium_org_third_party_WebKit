@@ -9,7 +9,7 @@
 #include "core/rendering/compositing/CompositingTriggers.h"
 #include "platform/graphics/CompositingReasons.h"
 
-namespace WebCore {
+namespace blink {
 
 class RenderObject;
 class RenderView;
@@ -35,13 +35,12 @@ private:
     CompositingReasons nonStyleDeterminedDirectReasons(const RenderLayer*) const;
 
     bool requiresCompositingForTransform(RenderObject*) const;
-    bool requiresCompositingForFilters(RenderObject*) const;
     bool requiresCompositingForAnimation(RenderStyle*) const;
 
     RenderView& m_renderView;
     CompositingTriggerFlags m_compositingTriggers;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // CompositingReasonFinder_h

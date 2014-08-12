@@ -41,7 +41,7 @@
 #include "core/svg/SVGElement.h"
 #include "platform/geometry/TransformState.h"
 
-namespace WebCore {
+namespace blink {
 
 LayoutRect SVGRenderSupport::clippedOverflowRectForRepaint(const RenderObject* object, const RenderLayerModelObject* repaintContainer, const PaintInvalidationState* paintInvalidationState)
 {
@@ -98,14 +98,6 @@ const RenderObject* SVGRenderSupport::pushMappingToContainer(const RenderObject*
         geometryMap.push(object, object->localToParentTransform());
 
     return parent;
-}
-
-bool SVGRenderSupport::parentTransformDidChange(RenderObject* object)
-{
-    // When a parent container is transformed in SVG, all children will be painted automatically
-    // so we are able to skip redundant repaint checks.
-    RenderObject* parent = object->parent();
-    return !(parent && parent->isSVGContainer() && toRenderSVGContainer(parent)->didTransformToRootUpdate());
 }
 
 // Update a bounding box taking into account the validity of the other bounding box.
@@ -325,6 +317,14 @@ bool SVGRenderSupport::pointInClippingArea(RenderObject* object, const FloatPoin
         return clipper->hitTestClipContent(object->objectBoundingBox(), point);
 
     return true;
+}
+
+bool SVGRenderSupport::transformToUserSpaceAndCheckClipping(RenderObject* object, const AffineTransform& localTransform, const FloatPoint& pointInParent, FloatPoint& localPoint)
+{
+    if (!localTransform.isInvertible())
+        return false;
+    localPoint = localTransform.inverse().mapPoint(pointInParent);
+    return pointInClippingArea(object, localPoint);
 }
 
 void SVGRenderSupport::applyStrokeStyleToContext(GraphicsContext* context, const RenderStyle* style, const RenderObject* object)

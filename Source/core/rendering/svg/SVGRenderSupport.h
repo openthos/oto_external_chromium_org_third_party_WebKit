@@ -24,7 +24,7 @@
 #ifndef SVGRenderSupport_h
 #define SVGRenderSupport_h
 
-namespace WebCore {
+namespace blink {
 
 class AffineTransform;
 class FloatPoint;
@@ -61,11 +61,14 @@ public:
     // Determines whether the passed point lies in a clipping area
     static bool pointInClippingArea(RenderObject*, const FloatPoint&);
 
+    // Transform |pointInParent| to |object|'s user-space and check if it is
+    // within the clipping area. Returns false if the transform is singular or
+    // the point is outside the clipping area.
+    static bool transformToUserSpaceAndCheckClipping(RenderObject*, const AffineTransform& localTransform, const FloatPoint& pointInParent, FloatPoint& localPoint);
+
     static void computeContainerBoundingBoxes(const RenderObject* container, FloatRect& objectBoundingBox, bool& objectBoundingBoxValid, FloatRect& strokeBoundingBox, FloatRect& repaintBoundingBox);
 
     static bool paintInfoIntersectsRepaintRect(const FloatRect& localRepaintRect, const AffineTransform& localTransform, const PaintInfo&);
-
-    static bool parentTransformDidChange(RenderObject*);
 
     // Important functions used by nearly all SVG renderers centralizing coordinate transformations / repaint rect calculations
     static LayoutRect clippedOverflowRectForRepaint(const RenderObject*, const RenderLayerModelObject* repaintContainer, const PaintInvalidationState*);
@@ -93,6 +96,6 @@ private:
     static bool layoutSizeOfNearestViewportChanged(const RenderObject* start);
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // SVGRenderSupport_h

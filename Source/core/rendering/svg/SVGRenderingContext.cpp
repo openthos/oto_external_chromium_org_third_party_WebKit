@@ -40,7 +40,7 @@
 
 static int kMaxImageBufferSize = 4096;
 
-namespace WebCore {
+namespace blink {
 
 static inline bool isRenderingMaskImage(RenderObject* object)
 {
@@ -294,7 +294,7 @@ bool SVGRenderingContext::bufferForeground(OwnPtr<ImageBuffer>& imageBuffer)
 
     // Create a new buffer and paint the foreground into it.
     if (!imageBuffer) {
-        if ((imageBuffer = m_paintInfo->context->createCompatibleBuffer(expandedIntSize(boundingBox.size())))) {
+        if ((imageBuffer = m_paintInfo->context->createRasterBuffer(expandedIntSize(boundingBox.size())))) {
             GraphicsContext* bufferedRenderingContext = imageBuffer->context();
             bufferedRenderingContext->translate(-boundingBox.x(), -boundingBox.y());
             PaintInfo bufferedInfo(*m_paintInfo);

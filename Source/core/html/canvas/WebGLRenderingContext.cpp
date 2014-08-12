@@ -59,7 +59,7 @@
 #include "platform/graphics/gpu/DrawingBuffer.h"
 #include "public/platform/Platform.h"
 
-namespace WebCore {
+namespace blink {
 
 PassOwnPtrWillBeRawPtr<WebGLRenderingContext> WebGLRenderingContext::create(HTMLCanvasElement* canvas, WebGLContextAttributes* attrs)
 {
@@ -79,7 +79,7 @@ PassOwnPtrWillBeRawPtr<WebGLRenderingContext> WebGLRenderingContext::create(HTML
     }
 
     // The only situation that attrs is null is through Document::getCSSCanvasContext().
-    RefPtr<WebGLContextAttributes> defaultAttrs;
+    RefPtrWillBeRawPtr<WebGLContextAttributes> defaultAttrs = nullptr;
     if (!attrs) {
         defaultAttrs = WebGLContextAttributes::create();
         attrs = defaultAttrs.get();
@@ -101,7 +101,7 @@ PassOwnPtrWillBeRawPtr<WebGLRenderingContext> WebGLRenderingContext::create(HTML
     renderingContext->registerContextExtensions();
     renderingContext->suspendIfNeeded();
 
-    if (!renderingContext->m_drawingBuffer) {
+    if (!renderingContext->drawingBuffer()) {
         canvas->dispatchEvent(WebGLContextEvent::create(EventTypeNames::webglcontextcreationerror, false, true, "Could not create a WebGL context."));
         return nullptr;
     }
@@ -117,7 +117,6 @@ WebGLRenderingContext::WebGLRenderingContext(HTMLCanvasElement* passedCanvas, Pa
 
 WebGLRenderingContext::~WebGLRenderingContext()
 {
-
 }
 
 void WebGLRenderingContext::registerContextExtensions()
@@ -148,4 +147,30 @@ void WebGLRenderingContext::registerContextExtensions()
     registerExtension<WebGLLoseContext>(m_webglLoseContext, ApprovedExtension, bothPrefixes);
 }
 
-} // namespace WebCore
+void WebGLRenderingContext::trace(Visitor* visitor)
+{
+    visitor->trace(m_angleInstancedArrays);
+    visitor->trace(m_extBlendMinMax);
+    visitor->trace(m_extFragDepth);
+    visitor->trace(m_extShaderTextureLOD);
+    visitor->trace(m_extTextureFilterAnisotropic);
+    visitor->trace(m_oesTextureFloat);
+    visitor->trace(m_oesTextureFloatLinear);
+    visitor->trace(m_oesTextureHalfFloat);
+    visitor->trace(m_oesTextureHalfFloatLinear);
+    visitor->trace(m_oesStandardDerivatives);
+    visitor->trace(m_oesVertexArrayObject);
+    visitor->trace(m_oesElementIndexUint);
+    visitor->trace(m_webglLoseContext);
+    visitor->trace(m_webglDebugRendererInfo);
+    visitor->trace(m_webglDebugShaders);
+    visitor->trace(m_webglDrawBuffers);
+    visitor->trace(m_webglCompressedTextureATC);
+    visitor->trace(m_webglCompressedTextureETC1);
+    visitor->trace(m_webglCompressedTexturePVRTC);
+    visitor->trace(m_webglCompressedTextureS3TC);
+    visitor->trace(m_webglDepthTexture);
+    WebGLRenderingContextBase::trace(visitor);
+}
+
+} // namespace blink

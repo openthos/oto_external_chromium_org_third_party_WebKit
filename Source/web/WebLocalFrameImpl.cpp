@@ -161,7 +161,6 @@
 #include "public/platform/WebVector.h"
 #include "public/web/WebConsoleMessage.h"
 #include "public/web/WebDOMEvent.h"
-#include "public/web/WebDOMEventListener.h"
 #include "public/web/WebDocument.h"
 #include "public/web/WebFindOptions.h"
 #include "public/web/WebFormElement.h"
@@ -179,7 +178,6 @@
 #include "public/web/WebSerializedScriptValue.h"
 #include "web/AssociatedURLLoader.h"
 #include "web/CompositionUnderlineVectorBuilder.h"
-#include "web/EventListenerWrapper.h"
 #include "web/FindInPageCoordinates.h"
 #include "web/GeolocationClientProxy.h"
 #include "web/LocalFileSystemClient.h"
@@ -196,7 +194,7 @@
 #include "wtf/HashMap.h"
 #include <algorithm>
 
-using namespace WebCore;
+using namespace blink;
 
 namespace blink {
 
@@ -275,7 +273,7 @@ WebPluginContainerImpl* WebLocalFrameImpl::pluginContainerFromFrame(LocalFrame* 
     return toWebPluginContainerImpl(pluginDocument->pluginWidget());
 }
 
-WebPluginContainerImpl* WebLocalFrameImpl::pluginContainerFromNode(WebCore::LocalFrame* frame, const WebNode& node)
+WebPluginContainerImpl* WebLocalFrameImpl::pluginContainerFromNode(blink::LocalFrame* frame, const WebNode& node)
 {
     WebPluginContainerImpl* pluginContainer = pluginContainerFromFrame(frame);
     if (pluginContainer)
@@ -883,7 +881,7 @@ void WebLocalFrameImpl::loadHTMLString(const WebData& data, const WebURL& baseUR
 void WebLocalFrameImpl::sendPings(const WebNode& linkNode, const WebURL& destinationURL)
 {
     ASSERT(frame());
-    const WebCore::Node* node = linkNode.constUnwrap<Node>();
+    const blink::Node* node = linkNode.constUnwrap<Node>();
     if (isHTMLAnchorElement(node))
         toHTMLAnchorElement(node)->sendPings(destinationURL);
 }
@@ -1173,7 +1171,7 @@ void WebLocalFrameImpl::selectRange(const WebPoint& base, const WebPoint& extent
 void WebLocalFrameImpl::selectRange(const WebRange& webRange)
 {
     if (RefPtrWillBeRawPtr<Range> range = static_cast<PassRefPtrWillBeRawPtr<Range> >(webRange))
-        frame()->selection().setSelectedRange(range.get(), WebCore::VP_DEFAULT_AFFINITY, FrameSelection::NonDirectional, NotUserTriggered);
+        frame()->selection().setSelectedRange(range.get(), blink::VP_DEFAULT_AFFINITY, FrameSelection::NonDirectional, NotUserTriggered);
 }
 
 void WebLocalFrameImpl::moveRangeSelection(const WebPoint& base, const WebPoint& extent)
@@ -1222,6 +1220,13 @@ void WebLocalFrameImpl::extendSelectionAndDelete(int before, int after)
         return;
     }
     frame()->inputMethodController().extendSelectionAndDelete(before, after);
+}
+
+void WebLocalFrameImpl::navigateToSandboxedMarkup(const WebData& markup)
+{
+    ASSERT(document().securityOrigin().isUnique());
+    frame()->loader().forceSandboxFlags(SandboxAll);
+    loadHTMLString(markup, document().url(), WebURL(), true);
 }
 
 void WebLocalFrameImpl::setCaretVisible(bool visible)
@@ -1317,6 +1322,16 @@ bool WebLocalFrameImpl::isPrintScalingDisabledForPlugin(const WebNode& node)
         return false;
 
     return pluginContainer->isPrintScalingDisabled();
+}
+
+int WebLocalFrameImpl::getPrintCopiesForPlugin(const WebNode& node)
+{
+    WebPluginContainerImpl* pluginContainer = node.isNull() ? pluginContainerFromFrame(frame()) : toWebPluginContainerImpl(node.pluginContainer());
+
+    if (!pluginContainer || !pluginContainer->supportsPaginatedPrint())
+        return 1;
+
+    return pluginContainer->getCopiesToPrint();
 }
 
 bool WebLocalFrameImpl::hasCustomPageSizeStyle(int pageIndex)
@@ -1453,7 +1468,7 @@ WebString WebLocalFrameImpl::contentAsMarkup() const
 {
     if (!frame())
         return WebString();
-    return createFullMarkup(frame()->document());
+    return createMarkup(frame()->document());
 }
 
 WebString WebLocalFrameImpl::renderTreeAsText(RenderAsTextControls toShow) const
@@ -1471,7 +1486,7 @@ WebString WebLocalFrameImpl::renderTreeAsText(RenderAsTextControls toShow) const
 
 WebString WebLocalFrameImpl::markerTextForListItem(const WebElement& webElement) const
 {
-    return WebCore::markerTextForListItem(const_cast<Element*>(webElement.constUnwrap<Element>()));
+    return blink::markerTextForListItem(const_cast<Element*>(webElement.constUnwrap<Element>()));
 }
 
 void WebLocalFrameImpl::printPagesWithBoundaries(WebCanvas* canvas, const WebSize& pageSizeInPixels)
@@ -1536,7 +1551,7 @@ WebLocalFrameImpl::~WebLocalFrameImpl()
     cancelPendingScopingEffort();
 }
 
-void WebLocalFrameImpl::setWebCoreFrame(PassRefPtr<WebCore::LocalFrame> frame)
+void WebLocalFrameImpl::setWebCoreFrame(PassRefPtr<blink::LocalFrame> frame)
 {
     m_frame = frame;
 
@@ -1832,7 +1847,7 @@ WebLocalFrameImpl* WebLocalFrameImpl::activeMatchFrame() const
     return 0;
 }
 
-WebCore::Range* WebLocalFrameImpl::activeMatch() const
+blink::Range* WebLocalFrameImpl::activeMatch() const
 {
     if (m_textFinder)
         return m_textFinder->activeMatch();

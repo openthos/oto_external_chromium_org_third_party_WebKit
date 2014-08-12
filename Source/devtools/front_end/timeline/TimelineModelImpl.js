@@ -5,32 +5,41 @@
 /**
  * @constructor
  * @extends {WebInspector.TimelineModel}
- * @param {!WebInspector.TimelineManager} timelineManager
+ * @implements {WebInspector.TargetManager.Observer}
  */
-WebInspector.TimelineModelImpl = function(timelineManager)
+WebInspector.TimelineModelImpl = function()
 {
-    WebInspector.TimelineModel.call(this, timelineManager.target());
-    this._timelineManager = timelineManager;
+    WebInspector.TimelineModel.call(this);
+    /** @type {?WebInspector.Target} */
+    this._currentTarget = null;
     this._filters = [];
     this._bindings = new WebInspector.TimelineModelImpl.InterRecordBindings();
 
     this.reset();
 
-    this._timelineManager.addEventListener(WebInspector.TimelineManager.EventTypes.TimelineEventRecorded, this._onRecordAdded, this);
-    this._timelineManager.addEventListener(WebInspector.TimelineManager.EventTypes.TimelineStarted, this._onStarted, this);
-    this._timelineManager.addEventListener(WebInspector.TimelineManager.EventTypes.TimelineStopped, this._onStopped, this);
-    this._timelineManager.addEventListener(WebInspector.TimelineManager.EventTypes.TimelineProgress, this._onProgress, this);
+    WebInspector.targetManager.addModelListener(WebInspector.TimelineManager, WebInspector.TimelineManager.EventTypes.TimelineEventRecorded, this._onRecordAdded, this);
+    WebInspector.targetManager.addModelListener(WebInspector.TimelineManager, WebInspector.TimelineManager.EventTypes.TimelineStarted, this._onStarted, this);
+    WebInspector.targetManager.addModelListener(WebInspector.TimelineManager, WebInspector.TimelineManager.EventTypes.TimelineStopped, this._onStopped, this);
+    WebInspector.targetManager.addModelListener(WebInspector.TimelineManager, WebInspector.TimelineManager.EventTypes.TimelineAllEventsReceived, this._onAllEventsReceived, this);
+    WebInspector.targetManager.addModelListener(WebInspector.TimelineManager, WebInspector.TimelineManager.EventTypes.TimelineProgress, this._onProgress, this);
+    WebInspector.targetManager.observeTargets(this);
 }
 
 WebInspector.TimelineModelImpl.TransferChunkLengthBytes = 5000000;
 
 WebInspector.TimelineModelImpl.prototype = {
     /**
-     * @return {boolean}
+     * @param {!WebInspector.Target} target
      */
-    loadedFromFile: function()
+    targetAdded: function(target) { },
+
+    /**
+     * @param {!WebInspector.Target} target
+     */
+    targetRemoved: function(target)
     {
-        return this._loadedFromFile;
+        if (this._currentTarget === target)
+            this._currentTarget = null;
     },
 
     /**
@@ -41,21 +50,27 @@ WebInspector.TimelineModelImpl.prototype = {
     startRecording: function(captureStacks, captureMemory, capturePictures)
     {
         console.assert(!capturePictures, "Legacy timeline does not support capturing pictures");
-        this._clientInitiatedRecording = true;
         this.reset();
+        this._currentTarget = WebInspector.context.flavor(WebInspector.Target);
+        console.assert(this._currentTarget);
+
+        this._clientInitiatedRecording = true;
         var maxStackFrames = captureStacks ? 30 : 0;
         var includeGPUEvents = WebInspector.experimentsSettings.gpuTimeline.isEnabled();
         var liveEvents = [ WebInspector.TimelineModel.RecordType.BeginFrame,
                            WebInspector.TimelineModel.RecordType.DrawFrame,
                            WebInspector.TimelineModel.RecordType.RequestMainThreadFrame,
                            WebInspector.TimelineModel.RecordType.ActivateLayerTree ];
-        this._timelineManager.start(maxStackFrames, WebInspector.experimentsSettings.timelineNoLiveUpdate.isEnabled(), liveEvents.join(","), captureMemory, includeGPUEvents, this._fireRecordingStarted.bind(this));
+        this._currentTarget.timelineManager.start(maxStackFrames, liveEvents.join(","), captureMemory, includeGPUEvents, this._fireRecordingStarted.bind(this));
     },
 
     stopRecording: function()
     {
+        if (!this._currentTarget)
+            return;
+
         if (!this._clientInitiatedRecording) {
-            this._timelineManager.start(undefined, undefined, undefined, undefined, undefined, stopTimeline.bind(this));
+            this._currentTarget.timelineManager.start(undefined, undefined, undefined, undefined, stopTimeline.bind(this));
             return;
         }
 
@@ -66,11 +81,11 @@ WebInspector.TimelineModelImpl.prototype = {
          */
         function stopTimeline()
         {
-            this._timelineManager.stop(this._fireRecordingStopped.bind(this));
+            this._currentTarget.timelineManager.stop(this._fireRecordingStopped.bind(this));
         }
 
         this._clientInitiatedRecording = false;
-        this._timelineManager.stop(this._fireRecordingStopped.bind(this));
+        this._currentTarget.timelineManager.stop(this._fireRecordingStopped.bind(this));
     },
 
     /**
@@ -86,7 +101,8 @@ WebInspector.TimelineModelImpl.prototype = {
      */
     _onRecordAdded: function(event)
     {
-        if (this._collectionEnabled)
+        var timelineManager = /** @type {!WebInspector.TimelineManager} */ (event.target);
+        if (this._collectionEnabled && timelineManager.target() === this._currentTarget)
             this._addRecord(/** @type {!TimelineAgent.TimelineEvent} */(event.data));
     },
 
@@ -95,10 +111,15 @@ WebInspector.TimelineModelImpl.prototype = {
      */
     _onStarted: function(event)
     {
-        if (event.data) {
-            // Started from console.
-            this._fireRecordingStarted();
+        if (!event.data || this._collectionEnabled)
+            return;
+        // Started from console.
+        var timelineManager = /** @type {!WebInspector.TimelineManager} */ (event.target);
+        if (this._currentTarget !== timelineManager.target()) {
+            this.reset();
+            this._currentTarget = timelineManager.target();
         }
+        this._fireRecordingStarted();
     },
 
     /**
@@ -106,9 +127,12 @@ WebInspector.TimelineModelImpl.prototype = {
      */
     _onStopped: function(event)
     {
-        // If we were buffering events, discard those that got through, the real ones are coming!
-        if (WebInspector.experimentsSettings.timelineNoLiveUpdate.isEnabled())
-            this.reset();
+        var timelineManager = /** @type {!WebInspector.TimelineManager} */ (event.target);
+        if (timelineManager.target() !== this._currentTarget)
+            return;
+        // We were buffering events, discard those that got through, the real ones are coming!
+        this.reset();
+        this._currentTarget = timelineManager.target();
         if (event.data) {
             // Stopped from console.
             this._fireRecordingStopped(null, null);
@@ -118,9 +142,22 @@ WebInspector.TimelineModelImpl.prototype = {
     /**
      * @param {!WebInspector.Event} event
      */
+    _onAllEventsReceived: function(event)
+    {
+        var timelineManager = /** @type {!WebInspector.TimelineManager} */ (event.target);
+        if (timelineManager.target() !== this._currentTarget)
+            return;
+        this._collectionEnabled = false;
+    },
+
+    /**
+     * @param {!WebInspector.Event} event
+     */
     _onProgress: function(event)
     {
-        this.dispatchEventToListeners(WebInspector.TimelineModel.Events.RecordingProgress, event.data);
+        var timelineManager = /** @type {!WebInspector.TimelineManager} */ (event.target);
+        if (timelineManager.target() === this._currentTarget)
+            this.dispatchEventToListeners(WebInspector.TimelineModel.Events.RecordingProgress, event.data);
     },
 
     _fireRecordingStarted: function()
@@ -135,7 +172,6 @@ WebInspector.TimelineModelImpl.prototype = {
      */
     _fireRecordingStopped: function(error, cpuProfile)
     {
-        this._collectionEnabled = false;
         if (cpuProfile)
             WebInspector.TimelineJSProfileProcessor.mergeJSProfileIntoTimeline(this, cpuProfile);
         this.dispatchEventToListeners(WebInspector.TimelineModel.Events.RecordingStopped);
@@ -191,18 +227,6 @@ WebInspector.TimelineModelImpl.prototype = {
         fileReader.start(loader);
     },
 
-    /**
-     * @param {string} url
-     * @param {!WebInspector.Progress} progress
-     */
-    loadFromURL: function(url, progress)
-    {
-        var delegate = new WebInspector.TimelineModelLoadFromFileDelegate(this, progress);
-        var urlReader = new WebInspector.ChunkedXHRReader(url, delegate);
-        var loader = new WebInspector.TimelineModelLoader(this, urlReader, progress);
-        urlReader.start(loader);
-    },
-
     _createFileReader: function(file, delegate)
     {
         return new WebInspector.ChunkedFileReader(file, WebInspector.TimelineModelImpl.TransferChunkLengthBytes, delegate);
@@ -235,7 +259,8 @@ WebInspector.TimelineModelImpl.prototype = {
 
     reset: function()
     {
-        this._loadedFromFile = false;
+        if (!this._collectionEnabled)
+            this._currentTarget = null;
         this._payloads = [];
         this._stringPool = {};
         this._bindings._reset();
@@ -391,11 +416,11 @@ WebInspector.TimelineModel.RecordImpl.prototype = {
     },
 
     /**
-     * @return {!WebInspector.Target}
+     * @return {?WebInspector.Target}
      */
     target: function()
     {
-        return this._model.target();
+        return this._model._currentTarget;
     },
 
     /**
@@ -585,7 +610,6 @@ WebInspector.TimelineModelLoader.prototype = {
 
     close: function()
     {
-        this._model._loadedFromFile = true;
     }
 }
 

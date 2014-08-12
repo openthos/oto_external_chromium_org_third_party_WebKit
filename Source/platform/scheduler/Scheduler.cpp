@@ -7,29 +7,54 @@
 
 #include "platform/Task.h"
 #include "platform/TraceEvent.h"
+#include "platform/TraceLocation.h"
 #include "public/platform/Platform.h"
 #include "public/platform/WebThread.h"
 
-namespace WebCore {
+namespace blink {
 
 namespace {
 
 class MainThreadTaskAdapter : public blink::WebThread::Task {
 public:
-    explicit MainThreadTaskAdapter(const Scheduler::Task& task)
-        : m_task(task)
+    explicit MainThreadTaskAdapter(const TraceLocation& location, const Scheduler::Task& task)
+        : m_location(location)
+        , m_task(task)
     {
     }
 
     // WebThread::Task implementation.
     virtual void run() OVERRIDE
     {
-        TRACE_EVENT0("blink", "MainThreadTaskAdapter::run");
+        TRACE_EVENT2("blink", "MainThreadTaskAdapter::run",
+            "src_file", m_location.fileName(),
+            "src_func", m_location.functionName());
         m_task();
     }
 
 private:
+    const TraceLocation m_location;
     Scheduler::Task m_task;
+};
+
+class MainThreadIdleTaskAdapter : public blink::WebThread::Task {
+public:
+    MainThreadIdleTaskAdapter(const Scheduler::IdleTask& idleTask, double allottedTimeMs)
+        : m_idleTask(idleTask)
+        , m_allottedTimeMs(allottedTimeMs)
+    {
+    }
+
+    // WebThread::Task implementation.
+    virtual void run() OVERRIDE
+    {
+        TRACE_EVENT1("blink", "MainThreadIdleTaskAdapter::run", "allottedTime", m_allottedTimeMs);
+        m_idleTask(m_allottedTimeMs);
+    }
+
+private:
+    Scheduler::IdleTask m_idleTask;
+    double m_allottedTimeMs;
 };
 
 }
@@ -62,24 +87,35 @@ Scheduler::~Scheduler()
 {
 }
 
-void Scheduler::scheduleTask(const Task& task)
+void Scheduler::scheduleTask(const TraceLocation& location, const Task& task)
 {
-    m_mainThread->postTask(new MainThreadTaskAdapter(task));
+    m_mainThread->postTask(new MainThreadTaskAdapter(location, task));
 }
 
-void Scheduler::postTask(const Task& task)
+void Scheduler::scheduleIdleTask(const IdleTask& idleTask)
 {
-    scheduleTask(task);
+    // TODO: send a real allottedTime here.
+    m_mainThread->postTask(new MainThreadIdleTaskAdapter(idleTask, 0));
 }
 
-void Scheduler::postInputTask(const Task& task)
+void Scheduler::postTask(const TraceLocation& location, const Task& task)
 {
-    scheduleTask(task);
+    scheduleTask(location, task);
 }
 
-void Scheduler::postCompositorTask(const Task& task)
+void Scheduler::postInputTask(const TraceLocation& location, const Task& task)
 {
-    scheduleTask(task);
+    scheduleTask(location, task);
+}
+
+void Scheduler::postCompositorTask(const TraceLocation& location, const Task& task)
+{
+    scheduleTask(location, task);
+}
+
+void Scheduler::postIdleTask(const IdleTask& idleTask)
+{
+    scheduleIdleTask(idleTask);
 }
 
 void Scheduler::tickSharedTimer()
@@ -114,4 +150,4 @@ bool Scheduler::shouldYieldForHighPriorityWork()
     return false;
 }
 
-} // namespace WebCore
+} // namespace blink

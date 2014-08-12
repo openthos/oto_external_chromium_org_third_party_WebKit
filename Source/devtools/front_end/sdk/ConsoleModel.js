@@ -30,12 +30,12 @@
 
 /**
  * @constructor
- * @extends {WebInspector.SDKObject}
+ * @extends {WebInspector.SDKModel}
  * @param {!WebInspector.Target} target
  */
 WebInspector.ConsoleModel = function(target)
 {
-    WebInspector.SDKObject.call(this, target);
+    WebInspector.SDKModel.call(this, WebInspector.ConsoleModel, target);
 
     /** @type {!Array.<!WebInspector.ConsoleMessage>} */
     this._messages = [];
@@ -130,7 +130,7 @@ WebInspector.ConsoleModel.prototype = {
         this.dispatchEventToListeners(WebInspector.ConsoleModel.Events.ConsoleCleared);
     },
 
-    __proto__: WebInspector.SDKObject.prototype
+    __proto__: WebInspector.SDKModel.prototype
 }
 
 /**
@@ -150,15 +150,16 @@ WebInspector.ConsoleModel.evaluateCommandInConsole = function(executionContext, 
      * @param {?WebInspector.RemoteObject} result
      * @param {boolean} wasThrown
      * @param {?RuntimeAgent.RemoteObject=} valueResult
+     * @param {?DebuggerAgent.ExceptionDetails=} exceptionDetails
      * @this {WebInspector.ConsoleModel}
      */
-    function printResult(result, wasThrown, valueResult)
+    function printResult(result, wasThrown, valueResult, exceptionDetails)
     {
         if (!result)
             return;
 
         WebInspector.console.show();
-        this.dispatchEventToListeners(WebInspector.ConsoleModel.Events.CommandEvaluated, {result: result, wasThrown: wasThrown, text: text, commandMessage: commandMessage});
+        this.dispatchEventToListeners(WebInspector.ConsoleModel.Events.CommandEvaluated, {result: result, wasThrown: wasThrown, text: text, commandMessage: commandMessage, exceptionDetails: exceptionDetails});
     }
 
     executionContext.evaluate(text, "console", useCommandLineAPI, false, false, true, printResult.bind(target.consoleModel));
@@ -206,11 +207,11 @@ WebInspector.ConsoleMessage = function(target, source, level, messageText, type,
 
     if (this.request) {
         this.stackTrace = this.request.initiator.stackTrace;
+        this.asyncStackTrace = this.request.initiator.asyncStackTrace;
         if (this.request.initiator && this.request.initiator.url) {
             this.url = this.request.initiator.url;
             this.line = this.request.initiator.lineNumber;
         }
-        this.asyncStackTrace = undefined;
     }
 }
 
@@ -405,6 +406,24 @@ WebInspector.ConsoleMessage.MessageLevel = {
     Warning: "warning",
     Error: "error",
     Debug: "debug"
+};
+
+WebInspector.ConsoleMessage._messageLevelPriority = {
+    "debug": 0,
+    "log": 1,
+    "info": 2,
+    "warning": 3,
+    "error": 4
+};
+
+/**
+ * @param {!WebInspector.ConsoleMessage} a
+ * @param {!WebInspector.ConsoleMessage} b
+ * @return {number}
+ */
+WebInspector.ConsoleMessage.messageLevelComparator = function(a, b)
+{
+    return WebInspector.ConsoleMessage._messageLevelPriority[a.level] - WebInspector.ConsoleMessage._messageLevelPriority[b.level];
 }
 
 /**
@@ -474,6 +493,8 @@ WebInspector.ConsoleDispatcher.prototype = {
 WebInspector.MultitargetConsoleModel = function()
 {
     WebInspector.targetManager.observeTargets(this);
+    WebInspector.targetManager.addModelListener(WebInspector.ConsoleModel, WebInspector.ConsoleModel.Events.MessageAdded, this._consoleMessageAdded, this);
+    WebInspector.targetManager.addModelListener(WebInspector.ConsoleModel, WebInspector.ConsoleModel.Events.CommandEvaluated, this._commandEvaluated, this);
 }
 
 WebInspector.MultitargetConsoleModel.prototype = {
@@ -486,8 +507,6 @@ WebInspector.MultitargetConsoleModel.prototype = {
             this._mainTarget = target;
             target.consoleModel.addEventListener(WebInspector.ConsoleModel.Events.ConsoleCleared, this._consoleCleared, this);
         }
-        target.consoleModel.addEventListener(WebInspector.ConsoleModel.Events.MessageAdded, this._consoleMessageAdded, this);
-        target.consoleModel.addEventListener(WebInspector.ConsoleModel.Events.CommandEvaluated, this._commandEvaluated, this);
     },
 
     /**
@@ -499,8 +518,6 @@ WebInspector.MultitargetConsoleModel.prototype = {
             delete this._mainTarget;
             target.consoleModel.removeEventListener(WebInspector.ConsoleModel.Events.ConsoleCleared, this._consoleCleared, this);
         }
-        target.consoleModel.removeEventListener(WebInspector.ConsoleModel.Events.MessageAdded, this._consoleMessageAdded, this);
-        target.consoleModel.removeEventListener(WebInspector.ConsoleModel.Events.CommandEvaluated, this._commandEvaluated, this);
     },
 
     /**

@@ -53,7 +53,7 @@
 #include "platform/geometry/TransformState.h"
 #include "platform/graphics/GraphicsContextStateSaver.h"
 
-namespace WebCore {
+namespace blink {
 
 RenderSVGText::RenderSVGText(SVGTextElement* node)
     : RenderSVGBlock(node)
@@ -429,10 +429,10 @@ bool RenderSVGText::nodeAtFloatPoint(const HitTestRequest& request, HitTestResul
         if ((hitRules.canHitBoundingBox && !objectBoundingBox().isEmpty())
             || (hitRules.canHitStroke && (style()->svgStyle().hasStroke() || !hitRules.requireStroke))
             || (hitRules.canHitFill && (style()->svgStyle().hasFill() || !hitRules.requireFill))) {
-            FloatPoint localPoint = localToParentTransform().inverse().mapPoint(pointInParent);
-
-            if (!SVGRenderSupport::pointInClippingArea(this, localPoint))
+            FloatPoint localPoint;
+            if (!SVGRenderSupport::transformToUserSpaceAndCheckClipping(this, localToParentTransform(), pointInParent, localPoint))
                 return false;
+
             if (hitRules.canHitBoundingBox && !objectBoundingBox().contains(localPoint))
                 return false;
 

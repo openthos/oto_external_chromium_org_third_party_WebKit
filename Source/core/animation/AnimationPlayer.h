@@ -36,7 +36,7 @@
 #include "core/events/EventTarget.h"
 #include "wtf/RefPtr.h"
 
-namespace WebCore {
+namespace blink {
 
 class AnimationTimeline;
 class ExceptionState;
@@ -65,6 +65,7 @@ public:
     double currentTime();
     void setCurrentTime(double newCurrentTime);
 
+    double calculateCurrentTime() const;
     double currentTimeInternal();
     void setCurrentTimeInternal(double newCurrentTime);
 
@@ -105,9 +106,6 @@ public:
     AnimationNode* source() { return m_content.get(); }
     void setSource(AnimationNode*);
 
-    double timeLag() { return timeLagInternal() * 1000; }
-    double timeLagInternal() { return currentTimeWithoutLag() - currentTimeInternal(); }
-
     // Pausing via this method is not reflected in the value returned by
     // paused() and must never overlap with pausing via pause().
     void pauseForTesting(double pauseTime);
@@ -126,20 +124,16 @@ public:
     class SortInfo {
     public:
         friend class AnimationPlayer;
-        bool operator<(const SortInfo& other) const;
-        double startTime() const { return m_startTime; }
-        bool hasLowerSequenceNumber(const SortInfo& other) const
+        bool operator<(const SortInfo& other) const
         {
             return m_sequenceNumber < other.m_sequenceNumber;
         }
     private:
-        SortInfo(unsigned sequenceNumber, double startTime)
+        SortInfo(unsigned sequenceNumber)
             : m_sequenceNumber(sequenceNumber)
-            , m_startTime(startTime)
         {
         }
         unsigned m_sequenceNumber;
-        double m_startTime;
     };
 
     const SortInfo& sortInfo() const { return m_sortInfo; }
@@ -163,15 +157,11 @@ private:
     AnimationPlayer(ExecutionContext*, AnimationTimeline&, AnimationNode*);
     double sourceEnd() const;
     bool limited(double currentTime) const;
-    double currentTimeWithoutLag() const;
-    double currentTimeWithLag() const;
-    void updateTimingState(double newCurrentTime);
     void updateCurrentTimingState();
 
     double m_playbackRate;
     double m_startTime;
     double m_holdTime;
-    double m_storedTimeLag;
 
     SortInfo m_sortInfo;
 
@@ -182,8 +172,8 @@ private:
     bool m_held;
     bool m_isPausedForTesting;
 
-    // This indicates timing information relevant to the player has changed by
-    // means other than the ordinary progression of time
+    // This indicates timing information relevant to the player's effect
+    // has changed by means other than the ordinary progression of time
     bool m_outdated;
 
     bool m_finished;

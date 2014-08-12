@@ -40,7 +40,7 @@
 #include "core/dom/shadow/ShadowRoot.h"
 #include "core/html/HTMLStyleElement.h"
 
-namespace WebCore {
+namespace blink {
 
 ContainerNode* ScopedStyleResolver::scopingNodeFor(Document& document, const CSSStyleSheet* sheet)
 {
@@ -60,6 +60,15 @@ ContainerNode* ScopedStyleResolver::scopingNodeFor(Document& document, const CSS
     return &document;
 }
 
+ScopedStyleResolver* ScopedStyleResolver::parent() const
+{
+    for (TreeScope* scope = treeScope().parentTreeScope(); scope; scope = scope->parentTreeScope()) {
+        if (ScopedStyleResolver* resolver = scope->scopedStyleResolver())
+            return resolver;
+    }
+    return 0;
+}
+
 void ScopedStyleResolver::addRulesFromSheet(CSSStyleSheet* cssSheet, const MediaQueryEvaluator& medium, StyleResolver* resolver)
 {
     m_authorStyleSheets.append(cssSheet);
@@ -68,10 +77,10 @@ void ScopedStyleResolver::addRulesFromSheet(CSSStyleSheet* cssSheet, const Media
     AddRuleFlags addRuleFlags = resolver->document().securityOrigin()->canRequest(sheet->baseURL()) ? RuleHasDocumentSecurityOrigin : RuleHasNoSpecialState;
     const RuleSet& ruleSet = sheet->ensureRuleSet(medium, addRuleFlags);
     resolver->addMediaQueryResults(ruleSet.viewportDependentMediaQueryResults());
-    resolver->processScopedRules(ruleSet, cssSheet, m_scope.rootNode());
+    resolver->processScopedRules(ruleSet, cssSheet, treeScope().rootNode());
 }
 
-void ScopedStyleResolver::collectFeaturesTo(RuleFeatureSet& features, HashSet<const StyleSheetContents*>& visitedSharedStyleSheetContents)
+void ScopedStyleResolver::collectFeaturesTo(RuleFeatureSet& features, HashSet<const StyleSheetContents*>& visitedSharedStyleSheetContents) const
 {
     for (size_t i = 0; i < m_authorStyleSheets.size(); ++i) {
         StyleSheetContents* contents = m_authorStyleSheets[i]->contents();
@@ -142,4 +151,13 @@ void ScopedStyleResolver::collectViewportRulesTo(StyleResolver* resolver) const
         resolver->viewportStyleResolver()->collectViewportRules(&m_authorStyleSheets[i]->contents()->ruleSet(), ViewportStyleResolver::AuthorOrigin);
 }
 
-} // namespace WebCore
+void ScopedStyleResolver::trace(Visitor* visitor)
+{
+#if ENABLE(OILPAN)
+    visitor->trace(m_scope);
+    visitor->trace(m_authorStyleSheets);
+    visitor->trace(m_keyframesRuleMap);
+#endif
+}
+
+} // namespace blink

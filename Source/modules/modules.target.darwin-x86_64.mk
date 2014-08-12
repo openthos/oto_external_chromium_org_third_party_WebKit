@@ -18,18 +18,6 @@ GYP_TARGET_DEPENDENCIES := \
 	$(call intermediates-dir-for,STATIC_LIBRARIES,skia_skia_library_gyp,,,$(GYP_VAR_PREFIX))/skia_skia_library_gyp.a \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_modules_make_modules_generated_gyp,,,$(GYP_VAR_PREFIX))/make_modules_generated.stamp
 
-### Rules for action "FetchPolyfill":
-$(gyp_shared_intermediate_dir)/blink/modules/FetchPolyfill.h: gyp_local_path := $(LOCAL_PATH)
-$(gyp_shared_intermediate_dir)/blink/modules/FetchPolyfill.h: gyp_var_prefix := $(GYP_VAR_PREFIX)
-$(gyp_shared_intermediate_dir)/blink/modules/FetchPolyfill.h: gyp_intermediate_dir := $(abspath $(gyp_intermediate_dir))
-$(gyp_shared_intermediate_dir)/blink/modules/FetchPolyfill.h: gyp_shared_intermediate_dir := $(abspath $(gyp_shared_intermediate_dir))
-$(gyp_shared_intermediate_dir)/blink/modules/FetchPolyfill.h: export PATH := $(subst $(ANDROID_BUILD_PATHS),,$(PATH))
-$(gyp_shared_intermediate_dir)/blink/modules/FetchPolyfill.h: $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/make-file-arrays.py $(LOCAL_PATH)/third_party/WebKit/Source/modules/serviceworkers/polyfills/fetchPolyfill.js $(GYP_TARGET_DEPENDENCIES)
-	@echo "Gyp action: third_party_WebKit_Source_modules_modules_gyp_modules_target_FetchPolyfill ($@)"
-	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/modules; mkdir -p $(gyp_shared_intermediate_dir)/blink/modules; python ../build/scripts/make-file-arrays.py "--out-h=$(gyp_shared_intermediate_dir)/blink/modules/FetchPolyfill.h" "--out-cpp=$(gyp_shared_intermediate_dir)/blink/modules/FetchPolyfill.cpp" "--namespace=WebCore" serviceworkers/polyfills/fetchPolyfill.js
-
-$(gyp_shared_intermediate_dir)/blink/modules/FetchPolyfill.cpp: $(gyp_shared_intermediate_dir)/blink/modules/FetchPolyfill.h ;
-
 ### Rules for action "CachePolyfill":
 $(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.h: gyp_local_path := $(LOCAL_PATH)
 $(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.h: gyp_var_prefix := $(GYP_VAR_PREFIX)
@@ -38,7 +26,7 @@ $(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.h: gyp_shared_interme
 $(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.h: export PATH := $(subst $(ANDROID_BUILD_PATHS),,$(PATH))
 $(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.h: $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/make-file-arrays.py $(LOCAL_PATH)/third_party/WebKit/Source/modules/serviceworkers/polyfills/cachePolyfill.js $(GYP_TARGET_DEPENDENCIES)
 	@echo "Gyp action: third_party_WebKit_Source_modules_modules_gyp_modules_target_CachePolyfill ($@)"
-	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/modules; mkdir -p $(gyp_shared_intermediate_dir)/blink/modules; python ../build/scripts/make-file-arrays.py "--out-h=$(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.h" "--out-cpp=$(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.cpp" "--namespace=WebCore" serviceworkers/polyfills/cachePolyfill.js
+	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/modules; mkdir -p $(gyp_shared_intermediate_dir)/blink/modules; python ../build/scripts/make-file-arrays.py "--out-h=$(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.h" "--out-cpp=$(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.cpp" "--namespace=blink" serviceworkers/polyfills/cachePolyfill.js
 
 $(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.cpp: $(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.h ;
 
@@ -50,14 +38,12 @@ $(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.h: gyp_shared_
 $(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.h: export PATH := $(subst $(ANDROID_BUILD_PATHS),,$(PATH))
 $(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.h: $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/make-file-arrays.py $(LOCAL_PATH)/third_party/WebKit/Source/modules/serviceworkers/polyfills/cacheStoragePolyfill.js $(GYP_TARGET_DEPENDENCIES)
 	@echo "Gyp action: third_party_WebKit_Source_modules_modules_gyp_modules_target_CacheStoragePolyfill ($@)"
-	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/modules; mkdir -p $(gyp_shared_intermediate_dir)/blink/modules; python ../build/scripts/make-file-arrays.py "--out-h=$(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.h" "--out-cpp=$(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.cpp" "--namespace=WebCore" serviceworkers/polyfills/cacheStoragePolyfill.js
+	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/modules; mkdir -p $(gyp_shared_intermediate_dir)/blink/modules; python ../build/scripts/make-file-arrays.py "--out-h=$(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.h" "--out-cpp=$(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.cpp" "--namespace=blink" serviceworkers/polyfills/cacheStoragePolyfill.js
 
 $(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.cpp: $(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.h ;
 
 
 GYP_GENERATED_OUTPUTS := \
-	$(gyp_shared_intermediate_dir)/blink/modules/FetchPolyfill.h \
-	$(gyp_shared_intermediate_dir)/blink/modules/FetchPolyfill.cpp \
 	$(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.h \
 	$(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.cpp \
 	$(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.h \
@@ -66,8 +52,6 @@ GYP_GENERATED_OUTPUTS := \
 # Make sure our deps and generated files are built first.
 LOCAL_ADDITIONAL_DEPENDENCIES := $(GYP_TARGET_DEPENDENCIES) $(GYP_GENERATED_OUTPUTS)
 
-$(gyp_intermediate_dir)/FetchPolyfill.cpp: $(gyp_shared_intermediate_dir)/blink/modules/FetchPolyfill.cpp
-	mkdir -p $(@D); cp $< $@
 $(gyp_intermediate_dir)/CachePolyfill.cpp: $(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.cpp
 	mkdir -p $(@D); cp $< $@
 $(gyp_intermediate_dir)/CacheStoragePolyfill.cpp: $(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.cpp
@@ -117,7 +101,6 @@ $(gyp_intermediate_dir)/V8GeneratedModulesBindings18.cpp: $(gyp_shared_intermedi
 $(gyp_intermediate_dir)/V8GeneratedModulesBindings19.cpp: $(gyp_shared_intermediate_dir)/blink/bindings/modules/v8/V8GeneratedModulesBindings19.cpp
 	mkdir -p $(@D); cp $< $@
 LOCAL_GENERATED_SOURCES := \
-	$(gyp_intermediate_dir)/FetchPolyfill.cpp \
 	$(gyp_intermediate_dir)/CachePolyfill.cpp \
 	$(gyp_intermediate_dir)/CacheStoragePolyfill.cpp \
 	$(gyp_intermediate_dir)/EventModules.cpp \
@@ -142,7 +125,6 @@ LOCAL_GENERATED_SOURCES := \
 	$(gyp_intermediate_dir)/V8GeneratedModulesBindings17.cpp \
 	$(gyp_intermediate_dir)/V8GeneratedModulesBindings18.cpp \
 	$(gyp_intermediate_dir)/V8GeneratedModulesBindings19.cpp \
-	$(gyp_shared_intermediate_dir)/blink/modules/FetchPolyfill.h \
 	$(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.h \
 	$(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.h
 
@@ -222,15 +204,17 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/modules/gamepad/NavigatorGamepad.cpp \
 	third_party/WebKit/Source/modules/gamepad/WebKitGamepad.cpp \
 	third_party/WebKit/Source/modules/gamepad/WebKitGamepadList.cpp \
-	third_party/WebKit/Source/modules/geolocation/CircularRegion.cpp \
+	third_party/WebKit/Source/modules/geofencing/CircularRegion.cpp \
+	third_party/WebKit/Source/modules/geofencing/Geofencing.cpp \
+	third_party/WebKit/Source/modules/geofencing/NavigatorGeofencing.cpp \
 	third_party/WebKit/Source/modules/geolocation/Coordinates.cpp \
 	third_party/WebKit/Source/modules/geolocation/Geolocation.cpp \
 	third_party/WebKit/Source/modules/geolocation/GeolocationController.cpp \
 	third_party/WebKit/Source/modules/geolocation/GeolocationInspectorAgent.cpp \
 	third_party/WebKit/Source/modules/geolocation/GeoNotifier.cpp \
+	third_party/WebKit/Source/modules/geolocation/GeolocationWatchers.cpp \
 	third_party/WebKit/Source/modules/geolocation/NavigatorGeolocation.cpp \
 	third_party/WebKit/Source/modules/geolocation/PositionOptions.cpp \
-	third_party/WebKit/Source/modules/imagebitmap/ImageBitmapFactories.cpp \
 	third_party/WebKit/Source/modules/indexeddb/DOMWindowIndexedDatabase.cpp \
 	third_party/WebKit/Source/modules/indexeddb/IDBAny.cpp \
 	third_party/WebKit/Source/modules/indexeddb/IDBCursor.cpp \
@@ -320,6 +304,8 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/modules/screen_orientation/ScreenScreenOrientation.cpp \
 	third_party/WebKit/Source/modules/screen_orientation/ScreenOrientation.cpp \
 	third_party/WebKit/Source/modules/screen_orientation/ScreenOrientationController.cpp \
+	third_party/WebKit/Source/modules/screen_orientation/ScreenOrientationDispatcher.cpp \
+	third_party/WebKit/Source/modules/serviceworkers/CacheStorage.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/Client.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/FetchBodyStream.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/FetchEvent.cpp \
@@ -341,6 +327,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/modules/serviceworkers/ServiceWorkerError.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/ServiceWorkerGlobalScope.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/ServiceWorkerGlobalScopeClient.cpp \
+	third_party/WebKit/Source/modules/serviceworkers/ServiceWorkerRegistration.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/ServiceWorkerThread.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/WaitUntilObserver.cpp \
 	third_party/WebKit/Source/modules/speech/DOMWindowSpeechSynthesis.cpp \
@@ -534,7 +521,6 @@ MY_DEFS_Debug := \
 	'-DSYSTEM_NATIVELY_SIGNALS_MEMORY_PRESSURE' \
 	'-DENABLE_EGLIMAGE=1' \
 	'-DCLD_VERSION=1' \
-	'-DCLD_DATA_FROM_STATIC' \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
@@ -552,6 +538,7 @@ MY_DEFS_Debug := \
 	'-DENABLE_WEB_AUDIO=1' \
 	'-DENABLE_OPENTYPE_VERTICAL=1' \
 	'-DU_USING_ICU_NAMESPACE=0' \
+	'-DU_ENABLE_DYLOAD=0' \
 	'-DSK_ENABLE_INST_COUNT=0' \
 	'-DSK_SUPPORT_GPU=1' \
 	'-DGR_GL_CUSTOM_SETUP_HEADER="GrGLConfig_chrome.h"' \
@@ -596,8 +583,8 @@ LOCAL_C_INCLUDES_Debug := \
 	$(LOCAL_PATH)/third_party/WebKit \
 	$(gyp_shared_intermediate_dir)/blink \
 	$(LOCAL_PATH)/third_party/openmax_dl \
-	$(PWD)/external/icu4c/common \
-	$(PWD)/external/icu4c/i18n \
+	$(PWD)/external/icu/icu4c/source/common \
+	$(PWD)/external/icu/icu4c/source/i18n \
 	$(LOCAL_PATH)/third_party/skia/src/core \
 	$(LOCAL_PATH)/third_party/skia/include/core \
 	$(LOCAL_PATH)/third_party/skia/include/effects \
@@ -683,7 +670,6 @@ MY_DEFS_Release := \
 	'-DSYSTEM_NATIVELY_SIGNALS_MEMORY_PRESSURE' \
 	'-DENABLE_EGLIMAGE=1' \
 	'-DCLD_VERSION=1' \
-	'-DCLD_DATA_FROM_STATIC' \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
@@ -701,6 +687,7 @@ MY_DEFS_Release := \
 	'-DENABLE_WEB_AUDIO=1' \
 	'-DENABLE_OPENTYPE_VERTICAL=1' \
 	'-DU_USING_ICU_NAMESPACE=0' \
+	'-DU_ENABLE_DYLOAD=0' \
 	'-DSK_ENABLE_INST_COUNT=0' \
 	'-DSK_SUPPORT_GPU=1' \
 	'-DGR_GL_CUSTOM_SETUP_HEADER="GrGLConfig_chrome.h"' \
@@ -746,8 +733,8 @@ LOCAL_C_INCLUDES_Release := \
 	$(LOCAL_PATH)/third_party/WebKit \
 	$(gyp_shared_intermediate_dir)/blink \
 	$(LOCAL_PATH)/third_party/openmax_dl \
-	$(PWD)/external/icu4c/common \
-	$(PWD)/external/icu4c/i18n \
+	$(PWD)/external/icu/icu4c/source/common \
+	$(PWD)/external/icu/icu4c/source/i18n \
 	$(LOCAL_PATH)/third_party/skia/src/core \
 	$(LOCAL_PATH)/third_party/skia/include/core \
 	$(LOCAL_PATH)/third_party/skia/include/effects \

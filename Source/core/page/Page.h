@@ -37,7 +37,7 @@
 #include "wtf/Noncopyable.h"
 #include "wtf/text/WTFString.h"
 
-namespace WebCore {
+namespace blink {
 
 class AutoscrollController;
 class BackForwardClient;
@@ -254,7 +254,7 @@ private:
     const OwnPtrWillBeMember<DragController> m_dragController;
     const OwnPtr<FocusController> m_focusController;
     const OwnPtrWillBeMember<ContextMenuController> m_contextMenuController;
-    const OwnPtr<InspectorController> m_inspectorController;
+    const OwnPtrWillBeMember<InspectorController> m_inspectorController;
     const OwnPtrWillBeMember<PointerLockController> m_pointerLockController;
     OwnPtr<ScrollingCoordinator> m_scrollingCoordinator;
     const OwnPtrWillBeMember<UndoStack> m_undoStack;
@@ -310,6 +310,6 @@ private:
     OwnPtrWillBeMember<FrameHost> m_frameHost;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // Page_h

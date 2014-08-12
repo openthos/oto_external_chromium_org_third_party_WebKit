@@ -9,7 +9,7 @@
 #include "core/animation/AnimationNode.h"
 #include "platform/animation/TimingFunction.h"
 
-namespace WebCore {
+namespace blink {
 
 PassRefPtrWillBeRawPtr<AnimationNodeTiming> AnimationNodeTiming::create(AnimationNode* parent)
 {
@@ -19,6 +19,7 @@ PassRefPtrWillBeRawPtr<AnimationNodeTiming> AnimationNodeTiming::create(Animatio
 AnimationNodeTiming::AnimationNodeTiming(AnimationNode* parent)
 : m_parent(parent)
 {
+    ScriptWrappable::init(this);
 }
 
 double AnimationNodeTiming::delay()
@@ -177,4 +178,4 @@ void AnimationNodeTiming::trace(Visitor* visitor)
     visitor->trace(m_parent);
 }
 
-} // namespace WebCore
+} // namespace blink

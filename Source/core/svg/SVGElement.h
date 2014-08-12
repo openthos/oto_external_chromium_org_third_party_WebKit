@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2006, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2014 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -22,7 +22,7 @@
 #ifndef SVGElement_h
 #define SVGElement_h
 
-#include "core/SVGElementTypeHelpers.h"
+#include "core/SVGNames.h"
 #include "core/dom/Element.h"
 #include "core/svg/SVGAnimatedString.h"
 #include "core/svg/SVGParsingError.h"
@@ -31,7 +31,7 @@
 #include "wtf/HashMap.h"
 #include "wtf/OwnPtr.h"
 
-namespace WebCore {
+namespace blink {
 
 class AffineTransform;
 class CSSCursorImageValue;
@@ -44,6 +44,7 @@ class SVGElement;
 class SVGElementRareData;
 class SVGFitToViewBox;
 class SVGSVGElement;
+class SVGUseElement;
 
 void mapAttributeToCSSProperty(HashMap<StringImpl*, CSSPropertyID>* propertyNameToIdMap, const QualifiedName& attrName);
 
@@ -59,6 +60,8 @@ public:
     virtual bool supportsFocus() const OVERRIDE { return false; }
 
     bool isOutermostSVGSVGElement() const;
+
+    bool hasTagName(const SVGQualifiedName& name) const { return hasLocalName(name.localName()); }
 
     virtual String title() const OVERRIDE;
     bool hasRelativeLengths() const { return !m_elementsWithRelativeLengths.isEmpty(); }
@@ -193,6 +196,11 @@ protected:
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
 
+    // FIXME: |parseAttributeNew| is a new implementation of parseAttribute
+    // which maps attribute using |m_attributeToPropertyMap|.
+    // This is to replace |parseAttribute()| after all derived class switch to call this.
+    void parseAttributeNew(const QualifiedName&, const AtomicString&);
+
     virtual void attributeChanged(const QualifiedName&, const AtomicString&, AttributeModificationReason = ModifiedDirectly) OVERRIDE;
 
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
@@ -226,6 +234,9 @@ private:
     // https://bugs.webkit.org/show_bug.cgi?id=77938
     virtual bool areAuthorShadowsAllowed() const OVERRIDE FINAL { return false; }
 
+    bool isSVGElement() const WTF_DELETED_FUNCTION; // This will catch anyone doing an unnecessary check.
+    bool isStyledElement() const WTF_DELETED_FUNCTION; // This will catch anyone doing an unnecessary check.
+
     RenderStyle* computedStyle(PseudoId = NOPSEUDO);
     virtual RenderStyle* virtualComputedStyle(PseudoId pseudoElementSpecifier = NOPSEUDO) OVERRIDE FINAL { return computedStyle(pseudoElementSpecifier); }
     virtual void willRecalcStyle(StyleRecalcChange) OVERRIDE;
@@ -235,7 +246,7 @@ private:
     WillBeHeapHashSet<RawPtrWillBeWeakMember<SVGElement> > m_elementsWithRelativeLengths;
 
     typedef HashMap<QualifiedName, RefPtr<SVGAnimatedPropertyBase> > AttributeToPropertyMap;
-    AttributeToPropertyMap m_newAttributeToPropertyMap;
+    AttributeToPropertyMap m_attributeToPropertyMap;
 
 #if ENABLE(ASSERT)
     bool m_inRelativeLengthClientsInvalidation;
@@ -260,8 +271,28 @@ struct SVGAttributeHashTranslator {
 
 DEFINE_ELEMENT_TYPE_CASTS(SVGElement, isSVGElement());
 
-template <> inline bool isElementOfType<const SVGElement>(const Node& node) { return node.isSVGElement(); }
+template <typename T> bool isElementOfType(const SVGElement&);
+template <> inline bool isElementOfType<const SVGElement>(const SVGElement&) { return true; }
+
+inline bool Node::hasTagName(const SVGQualifiedName& name) const
+{
+    return isSVGElement() && toSVGElement(*this).hasTagName(name);
+}
+
+// This requires isSVG*Element(const SVGElement&).
+#define DEFINE_SVGELEMENT_TYPE_CASTS_WITH_FUNCTION(thisType) \
+    inline bool is##thisType(const thisType* element); \
+    inline bool is##thisType(const thisType& element); \
+    inline bool is##thisType(const SVGElement* element) { return element && is##thisType(*element); } \
+    inline bool is##thisType(const Node& node) { return node.isSVGElement() ? is##thisType(toSVGElement(node)) : false; } \
+    inline bool is##thisType(const Node* node) { return node && is##thisType(*node); } \
+    template<typename T> inline bool is##thisType(const PassRefPtr<T>& node) { return is##thisType(node.get()); } \
+    template<typename T> inline bool is##thisType(const RefPtr<T>& node) { return is##thisType(node.get()); } \
+    template <> inline bool isElementOfType<const thisType>(const SVGElement& element) { return is##thisType(element); } \
+    DEFINE_ELEMENT_TYPE_CASTS_WITH_FUNCTION(thisType)
 
 }
+
+#include "core/SVGElementTypeHelpers.h"
 
 #endif

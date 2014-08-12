@@ -10,11 +10,12 @@
  */
 WebInspector.TracingTimelineModel = function(tracingModel, recordFilter)
 {
-    WebInspector.TimelineModel.call(this, tracingModel.target());
+    WebInspector.TimelineModel.call(this);
     this._tracingModel = tracingModel;
     this._inspectedTargetEvents = [];
     this._recordFilter = recordFilter;
-
+    this._tracingModel.addEventListener(WebInspector.TracingModel.Events.TracingStarted, this._onTracingStarted, this);
+    this._tracingModel.addEventListener(WebInspector.TracingModel.Events.TracingComplete, this._onTracingComplete, this);
     this.reset();
 }
 
@@ -123,7 +124,7 @@ WebInspector.TracingTimelineModel.prototype = {
 
     stopRecording: function()
     {
-        this._tracingModel.stop(this._didStopRecordingTraceEvents.bind(this));
+        this._tracingModel.stop();
     },
 
     /**
@@ -132,10 +133,9 @@ WebInspector.TracingTimelineModel.prototype = {
      */
     setEventsForTest: function(sessionId, events)
     {
-        this.reset();
-        this._didStartRecordingTraceEvents();
+        this._onTracingStarted();
         this._tracingModel.setEventsForTest(sessionId, events);
-        this._didStopRecordingTraceEvents();
+        this._onTracingComplete();
     },
 
     /**
@@ -144,15 +144,16 @@ WebInspector.TracingTimelineModel.prototype = {
     _startRecordingWithCategories: function(categories)
     {
         this.reset();
-        this._tracingModel.start(categories, "", this._didStartRecordingTraceEvents.bind(this));
+        this._tracingModel.start(categories, "");
     },
 
-    _didStartRecordingTraceEvents: function()
+    _onTracingStarted: function()
     {
+        this.reset();
         this.dispatchEventToListeners(WebInspector.TimelineModel.Events.RecordingStarted);
     },
 
-    _didStopRecordingTraceEvents: function()
+    _onTracingComplete: function()
     {
         var events = this._tracingModel.devtoolsMetadataEvents();
         events.sort(WebInspector.TracingModel.Event.compareStartTime);
@@ -239,7 +240,7 @@ WebInspector.TracingTimelineModel.prototype = {
                     this._addTopLevelRecord(top);
             }
             var record = new WebInspector.TracingTimelineModel.TraceEventRecord(this, event);
-            if (WebInspector.TracingTimelineUIUtils.isEventDivider(record))
+            if (WebInspector.TracingTimelineUIUtils.isMarkerEvent(event))
                 this._eventDividerRecords.push(record);
             if (!this._recordFilter.accept(record))
                 continue;
@@ -606,11 +607,11 @@ WebInspector.TracingTimelineModel.TraceEventRecord.prototype = {
     },
 
     /**
-     * @return {!WebInspector.Target}
+     * @return {?WebInspector.Target}
      */
     target: function()
     {
-        return this._model.target();
+        return this._event.thread.target();
     },
 
     /**

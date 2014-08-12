@@ -31,6 +31,7 @@
 #ifndef TextEncoder_h
 #define TextEncoder_h
 
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "platform/heap/Handle.h"
 #include "wtf/ArrayBufferView.h"
 #include "wtf/Uint8Array.h"
@@ -38,11 +39,11 @@
 #include "wtf/text/TextEncoding.h"
 #include "wtf/text/WTFString.h"
 
-namespace WebCore {
+namespace blink {
 
 class ExceptionState;
 
-class TextEncoder FINAL : public GarbageCollectedFinalized<TextEncoder> {
+class TextEncoder FINAL : public GarbageCollectedFinalized<TextEncoder>, public ScriptWrappable {
 public:
     static TextEncoder* create(const String& utfLabel, ExceptionState&);
     ~TextEncoder();
@@ -60,6 +61,6 @@ private:
     OwnPtr<WTF::TextCodec> m_codec;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // TextEncoder_h

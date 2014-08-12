@@ -44,7 +44,7 @@
 
 #include <math.h>
 
-namespace WebCore {
+namespace blink {
 
 Image::Image(ImageObserver* observer)
     : m_imageObserver(observer)
@@ -235,6 +235,13 @@ void Image::computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsic
     intrinsicRatio = size();
     intrinsicWidth = Length(intrinsicRatio.width(), Fixed);
     intrinsicHeight = Length(intrinsicRatio.height(), Fixed);
+}
+
+PassRefPtr<Image> Image::imageForDefaultFrame()
+{
+    RefPtr<Image> image(this);
+
+    return image.release();
 }
 
 }

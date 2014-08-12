@@ -52,7 +52,7 @@
 #include "wtf/Functional.h"
 #include "wtf/MainThread.h"
 
-namespace WebCore {
+namespace blink {
 
 class MessageWorkerGlobalScopeTask : public ExecutionContextTask {
 public:
@@ -115,8 +115,8 @@ void WorkerMessagingProxy::startWorkerGlobalScope(const KURL& scriptURL, const S
     double originTime = document->loader() ? document->loader()->timing()->referenceMonotonicTime() : monotonicallyIncreasingTime();
 
     RefPtr<DedicatedWorkerThread> thread = DedicatedWorkerThread::create(*this, *m_workerObjectProxy.get(), originTime, startupData.release());
-    workerThreadCreated(thread);
     thread->start();
+    workerThreadCreated(thread);
     InspectorInstrumentation::didStartWorkerGlobalScope(m_executionContext.get(), this, scriptURL);
 }
 
@@ -136,7 +136,7 @@ void WorkerMessagingProxy::postMessageToWorkerGlobalScope(PassRefPtr<SerializedS
 
     if (m_workerThread) {
         ++m_unconfirmedMessageCount;
-        m_workerThread->runLoop().postTask(MessageWorkerGlobalScopeTask::create(message, channels));
+        m_workerThread->postTask(MessageWorkerGlobalScopeTask::create(message, channels));
     } else
         m_queuedEarlyTasks.append(MessageWorkerGlobalScopeTask::create(message, channels));
 }
@@ -147,7 +147,7 @@ bool WorkerMessagingProxy::postTaskToWorkerGlobalScope(PassOwnPtr<ExecutionConte
         return false;
 
     ASSERT(m_workerThread);
-    m_workerThread->runLoop().postTask(task);
+    m_workerThread->postTask(task);
     return true;
 }
 
@@ -193,7 +193,7 @@ void WorkerMessagingProxy::workerThreadCreated(PassRefPtr<DedicatedWorkerThread>
         m_workerThreadHadPendingActivity = true; // Worker initialization means a pending activity.
 
         for (unsigned i = 0; i < taskCount; ++i)
-            m_workerThread->runLoop().postTask(m_queuedEarlyTasks[i].release());
+            m_workerThread->postTask(m_queuedEarlyTasks[i].release());
         m_queuedEarlyTasks.clear();
     }
 }
@@ -224,7 +224,7 @@ void WorkerMessagingProxy::connectToInspector(WorkerGlobalScopeProxy::PageInspec
         return;
     ASSERT(!m_pageInspector);
     m_pageInspector = pageInspector;
-    m_workerThread->runLoop().postDebuggerTask(createCrossThreadTask(connectToWorkerGlobalScopeInspectorTask, true));
+    m_workerThread->postDebuggerTask(createCrossThreadTask(connectToWorkerGlobalScopeInspectorTask, true));
 }
 
 static void disconnectFromWorkerGlobalScopeInspectorTask(ExecutionContext* context, bool)
@@ -237,7 +237,7 @@ void WorkerMessagingProxy::disconnectFromInspector()
     m_pageInspector = 0;
     if (m_askedToTerminate)
         return;
-    m_workerThread->runLoop().postDebuggerTask(createCrossThreadTask(disconnectFromWorkerGlobalScopeInspectorTask, true));
+    m_workerThread->postDebuggerTask(createCrossThreadTask(disconnectFromWorkerGlobalScopeInspectorTask, true));
 }
 
 static void dispatchOnInspectorBackendTask(ExecutionContext* context, const String& message)
@@ -249,8 +249,8 @@ void WorkerMessagingProxy::sendMessageToInspector(const String& message)
 {
     if (m_askedToTerminate)
         return;
-    m_workerThread->runLoop().postDebuggerTask(createCrossThreadTask(dispatchOnInspectorBackendTask, String(message)));
-    WorkerDebuggerAgent::interruptAndDispatchInspectorCommands(m_workerThread.get());
+    m_workerThread->postDebuggerTask(createCrossThreadTask(dispatchOnInspectorBackendTask, String(message)));
+    m_workerThread->interruptAndDispatchInspectorCommands();
 }
 
 void WorkerMessagingProxy::workerGlobalScopeDestroyed()
@@ -303,4 +303,4 @@ bool WorkerMessagingProxy::hasPendingActivity() const
     return (m_unconfirmedMessageCount || m_workerThreadHadPendingActivity) && !m_askedToTerminate;
 }
 
-} // namespace WebCore
+} // namespace blink

@@ -16,7 +16,7 @@
 #include "platform/NotImplemented.h"
 #include "public/platform/WebServiceWorkerResponse.h"
 
-namespace WebCore {
+namespace blink {
 
 PassRefPtrWillBeRawPtr<FetchBodyStream> FetchBodyStream::create(ExecutionContext* context, PassRefPtr<BlobDataHandle> blobDataHandle)
 {
@@ -107,6 +107,9 @@ FetchBodyStream::FetchBodyStream(ExecutionContext* context, PassRefPtr<BlobDataH
     , m_hasRead(false)
 {
     ScriptWrappable::init(this);
+    if (!m_blobDataHandle) {
+        m_blobDataHandle = BlobDataHandle::create(BlobData::create(), 0);
+    }
 }
 
 void FetchBodyStream::resolveJSON()
@@ -162,4 +165,4 @@ void FetchBodyStream::didFail(FileError::ErrorCode code)
     m_resolver.clear();
 }
 
-} // namespace WebCore
+} // namespace blink

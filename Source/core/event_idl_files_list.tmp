@@ -17,6 +17,7 @@ events/OverflowEvent.idl
 events/PageTransitionEvent.idl
 events/PopStateEvent.idl
 events/ProgressEvent.idl
+events/RelatedEvent.idl
 events/ResourceProgressEvent.idl
 events/SecurityPolicyViolationEvent.idl
 events/TextEvent.idl

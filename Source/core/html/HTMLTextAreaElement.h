@@ -26,7 +26,7 @@
 
 #include "core/html/HTMLTextFormControlElement.h"
 
-namespace WebCore {
+namespace blink {
 
 class BeforeTextInsertedEvent;
 class ExceptionState;
@@ -76,7 +76,7 @@ private:
     void updateValue() const;
     virtual void setInnerEditorValue(const String&) OVERRIDE;
     void setNonDirtyValue(const String&);
-    void setValueCommon(const String&, TextFieldEventBehavior);
+    void setValueCommon(const String&, TextFieldEventBehavior, SelectionOption = NotChangeSelection);
 
     virtual bool supportsPlaceholder() const OVERRIDE { return true; }
     virtual void updatePlaceholderText() OVERRIDE;
@@ -117,7 +117,6 @@ private:
 
     virtual void accessKeyAction(bool sendMouseEvents) OVERRIDE;
 
-    virtual bool shouldUseInputMethod() OVERRIDE;
     virtual bool matchesReadOnlyPseudoClass() const OVERRIDE;
     virtual bool matchesReadWritePseudoClass() const OVERRIDE;
 

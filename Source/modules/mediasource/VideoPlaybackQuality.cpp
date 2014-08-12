@@ -35,7 +35,7 @@
 #include "core/frame/LocalDOMWindow.h"
 #include "core/timing/Performance.h"
 
-namespace WebCore {
+namespace blink {
 
 VideoPlaybackQuality* VideoPlaybackQuality::create(
     const Document& document, unsigned totalVideoFrames, unsigned droppedVideoFrames, unsigned corruptedVideoFrames)
@@ -50,6 +50,7 @@ VideoPlaybackQuality::VideoPlaybackQuality(
     , m_droppedVideoFrames(droppedVideoFrames)
     , m_corruptedVideoFrames(corruptedVideoFrames)
 {
+    ScriptWrappable::init(this);
     if (document.domWindow())
         m_creationTime = document.domWindow()->performance().now();
 }

@@ -34,10 +34,10 @@
 #include "core/dom/ExceptionCode.h"
 
 using blink::WebServiceWorkerError;
-namespace WebCore {
+namespace blink {
 
 // static
-PassRefPtrWillBeRawPtr<DOMException> ServiceWorkerError::from(ScriptPromiseResolver*, WebType* webErrorRaw)
+PassRefPtrWillBeRawPtr<DOMException> ServiceWorkerError::take(ScriptPromiseResolver*, WebType* webErrorRaw)
 {
     OwnPtr<WebType> webError = adoptPtr(webErrorRaw);
     switch (webError->errorType) {
@@ -63,4 +63,10 @@ PassRefPtrWillBeRawPtr<DOMException> ServiceWorkerError::from(ScriptPromiseResol
     return DOMException::create(UnknownError);
 }
 
-} // namespace WebCore
+// static
+void ServiceWorkerError::dispose(WebType* webErrorRaw)
+{
+    delete webErrorRaw;
+}
+
+} // namespace blink

@@ -13,15 +13,19 @@ namespace blink {
 class WebThread;
 }
 
-namespace WebCore {
+namespace blink {
 
-// The scheduler is an opinionated gateway for arranging work to be run the
+class TraceLocation;
+
+// The scheduler is an opinionated gateway for arranging work to be run on the
 // main thread. It decides which tasks get priority over others based on a
 // scheduling policy and the overall system state.
 class PLATFORM_EXPORT Scheduler {
     WTF_MAKE_NONCOPYABLE(Scheduler);
 public:
     typedef Function<void()> Task;
+    // An IdleTask is passed an allotted time in CLOCK_MONOTONIC milliseconds and is expected to complete within this timeframe.
+    typedef Function<void(double allottedTimeMs)> IdleTask;
 
     static Scheduler* shared();
     static void initializeOnMainThread();
@@ -29,9 +33,10 @@ public:
 
     // The following entrypoints are used to schedule different types of tasks
     // to be run on the main thread. They can be called from any thread.
-    void postInputTask(const Task&);
-    void postCompositorTask(const Task&);
-    void postTask(const Task&); // For generic (low priority) tasks.
+    void postInputTask(const TraceLocation&, const Task&);
+    void postCompositorTask(const TraceLocation&, const Task&);
+    void postTask(const TraceLocation&, const Task&); // For generic (low priority) tasks.
+    void postIdleTask(const IdleTask&); // For non-critical tasks which may be reordered relative to other task types.
 
     // Returns true if there is high priority work pending on the main thread
     // and the caller should yield to let the scheduler service that work.
@@ -48,7 +53,8 @@ private:
     Scheduler();
     ~Scheduler();
 
-    void scheduleTask(const Task&);
+    void scheduleTask(const TraceLocation&, const Task&);
+    void scheduleIdleTask(const IdleTask&);
 
     static void sharedTimerAdapter();
     void tickSharedTimer();
@@ -59,6 +65,6 @@ private:
     void (*m_sharedTimerFunction)();
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // Scheduler_h

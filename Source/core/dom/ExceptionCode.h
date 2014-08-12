@@ -19,7 +19,7 @@
 #ifndef ExceptionCode_h
 #define ExceptionCode_h
 
-namespace WebCore {
+namespace blink {
 
     // The DOM standards use unsigned short for exception codes.
     // In our DOM implementation we use int instead, and use different
@@ -81,13 +81,16 @@ namespace WebCore {
 
         // Web Crypto
         OperationError,
-
-        // WebIDL exception types, handled by the binding layer.
-        // FIXME: Add GeneralError, EvalError, etc. when implemented in the bindings.
-        TypeError,
-        RangeError,
     };
 
-} // namespace WebCore
+    enum V8ErrorType {
+        V8GeneralError = 1000,
+        V8TypeError,
+        V8RangeError,
+        V8SyntaxError,
+        V8ReferenceError,
+    };
+
+} // namespace blink
 
 #endif // ExceptionCode_h

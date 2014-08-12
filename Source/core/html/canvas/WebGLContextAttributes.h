@@ -32,19 +32,18 @@
 #include "public/platform/WebGraphicsContext3D.h"
 #include "wtf/PassRefPtr.h"
 
-namespace WebCore {
+namespace blink {
 
 class Settings;
 
 class WebGLContextAttributes FINAL : public CanvasContextAttributes, public ScriptWrappable {
+    DECLARE_EMPTY_VIRTUAL_DESTRUCTOR_WILL_BE_REMOVED(WebGLContextAttributes);
 public:
-    virtual ~WebGLContextAttributes();
-
     // Create a new attributes object
-    static PassRefPtr<WebGLContextAttributes> create();
+    static PassRefPtrWillBeRawPtr<WebGLContextAttributes> create();
 
     // Create a copy of this object.
-    PassRefPtr<WebGLContextAttributes> clone() const;
+    PassRefPtrWillBeRawPtr<WebGLContextAttributes> clone() const;
 
     // Whether or not the drawing buffer has an alpha channel; default=true
     bool alpha() const;
@@ -97,6 +96,6 @@ private:
     bool m_failIfMajorPerformanceCaveat;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // WebGLContextAttributes_h

@@ -49,9 +49,9 @@
 #include "platform/JSONValues.h"
 #include "wtf/Vector.h"
 
-typedef WebCore::InspectorBackendDispatcher::DatabaseCommandHandler::ExecuteSQLCallback ExecuteSQLCallback;
+typedef blink::InspectorBackendDispatcher::DatabaseCommandHandler::ExecuteSQLCallback ExecuteSQLCallback;
 
-namespace WebCore {
+namespace blink {
 
 namespace DatabaseAgentState {
 static const char databaseAgentEnabled[] = "databaseAgentEnabled";
@@ -313,4 +313,12 @@ Database* InspectorDatabaseAgent::databaseForId(const String& databaseId)
     return it->value->database();
 }
 
-} // namespace WebCore
+void InspectorDatabaseAgent::trace(Visitor* visitor)
+{
+#if ENABLE(OILPAN)
+    visitor->trace(m_resources);
+#endif
+    InspectorBaseAgent::trace(visitor);
+}
+
+} // namespace blink

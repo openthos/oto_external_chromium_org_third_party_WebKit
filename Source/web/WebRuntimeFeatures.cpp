@@ -34,7 +34,7 @@
 #include "platform/RuntimeEnabledFeatures.h"
 #include "web/WebMediaPlayerClientImpl.h"
 
-using namespace WebCore;
+using namespace blink;
 
 namespace blink {
 
@@ -65,6 +65,11 @@ void WebRuntimeFeatures::enableApplicationCache(bool enable)
 void WebRuntimeFeatures::enableDatabase(bool enable)
 {
     RuntimeEnabledFeatures::setDatabaseEnabled(enable);
+}
+
+void WebRuntimeFeatures::enableDisplayList2dCanvas(bool enable)
+{
+    RuntimeEnabledFeatures::setDisplayList2dCanvasEnabled(enable);
 }
 
 void WebRuntimeFeatures::enableEncryptedMedia(bool enable)
@@ -103,11 +108,6 @@ void WebRuntimeFeatures::enableExperimentalCanvasFeatures(bool enable)
 void WebRuntimeFeatures::enableFastMobileScrolling(bool enable)
 {
     RuntimeEnabledFeatures::setFastMobileScrollingEnabled(enable);
-}
-
-void WebRuntimeFeatures::enableFastTextAutosizing(bool enable)
-{
-    RuntimeEnabledFeatures::setFastTextAutosizingEnabled(enable);
 }
 
 void WebRuntimeFeatures::enableFileSystem(bool enable)
@@ -160,6 +160,16 @@ void WebRuntimeFeatures::enableNavigatorContentUtils(bool enable)
     RuntimeEnabledFeatures::setNavigatorContentUtilsEnabled(enable);
 }
 
+void WebRuntimeFeatures::enableNavigationTransitions(bool enable)
+{
+    RuntimeEnabledFeatures::setNavigationTransitionsEnabled(enable);
+}
+
+void WebRuntimeFeatures::enableNetworkInformation(bool enable)
+{
+    RuntimeEnabledFeatures::setNetworkInformationEnabled(enable);
+}
+
 void WebRuntimeFeatures::enableOrientationEvent(bool enable)
 {
     RuntimeEnabledFeatures::setOrientationEventEnabled(enable);
@@ -178,6 +188,11 @@ void WebRuntimeFeatures::enablePeerConnection(bool enable)
 void WebRuntimeFeatures::enableRequestAutocomplete(bool enable)
 {
     RuntimeEnabledFeatures::setRequestAutocompleteEnabled(enable);
+}
+
+void WebRuntimeFeatures::enableScreenOrientation(bool enable)
+{
+    RuntimeEnabledFeatures::setScreenOrientationEnabled(enable);
 }
 
 void WebRuntimeFeatures::enableScriptedSpeech(bool enable)

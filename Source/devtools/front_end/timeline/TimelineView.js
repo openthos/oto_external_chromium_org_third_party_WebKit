@@ -582,7 +582,7 @@ WebInspector.TimelineView.prototype = {
                     this._graphRowsElement.appendChild(graphRowElement);
                 }
 
-                listRowElement.row.update(record, visibleTop, this._model.loadedFromFile(), this._uiUtils);
+                listRowElement.row.update(record, visibleTop, this._uiUtils);
                 graphRowElement.row.update(record, this._calculator, this._expandOffset, i, this._uiUtils);
                 if (this._lastSelectedRecord === record) {
                     listRowElement.row.renderAsSelected(true);
@@ -837,21 +837,24 @@ WebInspector.TimelineView.prototype = {
         var record = presentationRecord.record();
         if (this._highlightedQuadRecord === record)
             return true;
-        this._highlightedQuadRecord = record;
 
         var quad = this._uiUtils.highlightQuadForRecord(record);
-        if (!quad)
+        var target = record.target();
+        if (!quad || !target)
             return false;
-        record.target().domAgent().highlightQuad(quad, WebInspector.Color.PageHighlight.Content.toProtocolRGBA(), WebInspector.Color.PageHighlight.ContentOutline.toProtocolRGBA());
+        this._highlightedQuadRecord = record;
+        target.domAgent().highlightQuad(quad, WebInspector.Color.PageHighlight.Content.toProtocolRGBA(), WebInspector.Color.PageHighlight.ContentOutline.toProtocolRGBA());
         return true;
     },
 
     _hideQuadHighlight: function()
     {
-        if (this._highlightedQuadRecord) {
-            this._highlightedQuadRecord.target().domAgent().hideHighlight();
+        var target = this._highlightedQuadRecord ? this._highlightedQuadRecord.target() : null;
+        if (target)
+            target.domAgent().hideHighlight();
+
+        if (this._highlightedQuadRecord)
             delete this._highlightedQuadRecord;
-        }
     },
 
     /**
@@ -1052,10 +1055,9 @@ WebInspector.TimelineRecordListRow.prototype = {
     /**
      * @param {!WebInspector.TimelinePresentationModel.Record} presentationRecord
      * @param {number} offset
-     * @param {boolean} loadedFromFile
      * @param {!WebInspector.TimelineUIUtils} uiUtils
      */
-    update: function(presentationRecord, offset, loadedFromFile, uiUtils)
+    update: function(presentationRecord, offset, uiUtils)
     {
         this._record = presentationRecord;
         var record = presentationRecord.record();
@@ -1081,7 +1083,7 @@ WebInspector.TimelineRecordListRow.prototype = {
         if (presentationRecord.coalesced()) {
             this._dataElement.createTextChild(WebInspector.UIString("× %d", presentationRecord.presentationChildren().length));
         } else {
-            var detailsNode = uiUtils.buildDetailsNode(record, this._linkifier, loadedFromFile);
+            var detailsNode = uiUtils.buildDetailsNode(record, this._linkifier);
             if (detailsNode) {
                 this._dataElement.createTextChild("(");
                 this._dataElement.appendChild(detailsNode);

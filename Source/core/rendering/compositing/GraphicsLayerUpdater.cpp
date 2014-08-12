@@ -35,7 +35,7 @@
 #include "core/rendering/compositing/RenderLayerCompositor.h"
 #include "platform/TraceEvent.h"
 
-namespace WebCore {
+namespace blink {
 
 class GraphicsLayerUpdater::UpdateContext {
 public:
@@ -60,6 +60,11 @@ public:
     const RenderLayer* compositingContainer(const RenderLayer& layer) const
     {
         return layer.stackingNode()->isNormalFlowOnly() ? m_compositingAncestor : m_compositingStackingContext;
+    }
+
+    const RenderLayer* compositingStackingContext() const
+    {
+        return m_compositingStackingContext;
     }
 
 private:
@@ -109,7 +114,7 @@ void GraphicsLayerUpdater::updateRecursive(RenderLayer& layer, UpdateType update
             if (mapping->updateGraphicsLayerConfiguration())
                 m_needsRebuildTree = true;
 
-            mapping->updateGraphicsLayerGeometry(compositingContainer, layersNeedingPaintInvalidation);
+            mapping->updateGraphicsLayerGeometry(compositingContainer, context.compositingStackingContext(), layersNeedingPaintInvalidation);
 
             if (mapping->hasUnpositionedOverflowControlsLayers())
                 layer.scrollableArea()->positionOverflowControls(IntSize());
@@ -137,4 +142,4 @@ void GraphicsLayerUpdater::assertNeedsToUpdateGraphicsLayerBitsCleared(RenderLay
 
 #endif
 
-} // namespace WebCore
+} // namespace blink

@@ -34,10 +34,9 @@
 #include "wtf/PassOwnPtr.h"
 #include "wtf/RefCounted.h"
 #include "wtf/RefPtr.h"
-#include "wtf/Vector.h"
 #include "wtf/text/AtomicStringHash.h"
 
-namespace WebCore {
+namespace blink {
 
 class ExecutionContext;
 class XMLHttpRequest;
@@ -84,6 +83,6 @@ private:
     unsigned long long m_lastTotalBytesToBeSent;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // XMLHttpRequestUpload_h

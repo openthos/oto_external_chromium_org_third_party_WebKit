@@ -16,7 +16,7 @@
 #include "wtf/RefPtr.h"
 #include <v8.h>
 
-namespace WebCore {
+namespace blink {
 
 class RespondWithObserver::ThenFunction FINAL : public ScriptFunction {
 public:
@@ -62,7 +62,8 @@ PassRefPtr<RespondWithObserver> RespondWithObserver::create(ExecutionContext* co
 
 RespondWithObserver::~RespondWithObserver()
 {
-    ASSERT(m_state == Done);
+    if (m_state == Pending)
+        sendResponse(nullptr);
 }
 
 void RespondWithObserver::contextDestroyed()
@@ -121,4 +122,4 @@ RespondWithObserver::RespondWithObserver(ExecutionContext* context, int eventID)
 {
 }
 
-} // namespace WebCore
+} // namespace blink

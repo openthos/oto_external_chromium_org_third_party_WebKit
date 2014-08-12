@@ -60,6 +60,7 @@
                 'build_heap_snapshot_worker_module',
                 'build_script_formatter_worker_module',
                 'build_temp_storage_shared_worker_module',
+                'build_documentation_module',
             ],
             'conditions': [
                 ['debug_devtools==0', {
@@ -139,7 +140,7 @@
                             '<(PRODUCT_DIR)/resources/inspector/profiler/ProfilesPanel.js',
                             '<(PRODUCT_DIR)/resources/inspector/audits/AuditsPanel.js',
                             '<(PRODUCT_DIR)/resources/inspector/layers/LayersPanel.js',
-                            '<(PRODUCT_DIR)/resources/inspector/profiler/heap_snapshot_worker/HeapSnapshotWorker.js',
+                            '<(PRODUCT_DIR)/resources/inspector/heap_snapshot_worker/HeapSnapshotWorker.js',
                             '<(PRODUCT_DIR)/resources/inspector/script_formatter_worker/ScriptFormatterWorker.js',
                             '<(PRODUCT_DIR)/resources/inspector/temp_storage_shared_worker/TempStorageSharedWorker.js',
                             '<(PRODUCT_DIR)/resources/inspector/devices/DevicesView.js',
@@ -321,6 +322,12 @@
                             'destination': '<(PRODUCT_DIR)/resources/inspector/host',
                             'files': [
                                 '<@(devtools_host_js_files)',
+                            ],
+                        },
+                        {
+                            'destination': '<(PRODUCT_DIR)/resources/inspector/screencast',
+                            'files': [
+                                '<@(devtools_screencast_js_files)',
                             ],
                         },
                         {
@@ -724,20 +731,20 @@
                     'actions': [{
                         'action_name': 'build_heap_snapshot_worker_module',
                         'script_name': 'scripts/inline_js_imports.py',
-                        'input_file': 'front_end/profiler/heap_snapshot_worker/HeapSnapshotWorker.js',
+                        'input_file': 'front_end/heap_snapshot_worker/HeapSnapshotWorker.js',
                         'inputs': [
                             '<@(_script_name)',
                             '<@(_input_file)',
                             '<@(devtools_heap_snapshot_worker_js_files)',
                         ],
-                        'outputs': ['<(PRODUCT_DIR)/resources/inspector/profiler/heap_snapshot_worker/HeapSnapshotWorker.js'],
+                        'outputs': ['<(PRODUCT_DIR)/resources/inspector/heap_snapshot_worker/HeapSnapshotWorker.js'],
                         'action': ['python', '<@(_script_name)', '<@(_input_file)', '<@(_outputs)'],
                     }],
                 },
                 { # Debug
                     'copies': [
                         {
-                            'destination': '<(PRODUCT_DIR)/resources/inspector/profiler/heap_snapshot_worker',
+                            'destination': '<(PRODUCT_DIR)/resources/inspector/heap_snapshot_worker',
                             'files': [
                                 '<@(devtools_heap_snapshot_worker_js_files)',
                             ],
@@ -835,6 +842,36 @@
                             'files': [
                                 '<@(devtools_layers_js_files)',
                                 'front_end/layers/module.json',
+                            ],
+                        }
+                    ]
+                }]
+            ]
+        },
+        {
+            'target_name': 'build_documentation_module',
+            'type': 'none',
+            'conditions': [
+                ['debug_devtools==0', { # Release
+                    'actions': [{
+                        'action_name': 'build_documentation_module',
+                        'script_name': 'scripts/inline_js_imports.py',
+                        'input_file': 'front_end/documentation/WikiParser.js',
+                        'inputs': [
+                            '<@(_script_name)',
+                            '<@(devtools_documentation_js_files)',
+                        ],
+                        'outputs': ['<(PRODUCT_DIR)/resources/inspector/documentation/WikiParser.js'],
+                        'action': ['python', '<@(_script_name)', '<@(_input_file)', '<@(_outputs)'],
+                    }],
+                },
+                { # Debug
+                    'copies': [
+                        {
+                            'destination': '<(PRODUCT_DIR)/resources/inspector/documentation',
+                            'files': [
+                                '<@(devtools_documentation_js_files)',
+                                'front_end/documentation/module.json',
                             ],
                         }
                     ]

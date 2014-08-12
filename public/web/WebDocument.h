@@ -40,7 +40,7 @@
 #include "WebSecurityOrigin.h"
 
 #if BLINK_IMPLEMENTATION
-namespace WebCore {
+namespace blink {
 class Document;
 class DocumentType;
 }
@@ -114,6 +114,8 @@ public:
     BLINK_EXPORT WebDOMEvent createEvent(const WebString& eventType);
     BLINK_EXPORT WebReferrerPolicy referrerPolicy() const;
     BLINK_EXPORT WebElement createElement(const WebString& tagName);
+    BLINK_EXPORT void setIsTransitionDocument();
+    BLINK_EXPORT void beginExitTransition(const WebString& cssSelector);
 
     // Accessibility support. These methods should only be called on the
     // top-level document, because one accessibility cache spans all of
@@ -137,9 +139,9 @@ public:
     BLINK_EXPORT v8::Handle<v8::Value> registerEmbedderCustomElement(const WebString& name, v8::Handle<v8::Value> options, WebExceptionCode&);
 
 #if BLINK_IMPLEMENTATION
-    WebDocument(const PassRefPtrWillBeRawPtr<WebCore::Document>&);
-    WebDocument& operator=(const PassRefPtrWillBeRawPtr<WebCore::Document>&);
-    operator PassRefPtrWillBeRawPtr<WebCore::Document>() const;
+    WebDocument(const PassRefPtrWillBeRawPtr<blink::Document>&);
+    WebDocument& operator=(const PassRefPtrWillBeRawPtr<blink::Document>&);
+    operator PassRefPtrWillBeRawPtr<blink::Document>() const;
 #endif
 };
 

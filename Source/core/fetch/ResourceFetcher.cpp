@@ -76,7 +76,7 @@
 
 using blink::WebURLRequest;
 
-namespace WebCore {
+namespace blink {
 
 static Resource* createResource(Resource::Type type, const ResourceRequest& request, const String& charset)
 {
@@ -212,7 +212,7 @@ static WebURLRequest::RequestContext requestContextFromType(const ResourceFetche
     case Resource::Raw:
         return WebURLRequest::RequestContextSubresource;
     case Resource::ImportResource:
-        return WebURLRequest::RequestContextScript;
+        return WebURLRequest::RequestContextImport;
     case Resource::LinkPrefetch:
         return WebURLRequest::RequestContextPrefetch;
     case Resource::LinkSubresource:
@@ -326,7 +326,7 @@ ResourcePtr<FontResource> ResourceFetcher::fetchFont(FetchRequest& request)
 ResourcePtr<RawResource> ResourceFetcher::fetchImport(FetchRequest& request)
 {
     ASSERT(request.resourceRequest().frameType() == WebURLRequest::FrameTypeNone);
-    request.mutableResourceRequest().setRequestContext(WebURLRequest::RequestContextScript);
+    request.mutableResourceRequest().setRequestContext(WebURLRequest::RequestContextImport);
     return toRawResource(requestResource(Resource::ImportResource, request));
 }
 
@@ -334,22 +334,6 @@ ResourcePtr<CSSStyleSheetResource> ResourceFetcher::fetchCSSStyleSheet(FetchRequ
 {
     ASSERT(request.resourceRequest().frameType() == WebURLRequest::FrameTypeNone);
     request.mutableResourceRequest().setRequestContext(WebURLRequest::RequestContextStyle);
-    return toCSSStyleSheetResource(requestResource(Resource::CSSStyleSheet, request));
-}
-
-ResourcePtr<CSSStyleSheetResource> ResourceFetcher::fetchUserCSSStyleSheet(FetchRequest& request)
-{
-    ASSERT(request.resourceRequest().frameType() == WebURLRequest::FrameTypeNone);
-    request.mutableResourceRequest().setRequestContext(WebURLRequest::RequestContextStyle);
-    KURL url = MemoryCache::removeFragmentIdentifierIfNeeded(request.resourceRequest().url());
-
-    if (Resource* existing = memoryCache()->resourceForURL(url)) {
-        if (existing->type() == Resource::CSSStyleSheet)
-            return toCSSStyleSheetResource(existing);
-        memoryCache()->remove(existing);
-    }
-
-    request.setOptions(ResourceLoaderOptions(SniffContent, BufferData, AllowStoredCredentials, ClientRequestedCredentials, CheckContentSecurityPolicy, DocumentContext));
     return toCSSStyleSheetResource(requestResource(Resource::CSSStyleSheet, request));
 }
 
@@ -767,7 +751,7 @@ ResourcePtr<Resource> ResourceFetcher::requestResource(Resource::Type type, Fetc
     if (!request.forPreload() || policy != Use) {
         ResourceLoadPriority priority = loadPriority(type, request);
         if (priority != resource->resourceRequest().priority()) {
-            resource->resourceRequest().setPriority(priority);
+            resource->mutableResourceRequest().setPriority(priority);
             resource->didChangePriority(priority, 0);
         }
     }
@@ -1336,7 +1320,14 @@ void ResourceFetcher::willSendRequest(unsigned long identifier, ResourceRequest&
 
 void ResourceFetcher::didReceiveResponse(const Resource* resource, const ResourceResponse& response)
 {
-    // FIXME: When response.wasFetchedViaServiceWorker() is true, we need to check the URL of the responce for CSP and CORS.
+    // If the response is fetched via ServiceWorker, the original URL of the response could be different from the URL of the request.
+    if (response.wasFetchedViaServiceWorker()) {
+        if (!canRequest(resource->type(), response.url(), resource->options(), false, FetchRequest::UseDefaultOriginRestrictionForType)) {
+            resource->loader()->cancel();
+            context().dispatchDidFail(m_documentLoader, resource->identifier(), ResourceError(errorDomainBlinkInternal, 0, response.url().string(), "Unsafe attempt to load URL " + response.url().elidedString() + " fetched by a ServiceWorker."));
+            return;
+        }
+    }
     context().dispatchDidReceiveResponse(m_documentLoader, resource->identifier(), response, resource->loader());
 }
 
@@ -1353,7 +1344,7 @@ void ResourceFetcher::didDownloadData(const Resource* resource, int dataLength, 
 void ResourceFetcher::subresourceLoaderFinishedLoadingOnePart(ResourceLoader* loader)
 {
     if (!m_multipartLoaders)
-        m_multipartLoaders = adoptPtr(new ResourceLoaderSet());
+        m_multipartLoaders = ResourceLoaderSet::create();
     m_multipartLoaders->add(loader);
     m_loaders->remove(loader);
     if (LocalFrame* frame = this->frame())
@@ -1365,7 +1356,7 @@ void ResourceFetcher::didInitializeResourceLoader(ResourceLoader* loader)
     if (!m_document)
         return;
     if (!m_loaders)
-        m_loaders = adoptPtr(new ResourceLoaderSet());
+        m_loaders = ResourceLoaderSet::create();
     ASSERT(!m_loaders->contains(loader));
     m_loaders->add(loader);
 }
@@ -1549,6 +1540,8 @@ void ResourceFetcher::DeadResourceStatsRecorder::update(RevalidationPolicy polic
 void ResourceFetcher::trace(Visitor* visitor)
 {
     visitor->trace(m_document);
+    visitor->trace(m_loaders);
+    visitor->trace(m_multipartLoaders);
     ResourceLoaderHost::trace(visitor);
 }
 

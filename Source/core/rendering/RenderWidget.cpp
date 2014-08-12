@@ -36,7 +36,7 @@
 #include "core/rendering/compositing/RenderLayerCompositor.h"
 #include "wtf/HashMap.h"
 
-namespace WebCore {
+namespace blink {
 
 RenderWidget::RenderWidget(Element* element)
     : RenderReplaced(element)
@@ -176,15 +176,6 @@ void RenderWidget::paintContents(PaintInfo& paintInfo, const LayoutPoint& paintO
 
     if (!widgetPaintOffset.isZero())
         paintInfo.context->translate(-widgetPaintOffset.width(), -widgetPaintOffset.height());
-
-    if (widget->isFrameView()) {
-        FrameView* frameView = toFrameView(widget);
-        bool runOverlapTests = !frameView->useSlowRepaintsIfNotOverlapped() || frameView->hasCompositedContent();
-        if (paintInfo.overlapTestRequests && runOverlapTests) {
-            ASSERT(!paintInfo.overlapTestRequests->contains(this));
-            paintInfo.overlapTestRequests->set(this, widget->frameRect());
-        }
-    }
 }
 
 void RenderWidget::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
@@ -238,14 +229,6 @@ void RenderWidget::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 
     if (canResize())
         layer()->scrollableArea()->paintResizer(paintInfo.context, roundedIntPoint(adjustedPaintOffset), paintInfo.rect);
-}
-
-void RenderWidget::setIsOverlapped(bool isOverlapped)
-{
-    Widget* widget = this->widget();
-    ASSERT(widget);
-    ASSERT(widget->isFrameView());
-    toFrameView(widget)->setIsOverlapped(isOverlapped);
 }
 
 void RenderWidget::deref()
@@ -321,4 +304,4 @@ CursorDirective RenderWidget::getCursor(const LayoutPoint& point, Cursor& cursor
     return RenderReplaced::getCursor(point, cursor);
 }
 
-} // namespace WebCore
+} // namespace blink

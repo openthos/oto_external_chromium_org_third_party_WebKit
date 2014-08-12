@@ -37,7 +37,6 @@
 #include "core/dom/ExecutionContext.h"
 #include "core/inspector/ScriptCallStack.h"
 #include "core/workers/WorkerGlobalScope.h"
-#include "core/workers/WorkerRunLoop.h"
 #include "core/workers/WorkerThread.h"
 #include "modules/websockets/MainThreadWebSocketChannel.h"
 #include "modules/websockets/NewWebSocketChannelImpl.h"
@@ -46,9 +45,9 @@
 #include "modules/websockets/WorkerThreadableWebSocketChannel.h"
 #include "platform/RuntimeEnabledFeatures.h"
 
-namespace WebCore {
+namespace blink {
 
-PassRefPtrWillBeRawPtr<WebSocketChannel> WebSocketChannel::create(ExecutionContext* context, WebSocketChannelClient* client)
+WebSocketChannel* WebSocketChannel::create(ExecutionContext* context, WebSocketChannelClient* client)
 {
     ASSERT(context);
     ASSERT(client);
@@ -73,4 +72,4 @@ PassRefPtrWillBeRawPtr<WebSocketChannel> WebSocketChannel::create(ExecutionConte
     return MainThreadWebSocketChannel::create(document, client, sourceURL, lineNumber);
 }
 
-} // namespace WebCore
+} // namespace blink

@@ -49,7 +49,7 @@
 #include "platform/graphics/Path.h"
 #include "wtf/CurrentTime.h"
 
-namespace WebCore {
+namespace blink {
 
 using namespace HTMLNames;
 
@@ -570,16 +570,16 @@ void RenderBoxModelObject::paintFillLayerExtended(const PaintInfo& paintInfo, co
                     HTMLElement* body = document().body();
                     if (body) {
                         // Can't scroll a frameset document anyway.
-                        isOpaqueRoot = body->hasLocalName(framesetTag);
+                        isOpaqueRoot = body->hasTagName(framesetTag);
                     } else {
                         // SVG documents and XML documents with SVG root nodes are transparent.
                         isOpaqueRoot = !document().hasSVGRootNode();
                     }
                 }
-            } else
+            } else {
                 isOpaqueRoot = !view()->frameView()->isTransparent();
+            }
         }
-        view()->frameView()->setContentIsOpaque(isOpaqueRoot);
     }
 
     // Paint the color first underneath all images, culled if background image occludes it.
@@ -893,9 +893,7 @@ void RenderBoxModelObject::calculateBackgroundImageGeometry(const RenderLayerMod
     // FIXME: transforms spec says that fixed backgrounds behave like scroll inside transforms.
     bool fixedAttachment = fillLayer.attachment() == FixedBackgroundAttachment;
 
-    if (RuntimeEnabledFeatures::fastMobileScrollingEnabled()
-        && view()->frameView()
-        && view()->frameView()->shouldAttemptToScrollUsingFastPath()) {
+    if (RuntimeEnabledFeatures::fastMobileScrollingEnabled()) {
         // As a side effect of an optimization to blit on scroll, we do not honor the CSS
         // property "background-attachment: fixed" because it may result in rendering
         // artifacts. Note, these artifacts only appear if we are blitting on scroll of
@@ -2733,4 +2731,4 @@ void RenderBoxModelObject::moveChildrenTo(RenderBoxModelObject* toBoxModelObject
     }
 }
 
-} // namespace WebCore
+} // namespace blink

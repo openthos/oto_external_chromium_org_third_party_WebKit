@@ -38,7 +38,7 @@
 #include "wtf/PassRefPtr.h"
 #include "wtf/TypeTraits.h"
 
-namespace WebCore {
+namespace blink {
 
 // Traits for the CrossThreadTask.
 template<typename T> struct CrossThreadTaskTraits {
@@ -64,7 +64,7 @@ template<typename T> struct CrossThreadTaskTraits<PassOwnPtr<T> > {
 // However we cannot do that easily because the ExecutionContextTask outlives the thread
 // that created the ExecutionContextTask. Oilpan does not support objects that
 // outlives the thread that created the objects.
-
+//
 // - It's not either easy to keep the ExecutionContextTask off-heap
 // and use a Persistent handle. This is because the Persistent handle can cause a cycle.
 // It's possible that the ExecutionContextTask holds a Persistent handle to the object
@@ -730,6 +730,6 @@ PassOwnPtr<ExecutionContextTask> createCrossThreadTask(
         CrossThreadCopier<P6>::copy(parameter6)));
 }
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // CrossThreadTask_h

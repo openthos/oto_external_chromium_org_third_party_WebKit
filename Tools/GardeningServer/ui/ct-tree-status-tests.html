@@ -29,7 +29,7 @@ closedTreeJson = {
   "can_commit_freely": false
 }
 
-asyncTest("basic", 7, function() {
+asyncTest("basic", 10, function() {
   var simulator = new NetworkSimulator();
   simulator.json = function(url) {
     if (url.indexOf('closed') != -1)
@@ -39,37 +39,42 @@ asyncTest("basic", 7, function() {
     else
       return Promise.resolve(openTreeJson);
   };
+
   var opentree = document.createElement("ct-tree-status");
-  opentree.setAttribute("project", "open-tree-project");
+  opentree.project = "open-tree-project";
   var throttledtree = document.createElement("ct-tree-status");
-  throttledtree.setAttribute("project", "throttled-tree-project");
+  throttledtree.project = "throttled-tree-project";
   var closedtree = document.createElement("ct-tree-status");
-  closedtree.setAttribute("project", "closed-tree-project");
+  closedtree.project = "closed-tree-project";
+
   simulator.runTest(function() {
     var urlByName = treestatus.urlByName;
     treestatus.urlByName = function(name) {
-      return name + "-status.appspot.com/current?format=json";
+      return "http://" + name + "-status.appspot.com/";
     }
     Promise.all([
       opentree.update().then(function() {
-        equal(opentree.status, "Tree is open");
-        equal(opentree.$.content.style.backgroundColor, "rgb(72, 209, 204)");
+        equal(opentree.status, "open");
       }),
       throttledtree.update().then(function() {
-        equal(throttledtree.status,
+        equal(throttledtree.message,
               "Tree is throttled just for fun by username@test.org");
-        equal(throttledtree.$.content.style.backgroundColor,
-              "rgb(240, 230, 140)");
+        equal(throttledtree.status, "throttled");
       }),
       closedtree.update().then(function() {
-        equal(closedtree.status,
+        equal(closedtree.message,
               "Tree is closed for maintenance by username@test.org");
-        equal(closedtree.$.content.style.backgroundColor,
-              "rgb(255, 99, 71)");
+        equal(closedtree.status, "closed");
+        equal(closedtree.shadowRoot.querySelector('a').href, treestatus.urlByName('closed-tree-project'));
       })
     ]).then(function() {
-      start();
-      treestatus.urlByName = urlByName;
+      requestAnimationFrame(function() {
+        ok(!opentree.shadowRoot.textContent.has("open-tree-project"));
+        ok(throttledtree.shadowRoot.textContent.has("throttled-tree-project"));
+        ok(closedtree.shadowRoot.textContent.has("closed-tree-project"));
+        start();
+        treestatus.urlByName = urlByName;
+      });
     });
   });
 });

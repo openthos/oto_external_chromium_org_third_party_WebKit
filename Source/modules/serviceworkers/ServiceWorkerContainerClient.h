@@ -13,16 +13,16 @@ namespace blink {
 class WebServiceWorkerProvider;
 }
 
-namespace WebCore {
+namespace blink {
 
 class ExecutionContext;
 
 // This mainly exists to provide access to WebServiceWorkerProvider.
 // Owned by Document (or WorkerClients).
-class ServiceWorkerContainerClient FINAL :
-    public NoBaseWillBeGarbageCollectedFinalized<ServiceWorkerContainerClient>,
-    public DocumentSupplement,
-    public WillBeHeapSupplement<WorkerClients> {
+class ServiceWorkerContainerClient FINAL
+    : public NoBaseWillBeGarbageCollectedFinalized<ServiceWorkerContainerClient>
+    , public DocumentSupplement
+    , public WillBeHeapSupplement<WorkerClients> {
     WILL_BE_USING_GARBAGE_COLLECTED_MIXIN(ServiceWorkerContainerClient);
     WTF_MAKE_NONCOPYABLE(ServiceWorkerContainerClient);
 public:
@@ -48,6 +48,6 @@ protected:
 
 void provideServiceWorkerContainerClientToWorker(WorkerClients*, PassOwnPtr<blink::WebServiceWorkerProvider>);
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // ServiceWorkerContainerClient_h

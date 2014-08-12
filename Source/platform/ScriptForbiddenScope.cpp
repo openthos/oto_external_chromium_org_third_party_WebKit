@@ -8,21 +8,34 @@
 #include "wtf/Assertions.h"
 #include "wtf/MainThread.h"
 
-namespace WebCore {
+namespace blink {
 
 static unsigned s_scriptForbiddenCount = 0;
 
 ScriptForbiddenScope::ScriptForbiddenScope()
 {
-    // FIXME: Support non-main threads.
-    if (isMainThread())
-        ++s_scriptForbiddenCount;
+    ASSERT(isMainThread());
+    ++s_scriptForbiddenCount;
 }
 
 ScriptForbiddenScope::~ScriptForbiddenScope()
 {
-    if (isMainThread())
-        --s_scriptForbiddenCount;
+    ASSERT(isMainThread());
+    ASSERT(s_scriptForbiddenCount);
+    --s_scriptForbiddenCount;
+}
+
+void ScriptForbiddenScope::enter()
+{
+    ASSERT(isMainThread());
+    ++s_scriptForbiddenCount;
+}
+
+void ScriptForbiddenScope::exit()
+{
+    ASSERT(isMainThread());
+    ASSERT(s_scriptForbiddenCount);
+    --s_scriptForbiddenCount;
 }
 
 bool ScriptForbiddenScope::isScriptForbidden()
@@ -40,4 +53,14 @@ ScriptForbiddenScope::AllowUserAgentScript::~AllowUserAgentScript()
     ASSERT(!s_scriptForbiddenCount);
 }
 
-} // namespace WebCore
+ScriptForbiddenScope::AllowSuperUnsafeScript::AllowSuperUnsafeScript()
+    : m_change(s_scriptForbiddenCount, 0)
+{
+}
+
+ScriptForbiddenScope::AllowSuperUnsafeScript::~AllowSuperUnsafeScript()
+{
+    ASSERT(!s_scriptForbiddenCount);
+}
+
+} // namespace blink

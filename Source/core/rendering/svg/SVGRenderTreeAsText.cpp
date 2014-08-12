@@ -69,7 +69,7 @@
 #include <math.h>
 #include <memory>
 
-namespace WebCore {
+namespace blink {
 
 /** class + iomanip to help streaming list separators, i.e. ", " in string "a, b, c, d"
  * Can be used in cases where you don't know which item in the list is the first
@@ -402,10 +402,10 @@ static inline void writeSVGInlineTextBox(TextStream& ts, SVGInlineTextBox* textB
     if (fragments.isEmpty())
         return;
 
-    RenderSVGInlineText& textRenderer = toRenderSVGInlineText(textBox->textRenderer());
+    RenderSVGInlineText& textRenderer = toRenderSVGInlineText(textBox->renderer());
 
     const SVGRenderStyle& svgStyle = textRenderer.style()->svgStyle();
-    String text = textBox->textRenderer().text();
+    String text = textBox->renderer().text();
 
     unsigned fragmentsSize = fragments.size();
     for (unsigned i = 0; i < fragmentsSize; ++i) {
@@ -679,4 +679,4 @@ void writeResources(TextStream& ts, const RenderObject& object, int indent)
     }
 }
 
-} // namespace WebCore
+} // namespace blink

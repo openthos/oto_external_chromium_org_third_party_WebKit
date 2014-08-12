@@ -421,7 +421,7 @@ WebInspector.StylesSidebarPane.prototype = {
         if (this._computedStylePane.isShowing())
             this._target.cssModel.getComputedStyleAsync(node.id, computedCallback);
         this._target.cssModel.getInlineStylesAsync(node.id, inlineCallback);
-        this._target.cssModel.getMatchedStylesAsync(node.id, true, true, stylesCallback.bind(this));
+        this._target.cssModel.getMatchedStylesAsync(node.id, false, false, stylesCallback.bind(this));
     },
 
     /**
@@ -1187,25 +1187,7 @@ WebInspector.StylePropertiesSection.prototype = {
 
             if (media.sourceURL) {
                 var refElement = mediaDataElement.createChild("div", "subtitle");
-                var rawLocation;
-                var mediaHeader;
-                if (media.range) {
-                    mediaHeader = media.header();
-                    if (mediaHeader) {
-                        var lineNumber = media.lineNumberInSource();
-                        var columnNumber = media.columnNumberInSource();
-                        console.assert(typeof lineNumber !== "undefined" && typeof columnNumber !== "undefined");
-                        rawLocation = new WebInspector.CSSLocation(this._parentPane._target, media.sourceURL, lineNumber, columnNumber);
-                    }
-                }
-
-                var anchor;
-                if (rawLocation)
-                    anchor = this._parentPane._linkifier.linkifyCSSLocation(mediaHeader.id, rawLocation);
-                else {
-                    // The "linkedStylesheet" case.
-                    anchor = WebInspector.linkifyResourceAsNode(media.sourceURL, undefined, "subtitle", media.sourceURL);
-                }
+                var anchor = this._parentPane._linkifier.linkifyMedia(media);
                 anchor.style.float = "right";
                 refElement.appendChild(anchor);
             }
@@ -1448,7 +1430,6 @@ WebInspector.StylePropertiesSection.prototype = {
             var isSelectorMatching = matchingSelectors[currentMatch] === i;
             if (isSelectorMatching)
                 ++currentMatch;
-            var rawLocation = new WebInspector.CSSLocation(this._parentPane._target, rule.sourceURL, rule.lineNumberInSource(i), rule.columnNumberInSource(i));
             var matchingSelectorClass = isSelectorMatching ? " selector-matches" : "";
             var selectorElement = document.createElement("span");
             selectorElement.className = "simple-selector" + matchingSelectorClass;
@@ -1523,8 +1504,8 @@ WebInspector.StylePropertiesSection.prototype = {
 
         if (this.styleRule.sourceURL) {
             var firstMatchingIndex = this.styleRule.rule.matchingSelectors && this.rule.matchingSelectors.length ? this.rule.matchingSelectors[0] : 0;
-            var matchingSelectorLocation = new WebInspector.CSSLocation(this._parentPane._target, this.styleRule.sourceURL, this.rule.lineNumberInSource(firstMatchingIndex), this.rule.columnNumberInSource(firstMatchingIndex));
-            return this._parentPane._linkifier.linkifyCSSLocation(this.rule.styleSheetId, matchingSelectorLocation) || linkifyUncopyable(this.styleRule.sourceURL, this.rule.lineNumberInSource());
+            var matchingSelectorLocation = new WebInspector.CSSLocation(this._parentPane._target, this.rule.styleSheetId, this.styleRule.sourceURL, this.rule.lineNumberInSource(firstMatchingIndex), this.rule.columnNumberInSource(firstMatchingIndex));
+            return this._parentPane._linkifier.linkifyCSSLocation(matchingSelectorLocation) || linkifyUncopyable(this.styleRule.sourceURL, this.rule.lineNumberInSource());
         }
 
         if (!this.rule)
@@ -1567,8 +1548,9 @@ WebInspector.StylePropertiesSection.prototype = {
     {
         if (WebInspector.KeyboardShortcut.eventHasCtrlOrMeta(event) && this.navigable && event.target.classList.contains("simple-selector")) {
             var index = event.target._selectorIndex;
-            var styleSheetHeader = this._parentPane._target.cssModel.styleSheetHeaderForId(this.rule.styleSheetId);
-            var uiLocation = styleSheetHeader.rawLocationToUILocation(this.rule.lineNumberInSource(index), this.rule.columnNumberInSource(index));
+            var target = this._parentPane._target;
+            var rawLocation = new WebInspector.CSSLocation(target, this.rule.styleSheetId, this.rule.sourceURL, this.rule.lineNumberInSource(index), this.rule.columnNumberInSource(index));
+            var uiLocation = WebInspector.cssWorkspaceBinding.rawLocationToUILocation(rawLocation);
             WebInspector.Revealer.reveal(uiLocation);
             return;
         }
@@ -2661,7 +2643,7 @@ WebInspector.StylePropertyTreeElement.prototype = {
     {
         console.assert(this.section().navigable);
         var propertyNameClicked = element === this.nameElement;
-        WebInspector.Revealer.reveal(this.property.uiLocation(propertyNameClicked));
+        WebInspector.Revealer.reveal(WebInspector.cssWorkspaceBinding.propertyUILocation(this.property, propertyNameClicked));
     },
 
     /**

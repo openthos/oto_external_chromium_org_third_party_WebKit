@@ -30,17 +30,15 @@
 #include "modules/gamepad/Gamepad.h"
 #include "platform/heap/Handle.h"
 #include "public/platform/WebGamepads.h"
-#include "wtf/Vector.h"
 
-namespace WebCore {
+namespace blink {
 
-class GamepadList FINAL : public GarbageCollectedFinalized<GamepadList>, public ScriptWrappable {
+class GamepadList FINAL : public GarbageCollected<GamepadList>, public ScriptWrappable {
 public:
     static GamepadList* create()
     {
         return new GamepadList();
     }
-    ~GamepadList();
 
     void set(unsigned index, Gamepad*);
     Gamepad* item(unsigned index);
@@ -53,6 +51,6 @@ private:
     Member<Gamepad> m_items[blink::WebGamepads::itemsLengthCap];
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // GamepadList_h

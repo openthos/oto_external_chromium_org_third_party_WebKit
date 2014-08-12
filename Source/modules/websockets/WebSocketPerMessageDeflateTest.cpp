@@ -31,14 +31,13 @@
 #include "config.h"
 #include "modules/websockets/WebSocketPerMessageDeflate.h"
 
-#include "wtf/Vector.h"
 #include "wtf/text/StringHash.h"
 
 #include <algorithm>
 #include <gtest/gtest.h>
 #include <iterator>
 
-using namespace WebCore;
+using namespace blink;
 
 namespace {
 

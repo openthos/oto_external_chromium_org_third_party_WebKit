@@ -35,16 +35,15 @@
 #include "wtf/ListHashSet.h"
 #include "wtf/OwnPtr.h"
 
-namespace WebCore {
-
-class LineLayoutState;
-class RenderInline;
-
-struct PaintInfo;
-class WordMeasurement;
+namespace blink {
 
 class LineInfo;
+class LineLayoutState;
+struct PaintInfo;
+class RenderInline;
 class RenderRubyRun;
+class RenderText;
+class WordMeasurement;
 
 template <class Run> class BidiRunList;
 typedef WTF::ListHashSet<RenderBox*, 16> TrackedRendererListHashSet;
@@ -53,14 +52,6 @@ typedef WTF::HashMap<const RenderBox*, OwnPtr<HashSet<RenderBlock*> > > TrackedC
 typedef Vector<WordMeasurement, 64> WordMeasurements;
 
 enum ContainingBlockState { NewContainingBlock, SameContainingBlock };
-
-enum TextRunFlag {
-    DefaultTextRunFlags = 0,
-    RespectDirection = 1 << 0,
-    RespectDirectionOverride = 1 << 1
-};
-
-typedef unsigned TextRunFlags;
 
 class RenderBlock : public RenderBox {
 public:
@@ -89,11 +80,16 @@ public:
 
     LayoutUnit minLineHeightForReplacedRenderer(bool isFirstLine, LayoutUnit replacedHeight) const;
 
+protected:
     RenderLineBoxList* lineBoxes() { return &m_lineBoxes; }
 
     InlineFlowBox* firstLineBox() const { return m_lineBoxes.firstLineBox(); }
     InlineFlowBox* lastLineBox() const { return m_lineBoxes.lastLineBox(); }
 
+    RootInlineBox* firstRootBox() const { return static_cast<RootInlineBox*>(firstLineBox()); }
+    RootInlineBox* lastRootBox() const { return static_cast<RootInlineBox*>(lastLineBox()); }
+
+public:
     // FIXME-BLOCKFLOW: Remove virtualizaion when all callers have moved to RenderBlockFlow
     virtual void deleteLineBoxTree();
 
@@ -144,9 +140,6 @@ public:
     // RenderBoxes without needed to check whether they're RenderBlocks first.
     virtual void markForPaginationRelayoutIfNeeded(SubtreeLayoutScope&) OVERRIDE FINAL;
 
-    // FIXME-BLOCKFLOW: Remove virtualizaion when all of the line layout code has been moved out of RenderBlock
-    virtual bool containsFloats() const { return false; }
-
     LayoutUnit textIndentOffset() const;
 
     virtual PositionWithAffinity positionForPoint(const LayoutPoint&) OVERRIDE;
@@ -159,9 +152,6 @@ public:
 
     LayoutUnit blockDirectionOffset(const LayoutSize& offsetFromBlock) const;
     LayoutUnit inlineDirectionOffset(const LayoutSize& offsetFromBlock) const;
-
-    RootInlineBox* firstRootBox() const { return static_cast<RootInlineBox*>(firstLineBox()); }
-    RootInlineBox* lastRootBox() const { return static_cast<RootInlineBox*>(lastLineBox()); }
 
     virtual bool shouldPaintSelectionGaps() const OVERRIDE FINAL;
     GapRects selectionGapRectsForRepaint(const RenderLayerModelObject* repaintContainer);
@@ -213,18 +203,10 @@ public:
     unsigned columnCount(ColumnInfo*) const;
     LayoutRect columnRectAt(ColumnInfo*, unsigned) const;
 
-    bool shouldBreakAtLineToAvoidWidow() const { return m_rareData && m_rareData->m_lineBreakToAvoidWidow >= 0; }
-    void clearShouldBreakAtLineToAvoidWidow() const;
-    int lineBreakToAvoidWidow() const { return m_rareData ? m_rareData->m_lineBreakToAvoidWidow : -1; }
-    void setBreakAtLineToAvoidWidow(int);
-    void clearDidBreakAtLineToAvoidWidow();
-    void setDidBreakAtLineToAvoidWidow();
-    bool didBreakAtLineToAvoidWidow() const { return m_rareData && m_rareData->m_didBreakAtLineToAvoidWidow; }
-
     // The page logical offset is the object's offset from the top of the page in the page progression
     // direction (so an x-offset in vertical text and a y-offset for horizontal text).
-    LayoutUnit pageLogicalOffset() const { return m_rareData ? m_rareData->m_pageLogicalOffset : LayoutUnit(); }
-    void setPageLogicalOffset(LayoutUnit);
+    LayoutUnit pageLogicalOffset() const { return m_pageLogicalOffset; }
+    void setPageLogicalOffset(LayoutUnit offset) { m_pageLogicalOffset = offset; }
 
     // Accessors for logical width/height and margins in the containing block's block-flow direction.
     LayoutUnit logicalWidthForChild(const RenderBox* child) const { return isHorizontalWritingMode() ? child->width() : child->height(); }
@@ -267,6 +249,8 @@ public:
 
     bool recalcChildOverflowAfterStyleChange();
     bool recalcOverflowAfterStyleChange();
+
+    void invalidatePositionedObjectsAffectedByOverflowClip();
 
 protected:
     virtual void willBeDestroyed() OVERRIDE;
@@ -335,7 +319,7 @@ protected:
     void addOverflowFromBlockChildren();
     void addVisualOverflowFromTheme();
 
-    virtual void addFocusRingRects(Vector<IntRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) OVERRIDE;
+    virtual void addFocusRingRects(Vector<IntRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) const OVERRIDE;
 
     virtual void computeSelfHitTestRects(Vector<LayoutRect>&, const LayoutPoint& layerOffset) const OVERRIDE;
 
@@ -373,7 +357,7 @@ private:
     void insertIntoTrackedRendererMaps(RenderBox* descendant, TrackedDescendantsMap*&, TrackedContainerMap*&);
     static void removeFromTrackedRendererMaps(RenderBox* descendant, TrackedDescendantsMap*&, TrackedContainerMap*&);
 
-    void createFirstLetterRenderer(RenderObject* firstLetterBlock, RenderObject* currentChild, unsigned length);
+    void createFirstLetterRenderer(RenderObject* firstLetterBlock, RenderText& currentChild, unsigned length);
     void updateFirstLetterStyle(RenderObject* firstLetterBlock, RenderObject* firstLetterContainer);
 
     Node* nodeForHitTest() const;
@@ -388,7 +372,7 @@ private:
 
     bool hasCaret() const;
 
-    virtual bool avoidsFloats() const OVERRIDE;
+    virtual bool avoidsFloats() const OVERRIDE { return true; }
 
     bool hitTestColumns(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction);
     bool hitTestContents(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction);
@@ -438,9 +422,6 @@ private:
 
     void adjustPointToColumnContents(LayoutPoint&) const;
 
-    void fitBorderToLinesIfNeeded(); // Shrink the box in which the border paints if border-fit is set.
-    virtual void adjustForBorderFit(LayoutUnit x, LayoutUnit& left, LayoutUnit& right) const; // Helper function for borderFitAdjust
-
     void markLinesDirtyInBlockRange(LayoutUnit logicalTop, LayoutUnit logicalBottom, RootInlineBox* highest = 0);
 
     Position positionForBox(InlineBox*, bool start = true) const;
@@ -460,6 +441,8 @@ private:
 
     // End helper functions and structs used by layoutBlockChildren.
 
+    bool widthAvailableToChildrenHasChanged();
+
 protected:
     // Returns the logicalOffset at the top of the next page. If the offset passed in is already at the top of the current page,
     // then nextPageLogicalTop with ExcludePageBoundary will still move to the top of the next page. nextPageLogicalTop with
@@ -472,7 +455,6 @@ protected:
     bool createsBlockFormattingContext() const;
 
 public:
-    LayoutUnit pageLogicalTopForOffset(LayoutUnit offset) const;
     LayoutUnit pageLogicalHeightForOffset(LayoutUnit offset) const;
     LayoutUnit pageRemainingLogicalHeightForOffset(LayoutUnit offset, PageBoundaryRule = IncludePageBoundary) const;
 
@@ -499,30 +481,11 @@ protected:
 public:
     virtual LayoutUnit offsetFromLogicalTopOfFirstPage() const OVERRIDE FINAL;
 
-public:
-
-    // Allocated only when some of these fields have non-default values
-    struct RenderBlockRareData {
-        WTF_MAKE_NONCOPYABLE(RenderBlockRareData); WTF_MAKE_FAST_ALLOCATED;
-    public:
-        RenderBlockRareData()
-            : m_pageLogicalOffset(0)
-            , m_lineBreakToAvoidWidow(-1)
-            , m_didBreakAtLineToAvoidWidow(false)
-        {
-        }
-
-        LayoutUnit m_pageLogicalOffset;
-
-        int m_lineBreakToAvoidWidow : 31;
-        unsigned m_didBreakAtLineToAvoidWidow : 1;
-     };
-
 protected:
-    OwnPtr<RenderBlockRareData> m_rareData;
-
     RenderObjectChildList m_children;
     RenderLineBoxList m_lineBoxes;   // All of the root line boxes created for this block flow.  For example, <div>Hello<br>world.</div> will have two total lines for the <div>.
+
+    LayoutUnit m_pageLogicalOffset;
 
     unsigned m_hasMarginBeforeQuirk : 1; // Note these quirk values can't be put in RenderBlockRareData since they are set too frequently.
     unsigned m_hasMarginAfterQuirk : 1;
@@ -545,6 +508,6 @@ protected:
 
 DEFINE_RENDER_OBJECT_TYPE_CASTS(RenderBlock, isRenderBlock());
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // RenderBlock_h

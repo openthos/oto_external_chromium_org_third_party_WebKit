@@ -39,7 +39,7 @@
 #include "wtf/Vector.h"
 #include "wtf/text/WTFString.h"
 
-namespace WebCore {
+namespace blink {
 
 class ContainerNode;
 class Node;
@@ -64,7 +64,8 @@ public:
 protected:
     explicit TreeScopeStyleSheetCollection(TreeScope&);
 
-    Document& document() const { return m_treeScope.document(); }
+    Document& document() const { return treeScope().document(); }
+    TreeScope& treeScope() const { return *m_treeScope; }
 
     enum StyleResolverUpdateType {
         Reconstruct,
@@ -92,7 +93,7 @@ private:
     bool activeLoadingStyleSheetLoaded(const WillBeHeapVector<RefPtrWillBeMember<CSSStyleSheet> >& newStyleSheets);
 
 protected:
-    TreeScope& m_treeScope;
+    RawPtrWillBeMember<TreeScope> m_treeScope;
     bool m_hadActiveLoadingStylesheet;
     bool m_usesRemUnits;
 

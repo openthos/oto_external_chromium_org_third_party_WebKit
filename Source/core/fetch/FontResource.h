@@ -33,7 +33,7 @@
 #include "platform/fonts/FontWidthVariant.h"
 #include "wtf/OwnPtr.h"
 
-namespace WebCore {
+namespace blink {
 
 class Document;
 class ResourceFetcher;
@@ -47,6 +47,7 @@ public:
 
     FontResource(const ResourceRequest&);
     virtual ~FontResource();
+    virtual void trace(Visitor*) OVERRIDE;
 
     virtual void load(ResourceFetcher*, const ResourceLoaderOptions&) OVERRIDE;
 
@@ -82,7 +83,7 @@ private:
     Timer<FontResource> m_fontLoadWaitLimitTimer;
 
 #if ENABLE(SVG_FONTS)
-    RefPtrWillBePersistent<Document> m_externalSVGDocument;
+    RefPtrWillBeMember<Document> m_externalSVGDocument;
 #endif
 
     friend class MemoryCache;

@@ -37,7 +37,7 @@
 #include "wtf/StringExtras.h"
 #include "wtf/text/TextEncodingRegistry.h"
 
-namespace WebCore {
+namespace blink {
 
 TextDecoder* TextDecoder::create(const String& label, const Dictionary& options, ExceptionState& exceptionState)
 {
@@ -66,6 +66,7 @@ TextDecoder::TextDecoder(const WTF::TextEncoding& encoding, bool fatal, bool ign
     , m_ignoreBOM(ignoreBOM)
     , m_bomSeen(false)
 {
+    ScriptWrappable::init(this);
 }
 
 TextDecoder::~TextDecoder()
@@ -113,4 +114,4 @@ String TextDecoder::decode(ArrayBufferView* input, const Dictionary& options, Ex
     return s;
 }
 
-} // namespace WebCore
+} // namespace blink

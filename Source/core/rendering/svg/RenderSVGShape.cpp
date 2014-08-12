@@ -43,7 +43,7 @@
 #include "platform/graphics/GraphicsContextStateSaver.h"
 #include "wtf/MathExtras.h"
 
-namespace WebCore {
+namespace blink {
 
 RenderSVGShape::RenderSVGShape(SVGGraphicsElement* node)
     : RenderSVGModelObject(node)
@@ -289,7 +289,7 @@ void RenderSVGShape::paint(PaintInfo& paintInfo, const LayoutPoint&)
 
 // This method is called from inside paintOutline() since we call paintOutline()
 // while transformed to our coord system, return local coords
-void RenderSVGShape::addFocusRingRects(Vector<IntRect>& rects, const LayoutPoint&, const RenderLayerModelObject*)
+void RenderSVGShape::addFocusRingRects(Vector<IntRect>& rects, const LayoutPoint&, const RenderLayerModelObject*) const
 {
     IntRect rect = enclosingIntRect(paintInvalidationRectInLocalCoordinates());
     if (!rect.isEmpty())
@@ -302,9 +302,8 @@ bool RenderSVGShape::nodeAtFloatPoint(const HitTestRequest& request, HitTestResu
     if (hitTestAction != HitTestForeground)
         return false;
 
-    FloatPoint localPoint = m_localTransform.inverse().mapPoint(pointInParent);
-
-    if (!SVGRenderSupport::pointInClippingArea(this, localPoint))
+    FloatPoint localPoint;
+    if (!SVGRenderSupport::transformToUserSpaceAndCheckClipping(this, m_localTransform, pointInParent, localPoint))
         return false;
 
     PointerEventsHitRules hitRules(PointerEventsHitRules::SVG_GEOMETRY_HITTESTING, request, style()->pointerEvents());

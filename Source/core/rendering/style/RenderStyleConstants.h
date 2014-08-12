@@ -26,7 +26,7 @@
 #ifndef RenderStyleConstants_h
 #define RenderStyleConstants_h
 
-namespace WebCore {
+namespace blink {
 
 enum StyleRecalcChange {
     NoChange,
@@ -345,8 +345,8 @@ enum TextJustify {
 
 enum TextUnderlinePosition {
     // FIXME: Implement support for 'under left' and 'under right' values.
-    TextUnderlinePositionAuto = 0x1,
-    TextUnderlinePositionUnder = 0x2
+    TextUnderlinePositionAuto,
+    TextUnderlinePositionUnder
 };
 
 enum EPageBreak {
@@ -544,6 +544,6 @@ enum TextIndentType { TextIndentNormal, TextIndentHanging };
 
 enum CSSBoxType { BoxMissing = 0, MarginBox, BorderBox, PaddingBox, ContentBox };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // RenderStyleConstants_h

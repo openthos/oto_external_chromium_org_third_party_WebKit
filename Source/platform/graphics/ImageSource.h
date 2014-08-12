@@ -31,9 +31,8 @@
 #include "wtf/Forward.h"
 #include "wtf/Noncopyable.h"
 #include "wtf/OwnPtr.h"
-#include "wtf/Vector.h"
 
-namespace WebCore {
+namespace blink {
 
 class DeferredImageDecoder;
 class ImageOrientation;

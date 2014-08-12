@@ -43,7 +43,7 @@
 #include "platform/PODIntervalTree.h"
 #include "platform/geometry/TransformState.h"
 
-namespace WebCore {
+namespace blink {
 
 RenderFlowThread::RenderFlowThread()
     : RenderBlockFlow(0)
@@ -250,12 +250,6 @@ LayoutPoint RenderFlowThread::adjustedPositionRelativeToOffsetParent(const Rende
     }
 
     return referencePoint;
-}
-
-LayoutUnit RenderFlowThread::pageLogicalTopForOffset(LayoutUnit offset)
-{
-    RenderMultiColumnSet* columnSet = columnSetAtBlockOffset(offset);
-    return columnSet ? columnSet->pageLogicalTopForOffset(offset) : LayoutUnit();
 }
 
 LayoutUnit RenderFlowThread::pageLogicalHeightForOffset(LayoutUnit offset)
@@ -517,4 +511,4 @@ CurrentRenderFlowThreadMaintainer::~CurrentRenderFlowThreadMaintainer()
 }
 
 
-} // namespace WebCore
+} // namespace blink

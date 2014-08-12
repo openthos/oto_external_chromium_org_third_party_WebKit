@@ -30,12 +30,11 @@
 
 /**
  * @constructor
- * @extends {WebInspector.SDKObject}
- * @param {!WebInspector.Target} target
+ * @extends {WebInspector.Object}
  */
-WebInspector.TimelineModel = function(target)
+WebInspector.TimelineModel = function()
 {
-    WebInspector.SDKObject.call(this, target);
+    WebInspector.Object.call(this);
     this._filters = [];
 }
 
@@ -158,14 +157,6 @@ WebInspector.TimelineModel.prototype = {
     },
 
     /**
-     * @return {boolean}
-     */
-    loadedFromFile: function()
-    {
-        return false;
-    },
-
-    /**
      * @param {?function(!WebInspector.TimelineModel.Record)|?function(!WebInspector.TimelineModel.Record,number)} preOrderCallback
      * @param {function(!WebInspector.TimelineModel.Record)|function(!WebInspector.TimelineModel.Record,number)=} postOrderCallback
      */
@@ -248,15 +239,6 @@ WebInspector.TimelineModel.prototype = {
         throw new Error("Not implemented");
     },
 
-    /**
-     * @param {string} url
-     * @param {!WebInspector.Progress} progress
-     */
-    loadFromURL: function(url, progress)
-    {
-        throw new Error("Not implemented");
-    },
-
     saveToFile: function()
     {
         throw new Error("Not implemented");
@@ -264,7 +246,6 @@ WebInspector.TimelineModel.prototype = {
 
     reset: function()
     {
-        this._loadedFromFile = false;
         this._records = [];
         this._minimumRecordTime = 0;
         this._maximumRecordTime = 0;
@@ -291,6 +272,14 @@ WebInspector.TimelineModel.prototype = {
     maximumRecordTime: function()
     {
         return this._maximumRecordTime;
+    },
+
+    /**
+     * @return {boolean}
+     */
+    isEmpty: function()
+    {
+        return this.minimumRecordTime() === 0 && this.maximumRecordTime() === 0;
     },
 
     /**
@@ -331,7 +320,7 @@ WebInspector.TimelineModel.prototype = {
         return this._eventDividerRecords;
     },
 
-    __proto__: WebInspector.SDKObject.prototype
+    __proto__: WebInspector.Object.prototype
 }
 
 /**
@@ -353,7 +342,7 @@ WebInspector.TimelineModel.Record.prototype = {
     initiator: function() { },
 
     /**
-     * @return {!WebInspector.Target}
+     * @return {?WebInspector.Target}
      */
     target: function() { },
 

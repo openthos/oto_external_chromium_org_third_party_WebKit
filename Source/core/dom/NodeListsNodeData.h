@@ -31,16 +31,16 @@
 #include "wtf/text/AtomicString.h"
 #include "wtf/text/StringHash.h"
 
-namespace WebCore {
+namespace blink {
 
 class NodeListsNodeData FINAL : public NoBaseWillBeGarbageCollectedFinalized<NodeListsNodeData> {
     WTF_MAKE_NONCOPYABLE(NodeListsNodeData);
     WTF_MAKE_FAST_ALLOCATED_WILL_BE_REMOVED;
 public:
-    void clearChildNodeListCache()
+    ChildNodeList* childNodeList(ContainerNode& node)
     {
-        if (m_childNodeList && m_childNodeList->isChildNodeList())
-            toChildNodeList(m_childNodeList)->invalidateCache();
+        ASSERT_UNUSED(node, !m_childNodeList || node == m_childNodeList->virtualOwnerNode());
+        return toChildNodeList(m_childNodeList);
     }
 
     PassRefPtrWillBeRawPtr<ChildNodeList> ensureChildNodeList(ContainerNode& node)
@@ -236,6 +236,32 @@ inline bool NodeListsNodeData::deleteThisAndUpdateNodeRareDataIfAboutToRemoveLas
 }
 #endif
 
-} // namespace WebCore
+template <typename Collection>
+inline PassRefPtrWillBeRawPtr<Collection> ContainerNode::ensureCachedCollection(CollectionType type)
+{
+    return ensureNodeLists().addCache<Collection>(*this, type);
+}
+
+template <typename Collection>
+inline PassRefPtrWillBeRawPtr<Collection> ContainerNode::ensureCachedCollection(CollectionType type, const AtomicString& name)
+{
+    return ensureNodeLists().addCache<Collection>(*this, type, name);
+}
+
+template <typename Collection>
+inline PassRefPtrWillBeRawPtr<Collection> ContainerNode::ensureCachedCollection(CollectionType type, const AtomicString& namespaceURI, const AtomicString& localName)
+{
+    ASSERT_UNUSED(type, type == TagCollectionType);
+    return ensureNodeLists().addCache(*this, namespaceURI, localName);
+}
+
+template <typename Collection>
+inline Collection* ContainerNode::cachedCollection(CollectionType type)
+{
+    NodeListsNodeData* nodeLists = this->nodeLists();
+    return nodeLists ? nodeLists->cached<Collection>(type) : 0;
+}
+
+} // namespace blink
 
 #endif // NodeListsNodeData_h

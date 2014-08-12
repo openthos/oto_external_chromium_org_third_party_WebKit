@@ -38,28 +38,14 @@
 #include "wtf/text/TextPosition.h"
 #include <v8.h>
 
-namespace WebCore {
+namespace blink {
 
 class ErrorEvent;
+class ExceptionState;
 class ScriptSourceCode;
 class ScriptValue;
 class WorkerGlobalScope;
-
-struct WorkerGlobalScopeExecutionState {
-    WorkerGlobalScopeExecutionState()
-        : hadException(false)
-        , lineNumber(0)
-        , columnNumber(0)
-    {
-    }
-
-    bool hadException;
-    String errorMessage;
-    int lineNumber;
-    int columnNumber;
-    String sourceURL;
-    ScriptValue exception;
-};
+class WorkerGlobalScopeExecutionState;
 
 class WorkerScriptController {
 public:
@@ -72,7 +58,7 @@ public:
 
     void evaluate(const ScriptSourceCode&, RefPtrWillBeRawPtr<ErrorEvent>* = 0);
 
-    void rethrowExceptionFromImportedScript(PassRefPtrWillBeRawPtr<ErrorEvent>);
+    void rethrowExceptionFromImportedScript(PassRefPtrWillBeRawPtr<ErrorEvent>, ExceptionState&);
 
     // Async request to terminate a future JS execution. Eventually causes termination
     // exception raised during JS execution, if the worker thread happens to run JS.
@@ -89,9 +75,6 @@ public:
 
     void disableEval(const String&);
 
-    // Evaluate a script file in the current execution environment.
-    ScriptValue evaluate(const String& script, const String& fileName, const TextPosition& scriptStartPosition, WorkerGlobalScopeExecutionState*);
-
     v8::Isolate* isolate() const { return m_isolate; }
     DOMWrapperWorld& world() const { return *m_world; }
     ScriptState* scriptState() { return m_scriptState.get(); }
@@ -101,10 +84,14 @@ public:
     // Send a notification about current thread is going to be idle.
     // Returns true if the embedder should stop calling idleNotification
     // until real work has been done.
-    bool idleNotification() { return v8::V8::IdleNotification(); }
-
+    bool idleNotification() { return m_isolate->IdleNotification(1000); }
 
 private:
+    class WorkerGlobalScopeExecutionState;
+
+    // Evaluate a script file in the current execution environment.
+    ScriptValue evaluate(const String& script, const String& fileName, const TextPosition& scriptStartPosition);
+
     v8::Isolate* m_isolate;
     WorkerGlobalScope& m_workerGlobalScope;
     RefPtr<ScriptState> m_scriptState;
@@ -113,10 +100,18 @@ private:
     bool m_executionForbidden;
     bool m_executionScheduledToTerminate;
     mutable Mutex m_scheduledTerminationMutex;
-    RefPtrWillBePersistent<ErrorEvent> m_errorEventFromImportedScript;
+
+    // |m_globalScopeExecutionState| refers to a stack object
+    // that evaluate() allocates; evaluate() ensuring that the
+    // pointer reference to it is removed upon returning. Hence
+    // kept as a bare pointer here, and not a Persistent with
+    // Oilpan enabled; stack scanning will visit the object and
+    // trace its on-heap fields.
+    GC_PLUGIN_IGNORE("394615")
+    WorkerGlobalScopeExecutionState* m_globalScopeExecutionState;
     OwnPtr<V8IsolateInterruptor> m_interruptor;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // WorkerScriptController_h

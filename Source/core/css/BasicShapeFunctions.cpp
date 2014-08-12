@@ -38,7 +38,7 @@
 #include "core/rendering/style/BasicShapes.h"
 #include "core/rendering/style/RenderStyle.h"
 
-namespace WebCore {
+namespace blink {
 
 static PassRefPtrWillBeRawPtr<CSSPrimitiveValue> valueForCenterCoordinate(CSSValuePool& pool, const RenderStyle& style, const BasicShapeCenterCoordinate& center, EBoxOrient orientation)
 {
@@ -269,12 +269,9 @@ PassRefPtr<BasicShape> basicShapeForValue(const StyleResolverState& state, const
 
 FloatPoint floatPointForCenterCoordinate(const BasicShapeCenterCoordinate& centerX, const BasicShapeCenterCoordinate& centerY, FloatSize boxSize)
 {
-    FloatPoint p;
-    float offset = floatValueForLength(centerX.length(), boxSize.width());
-    p.setX(centerX.direction() == BasicShapeCenterCoordinate::TopLeft ? offset : boxSize.width() - offset);
-    offset = floatValueForLength(centerY.length(), boxSize.height());
-    p.setY(centerY.direction() == BasicShapeCenterCoordinate::TopLeft ? offset : boxSize.height() - offset);
-    return p;
+    float x = floatValueForLength(centerX.computedLength(), boxSize.width());
+    float y = floatValueForLength(centerY.computedLength(), boxSize.height());
+    return FloatPoint(x, y);
 }
 
 }

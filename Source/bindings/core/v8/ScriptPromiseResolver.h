@@ -13,10 +13,9 @@
 #include "core/dom/ExecutionContext.h"
 #include "platform/Timer.h"
 #include "wtf/RefCounted.h"
-#include "wtf/Vector.h"
 #include <v8.h>
 
-namespace WebCore {
+namespace blink {
 
 // This class wraps v8::Promise::Resolver and provides the following
 // functionalities.
@@ -143,6 +142,6 @@ private:
 #endif
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // #ifndef ScriptPromiseResolver_h

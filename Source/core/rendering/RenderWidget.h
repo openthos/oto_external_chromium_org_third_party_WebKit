@@ -25,7 +25,7 @@
 #include "core/rendering/RenderReplaced.h"
 #include "platform/Widget.h"
 
-namespace WebCore {
+namespace blink {
 
 class RenderWidget : public RenderReplaced {
 public:
@@ -36,8 +36,6 @@ public:
     void updateOnWidgetChange();
     void updateWidgetPosition();
     void widgetPositionsUpdated();
-
-    void setIsOverlapped(bool);
 
     void ref() { ++m_refCount; }
     void deref();
@@ -67,6 +65,6 @@ private:
 
 DEFINE_RENDER_OBJECT_TYPE_CASTS(RenderWidget, isWidget());
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // RenderWidget_h

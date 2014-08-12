@@ -8,7 +8,7 @@
 #include "wtf/MainThread.h"
 #include "wtf/TemporaryChange.h"
 
-namespace WebCore {
+namespace blink {
 
 #if ENABLE(ASSERT)
 
@@ -36,16 +36,14 @@ public:
         return s_count;
     }
 
-    // It's safe to dispatch events in SVGImage since there can't be any script
-    // listeners.
-    class AllowSVGImageEvents {
+    class AllowUserAgentEvents {
     public:
-        AllowSVGImageEvents()
+        AllowUserAgentEvents()
             : m_change(s_count, 0)
         {
         }
 
-        ~AllowSVGImageEvents()
+        ~AllowUserAgentEvents()
         {
             ASSERT(!s_count);
         }
@@ -63,14 +61,14 @@ class NoEventDispatchAssertion {
 public:
     NoEventDispatchAssertion() { }
 
-    class AllowSVGImageEvents {
+    class AllowUserAgentEvents {
     public:
-        AllowSVGImageEvents() { }
+        AllowUserAgentEvents() { }
     };
 };
 
 #endif // ENABLE(ASSERT)
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // NoEventDispatchAssertion_h

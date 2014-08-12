@@ -27,7 +27,7 @@
 
 #include "core/html/HTMLElement.h"
 
-namespace WebCore {
+namespace blink {
 
 class ExceptionState;
 class HTMLDataListElement;
@@ -69,6 +69,7 @@ public:
 
 private:
     explicit HTMLOptionElement(Document&);
+    virtual ~HTMLOptionElement();
 
     virtual bool rendererIsFocusable() const OVERRIDE { return true; }
     virtual void attach(const AttachContext& = AttachContext()) OVERRIDE;
@@ -95,6 +96,6 @@ private:
     RefPtr<RenderStyle> m_style;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif

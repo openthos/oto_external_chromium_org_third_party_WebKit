@@ -33,7 +33,7 @@
 #include "platform/RuntimeEnabledFeatures.h"
 #include "wtf/BitArray.h"
 
-namespace WebCore {
+namespace blink {
 
 typedef BitArray<numCSSProperties> CSSPropertySwitches;
 
@@ -96,16 +96,6 @@ static void setPropertySwitchesFromRuntimeFeatures()
     };
     setCSSPropertiesEnabled(animationProperties, WTF_ARRAY_LENGTH(animationProperties), RuntimeEnabledFeatures::cssAnimationUnprefixedEnabled());
 
-    CSSPropertyID transformProperties[] = {
-        CSSPropertyBackfaceVisibility,
-        CSSPropertyPerspective,
-        CSSPropertyPerspectiveOrigin,
-        CSSPropertyTransform,
-        CSSPropertyTransformOrigin,
-        CSSPropertyTransformStyle
-    };
-    setCSSPropertiesEnabled(transformProperties, WTF_ARRAY_LENGTH(transformProperties), RuntimeEnabledFeatures::cssTransformsUnprefixedEnabled());
-
     RuntimeCSSEnabled::setCSSPropertyEnabled(CSSPropertyMixBlendMode, RuntimeEnabledFeatures::cssCompositingEnabled());
     RuntimeCSSEnabled::setCSSPropertyEnabled(CSSPropertyIsolation, RuntimeEnabledFeatures::cssCompositingEnabled());
     RuntimeCSSEnabled::setCSSPropertyEnabled(CSSPropertyTouchAction, RuntimeEnabledFeatures::cssTouchActionEnabled());
@@ -164,4 +154,4 @@ void RuntimeCSSEnabled::filterEnabledCSSPropertiesIntoVector(const CSSPropertyID
     }
 }
 
-} // namespace WebCore
+} // namespace blink

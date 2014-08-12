@@ -28,6 +28,7 @@
 
 #include "bindings/core/v8/ScriptState.h"
 #include "core/dom/ExecutionContext.h"
+#include "core/frame/ConsoleTypes.h"
 #include "platform/network/ContentSecurityPolicyParsers.h"
 #include "platform/network/HTTPParsers.h"
 #include "platform/weborigin/ReferrerPolicy.h"
@@ -44,7 +45,7 @@ namespace WTF {
 class OrdinalNumber;
 }
 
-namespace WebCore {
+namespace blink {
 
 class ContentSecurityPolicyResponseHeaders;
 class CSPDirectiveList;
@@ -184,7 +185,7 @@ private:
 
     Document* document() const;
 
-    void logToConsole(const String& message) const;
+    void logToConsole(const String& message, MessageLevel = ErrorMessageLevel) const;
     void addPolicyFromHeaderValue(const String&, ContentSecurityPolicyHeaderType, ContentSecurityPolicyHeaderSource);
 
     bool shouldSendViolationReport(const String&) const;

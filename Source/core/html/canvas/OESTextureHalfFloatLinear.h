@@ -30,11 +30,11 @@
 #include "core/html/canvas/WebGLExtension.h"
 #include "wtf/PassRefPtr.h"
 
-namespace WebCore {
+namespace blink {
 
 class OESTextureHalfFloatLinear FINAL : public WebGLExtension, public ScriptWrappable {
 public:
-    static PassRefPtr<OESTextureHalfFloatLinear> create(WebGLRenderingContextBase*);
+    static PassRefPtrWillBeRawPtr<OESTextureHalfFloatLinear> create(WebGLRenderingContextBase*);
     static bool supported(WebGLRenderingContextBase*);
     static const char* extensionName();
 
@@ -42,9 +42,9 @@ public:
     virtual WebGLExtensionName name() const OVERRIDE;
 
 private:
-    OESTextureHalfFloatLinear(WebGLRenderingContextBase*);
+    explicit OESTextureHalfFloatLinear(WebGLRenderingContextBase*);
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // OESTextureHalfFloatLinear_h

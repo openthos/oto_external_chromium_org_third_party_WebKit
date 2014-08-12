@@ -77,7 +77,7 @@ WebInspector.ProfileDataGridNode.prototype = {
             var lineNumber = this.profileNode.lineNumber ? this.profileNode.lineNumber - 1 : 0;
             var columnNumber = this.profileNode.columnNumber ? this.profileNode.columnNumber - 1 : 0;
             var target = this.tree.profileView.target();
-            var urlElement = this.tree.profileView._linkifier.linkifyLocationByScriptId(target, this.profileNode.scriptId, this.profileNode.url, lineNumber, columnNumber, "profile-node-file");
+            var urlElement = this.tree.profileView._linkifier.linkifyScriptLocation(target, this.profileNode.scriptId, this.profileNode.url, lineNumber, columnNumber, "profile-node-file");
             urlElement.style.maxWidth = "75%";
             cell.insertBefore(urlElement, cell.firstChild);
         }
@@ -188,7 +188,7 @@ WebInspector.ProfileDataGridNode.prototype = {
                     children.sort(comparator);
 
                     for (var childIndex = 0; childIndex < childCount; ++childIndex)
-                        children[childIndex]._recalculateSiblings(childIndex);
+                        children[childIndex].recalculateSiblings(childIndex);
 
                     gridNodeGroups.push(children);
                 }
@@ -243,11 +243,6 @@ WebInspector.ProfileDataGridNode.prototype = {
     get totalPercent()
     {
         return this.totalTime / this.tree.totalTime * 100.0;
-    },
-
-    get _parent()
-    {
-        return this.parent !== this.dataGrid ? this.parent : this.tree;
     },
 
     populate: function()

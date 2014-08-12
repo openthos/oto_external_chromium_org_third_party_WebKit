@@ -7,15 +7,15 @@
 
 #include "platform/Supplementable.h"
 
-namespace WebCore {
+namespace blink {
 
 class ScreenOrientation;
 class Screen;
 class ScriptState;
 
-class ScreenScreenOrientation FINAL :
-    public NoBaseWillBeGarbageCollectedFinalized<ScreenScreenOrientation>,
-    public WillBeHeapSupplement<Screen> {
+class ScreenScreenOrientation FINAL
+    : public NoBaseWillBeGarbageCollectedFinalized<ScreenScreenOrientation>
+    , public WillBeHeapSupplement<Screen> {
     WILL_BE_USING_GARBAGE_COLLECTED_MIXIN(ScreenScreenOrientation);
 public:
     static ScreenScreenOrientation& from(Screen&);
@@ -31,6 +31,6 @@ private:
     PersistentWillBeMember<ScreenOrientation> m_orientation;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // ScreenScreenOrientation_h

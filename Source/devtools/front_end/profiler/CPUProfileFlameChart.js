@@ -111,6 +111,24 @@ WebInspector.CPUFlameChartDataProvider.prototype = {
     },
 
     /**
+     * @param {number} index
+     * @return {string}
+     */
+    markerColor: function(index)
+    {
+        throw new Error("Unreachable.");
+    },
+
+    /**
+     * @param {number} index
+     * @return {string}
+     */
+    markerTitle: function(index)
+    {
+        throw new Error("Unreachable.");
+    },
+
+    /**
      * @return {?WebInspector.FlameChart.TimelineData}
      */
     _calculateTimelineData: function()
@@ -172,12 +190,7 @@ WebInspector.CPUFlameChartDataProvider.prototype = {
 
         this._maxStackDepth = maxDepth;
 
-        /** @type {!WebInspector.FlameChart.TimelineData} */
-        this._timelineData = {
-            entryLevels: entryLevels,
-            entryTotalTimes: entryTotalTimes,
-            entryStartTimes: entryStartTimes,
-        };
+        this._timelineData = new WebInspector.FlameChart.TimelineData(entryLevels, entryTotalTimes, entryStartTimes);
 
         /** @type {!Array.<!ProfilerAgent.CPUProfileNode>} */
         this._entryNodes = entryNodes;
@@ -219,7 +232,8 @@ WebInspector.CPUFlameChartDataProvider.prototype = {
             entryInfo.push(row);
         }
 
-        pushEntryInfoRow(WebInspector.UIString("Name"), node.functionName);
+        var name = WebInspector.CPUProfileDataModel.beautifyFunctionName(node.functionName);
+        pushEntryInfoRow(WebInspector.UIString("Name"), name);
         var selfTime = this._millisecondsToString(this._entrySelfTimes[entryIndex]);
         var totalTime = this._millisecondsToString(timelineData.entryTotalTimes[entryIndex]);
         pushEntryInfoRow(WebInspector.UIString("Self time"), selfTime);
@@ -251,7 +265,7 @@ WebInspector.CPUFlameChartDataProvider.prototype = {
     entryTitle: function(entryIndex)
     {
         var node = this._entryNodes[entryIndex];
-        return node.functionName;
+        return WebInspector.CPUProfileDataModel.beautifyFunctionName(node.functionName);
     },
 
     /**

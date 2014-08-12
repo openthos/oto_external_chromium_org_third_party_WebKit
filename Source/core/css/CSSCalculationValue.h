@@ -39,7 +39,7 @@
 #include "wtf/RefCounted.h"
 #include "wtf/RefPtr.h"
 
-namespace WebCore {
+namespace blink {
 
 class CSSParserValueList;
 class CSSValueList;
@@ -54,12 +54,17 @@ enum CalcOperator {
     CalcDivide = '/'
 };
 
+// The order of this enum should not change since its elements are used as indices
+// in the addSubtractResult matrix.
 enum CalculationCategory {
     CalcNumber = 0,
     CalcLength,
     CalcPercent,
     CalcPercentNumber,
     CalcPercentLength,
+    CalcAngle,
+    CalcTime,
+    CalcFrequency,
     CalcOther
 };
 
@@ -143,7 +148,7 @@ private:
 
 DEFINE_CSS_VALUE_TYPE_CASTS(CSSCalcValue, isCalcValue());
 
-} // namespace WebCore
+} // namespace blink
 
 
 #endif // CSSCalculationValue_h

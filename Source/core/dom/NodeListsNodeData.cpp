@@ -31,7 +31,7 @@
 #include "config.h"
 #include "core/dom/NodeListsNodeData.h"
 
-namespace WebCore {
+namespace blink {
 
 void NodeListsNodeData::invalidateCaches(const QualifiedName* attrName)
 {
@@ -49,9 +49,11 @@ void NodeListsNodeData::invalidateCaches(const QualifiedName* attrName)
 
 void NodeListsNodeData::trace(Visitor* visitor)
 {
+#if ENABLE(OILPAN)
     visitor->trace(m_childNodeList);
     visitor->trace(m_atomicNameCaches);
     visitor->trace(m_tagCollectionCacheNS);
+#endif
 }
 
-} // namespace WebCore
+} // namespace blink

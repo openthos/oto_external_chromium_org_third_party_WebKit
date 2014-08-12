@@ -32,7 +32,7 @@
 
 #include "wtf/MathExtras.h"
 
-namespace WebCore {
+namespace blink {
 
 class MarginIntervalGenerator {
 public:
@@ -166,8 +166,12 @@ void RasterShape::getExcludedIntervals(LayoutUnit logicalTop, LayoutUnit logical
     y2 = std::min(y2, intervals.bounds().maxY());
     IntShapeInterval excludedInterval;
 
-    for (int y = y1; y < y2;  y++)
-        excludedInterval.unite(intervals.intervalAt(y));
+    if (y1 == y2) {
+        excludedInterval = intervals.intervalAt(y1);
+    } else {
+        for (int y = y1; y < y2; y++)
+            excludedInterval.unite(intervals.intervalAt(y));
+    }
 
     // Note: |marginIntervals()| returns end-point exclusive
     // intervals. |excludedInterval.x2()| contains the left-most pixel
@@ -175,4 +179,4 @@ void RasterShape::getExcludedIntervals(LayoutUnit logicalTop, LayoutUnit logical
     result.append(LineSegment(excludedInterval.x1(), excludedInterval.x2()));
 }
 
-} // namespace WebCore
+} // namespace blink

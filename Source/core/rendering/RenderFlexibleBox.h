@@ -34,7 +34,7 @@
 #include "core/rendering/OrderIterator.h"
 #include "core/rendering/RenderBlock.h"
 
-namespace WebCore {
+namespace blink {
 
 class RenderFlexibleBox : public RenderBlock {
 public:
@@ -46,7 +46,6 @@ public:
     virtual const char* renderName() const OVERRIDE;
 
     virtual bool isFlexibleBox() const OVERRIDE FINAL { return true; }
-    virtual bool avoidsFloats() const OVERRIDE FINAL { return true; }
     virtual bool canCollapseAnonymousBlockChild() const OVERRIDE { return false; }
     virtual void layoutBlock(bool relayoutChildren) OVERRIDE FINAL;
 
@@ -166,6 +165,6 @@ private:
 
 DEFINE_RENDER_OBJECT_TYPE_CASTS(RenderFlexibleBox, isFlexibleBox());
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // RenderFlexibleBox_h

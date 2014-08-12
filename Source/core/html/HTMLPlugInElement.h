@@ -29,7 +29,7 @@
 
 struct NPObject;
 
-namespace WebCore {
+namespace blink {
 
 class HTMLImageLoader;
 class RenderEmbeddedObject;
@@ -142,11 +142,6 @@ private:
     RefPtr<Widget> m_persistedPluginWidget;
 };
 
-inline bool isHTMLPlugInElement(const Element& element)
-{
-    return element.isHTMLElement() && toHTMLElement(element).isPluginElement();
-}
-
 inline bool isHTMLPlugInElement(const HTMLElement& element)
 {
     return element.isPluginElement();
@@ -154,6 +149,6 @@ inline bool isHTMLPlugInElement(const HTMLElement& element)
 
 DEFINE_HTMLELEMENT_TYPE_CASTS_WITH_FUNCTION(HTMLPlugInElement);
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // HTMLPlugInElement_h

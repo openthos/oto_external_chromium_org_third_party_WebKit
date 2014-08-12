@@ -13,7 +13,7 @@
 #include "wtf/text/AtomicString.h"
 #include "wtf/text/WTFString.h"
 
-namespace WebCore {
+namespace blink {
 
 class ExecutionContext;
 class LocalFrame;
@@ -21,10 +21,10 @@ class ScriptPromise;
 class ScriptState;
 class ScreenOrientationController;
 
-class ScreenOrientation FINAL :
-    public RefCountedGarbageCollectedWillBeGarbageCollectedFinalized<ScreenOrientation>,
-    public EventTargetWithInlineData,
-    DOMWindowProperty {
+class ScreenOrientation FINAL
+    : public RefCountedGarbageCollectedWillBeGarbageCollectedFinalized<ScreenOrientation>
+    , public EventTargetWithInlineData
+    , DOMWindowProperty {
     DEFINE_EVENT_TARGET_REFCOUNTING_WILL_BE_REMOVED(RefCountedGarbageCollectedWillBeGarbageCollectedFinalized<ScreenOrientation>);
     WILL_BE_USING_GARBAGE_COLLECTED_MIXIN(ScreenOrientation);
 public:
@@ -61,6 +61,6 @@ private:
     unsigned short m_angle;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // ScreenOrientation_h

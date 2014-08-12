@@ -45,7 +45,7 @@
 #include "wtf/text/AtomicString.h"
 #include "wtf/text/TextPosition.h"
 
-namespace WebCore {
+namespace blink {
 
 class AnimationParseContext;
 class CSSArrayFunctionValue;
@@ -102,6 +102,7 @@ public:
     static PassRefPtrWillBeRawPtr<ImmutableStylePropertySet> parseInlineStyleDeclaration(const String&, Element*);
     PassRefPtrWillBeRawPtr<MediaQuerySet> parseMediaQueryList(const String&);
     PassOwnPtr<Vector<double> > parseKeyframeKeyList(const String&);
+    bool parseAttributeMatchType(CSSSelector::AttributeMatchType&, const String&);
 
     static bool parseValue(MutableStylePropertySet*, CSSPropertyID, const String&, bool important, const Document&);
 
@@ -324,6 +325,6 @@ inline int cssyylex(void* yylval, BisonCSSParser* parser)
 
 bool isValidNthToken(const CSSParserString&);
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // BisonCSSParser_h

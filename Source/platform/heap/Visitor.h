@@ -53,7 +53,7 @@
 #define DEBUG_ONLY(x)
 #endif
 
-namespace WebCore {
+namespace blink {
 
 class FinalizedHeapObjectHeader;
 template<typename T> class GarbageCollectedFinalized;
@@ -139,11 +139,15 @@ public:
     static const bool value = false;
 };
 
+template <typename T> const bool NeedsAdjustAndMark<T, true>::value;
+
 template<typename T>
 class NeedsAdjustAndMark<T, false> {
 public:
     static const bool value = WTF::IsSubclass<typename WTF::RemoveConst<T>::Type, GarbageCollectedMixin>::value;
 };
+
+template <typename T> const bool NeedsAdjustAndMark<T, false>::value;
 
 template<typename T, bool = NeedsAdjustAndMark<T>::value> class DefaultTraceTrait;
 
@@ -301,12 +305,6 @@ public:
         OffHeapCollectionTraceTrait<Deque<T, N> >::trace(this, deque);
     }
 
-    template<typename T, typename U, typename V, typename W, typename X>
-    void trace(const HashMap<T, U, V, W, X, WTF::DefaultAllocator>& map)
-    {
-        OffHeapCollectionTraceTrait<HashMap<T, U, V, W, X, WTF::DefaultAllocator> >::trace(this, map);
-    }
-
 #if !ENABLE(OILPAN)
     // These trace methods are needed to allow compiling and calling trace on
     // transition types. We need to support calls in the non-oilpan build
@@ -433,26 +431,6 @@ private:
         T** cell = reinterpret_cast<T**>(obj);
         if (*cell && !self->isAlive(*cell))
             *cell = 0;
-    }
-};
-
-template<typename Key, typename Value, typename HashFunctions, typename KeyTraits, typename ValueTraits>
-struct OffHeapCollectionTraceTrait<WTF::HashMap<Key, Value, HashFunctions, KeyTraits, ValueTraits, WTF::DefaultAllocator> > {
-    typedef WTF::HashMap<Key, Value, HashFunctions, KeyTraits, ValueTraits, WTF::DefaultAllocator> HashMap;
-
-    static void trace(Visitor* visitor, const HashMap& map)
-    {
-        if (map.isEmpty())
-            return;
-        if (WTF::ShouldBeTraced<KeyTraits>::value || WTF::ShouldBeTraced<ValueTraits>::value) {
-            HashMap& iterMap = const_cast<HashMap&>(map);
-            for (typename HashMap::iterator it = iterMap.begin(), end = iterMap.end(); it != end; ++it) {
-                CollectionBackingTraceTrait<WTF::ShouldBeTraced<KeyTraits>::value, KeyTraits::weakHandlingFlag, WTF::WeakPointersActWeak, typename HashMap::KeyType, KeyTraits>::trace(visitor, it->key);
-                CollectionBackingTraceTrait<WTF::ShouldBeTraced<ValueTraits>::value, ValueTraits::weakHandlingFlag, WTF::WeakPointersActWeak, typename HashMap::MappedType, ValueTraits>::trace(visitor, it->value);
-            }
-        }
-        COMPILE_ASSERT(KeyTraits::weakHandlingFlag == WTF::NoWeakHandlingInCollections, WeakOffHeapCollectionsConsideredDangerous1);
-        COMPILE_ASSERT(ValueTraits::weakHandlingFlag == WTF::NoWeakHandlingInCollections, WeakOffHeapCollectionsConsideredDangerous2);
     }
 };
 
@@ -584,21 +562,22 @@ template<typename T> bool ObjectAliveTrait<T>::isAlive(Visitor* visitor, T* obj)
 // Note that this is only enabled for Member<B>. For Member<A> which we can
 // compute the object header addr statically, this dynamic dispatch is not used.
 
-class GarbageCollectedMixin {
+class PLATFORM_EXPORT GarbageCollectedMixin {
 public:
-    virtual void adjustAndMark(Visitor*) const = 0;
-    virtual bool isAlive(Visitor*) const = 0;
+    virtual void adjustAndMark(Visitor*) const { };
+    virtual bool isAlive(Visitor*) const { return true; };
+    virtual void trace(Visitor*) { }
 };
 
 #define USING_GARBAGE_COLLECTED_MIXIN(TYPE) \
 public: \
-    virtual void adjustAndMark(WebCore::Visitor* visitor) const OVERRIDE    \
+    virtual void adjustAndMark(blink::Visitor* visitor) const OVERRIDE    \
     { \
-        typedef WTF::IsSubclassOfTemplate<typename WTF::RemoveConst<TYPE>::Type, WebCore::GarbageCollected> IsSubclassOfGarbageCollected; \
+        typedef WTF::IsSubclassOfTemplate<typename WTF::RemoveConst<TYPE>::Type, blink::GarbageCollected> IsSubclassOfGarbageCollected; \
         COMPILE_ASSERT(IsSubclassOfGarbageCollected::value, OnlyGarbageCollectedObjectsCanHaveGarbageCollectedMixins); \
-        visitor->mark(static_cast<const TYPE*>(this), &WebCore::TraceTrait<TYPE>::trace); \
+        visitor->mark(static_cast<const TYPE*>(this), &blink::TraceTrait<TYPE>::trace); \
     } \
-    virtual bool isAlive(WebCore::Visitor* visitor) const OVERRIDE  \
+    virtual bool isAlive(blink::Visitor* visitor) const OVERRIDE  \
     { \
         return visitor->isAlive(this); \
     } \

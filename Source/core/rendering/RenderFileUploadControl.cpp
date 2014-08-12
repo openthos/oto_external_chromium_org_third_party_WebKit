@@ -30,13 +30,14 @@
 #include "core/rendering/PaintInfo.h"
 #include "core/rendering/RenderButton.h"
 #include "core/rendering/RenderTheme.h"
+#include "core/rendering/TextRunConstructor.h"
 #include "platform/fonts/Font.h"
 #include "platform/graphics/GraphicsContextStateSaver.h"
 #include "platform/text/PlatformLocale.h"
 #include "platform/text/TextRun.h"
 #include <math.h>
 
-namespace WebCore {
+namespace blink {
 
 using namespace HTMLNames;
 
@@ -223,4 +224,4 @@ String RenderFileUploadControl::fileTextValue() const
     return RenderTheme::theme().fileListNameForWidth(input->locale(), input->files(), style()->font(), maxFilenameWidth());
 }
 
-} // namespace WebCore
+} // namespace blink

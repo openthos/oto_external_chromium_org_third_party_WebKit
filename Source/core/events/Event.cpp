@@ -29,7 +29,7 @@
 #include "core/svg/SVGElement.h"
 #include "wtf/CurrentTime.h"
 
-namespace WebCore {
+namespace blink {
 
 EventInit::EventInit()
     : bubbles(false)
@@ -167,6 +167,11 @@ bool Event::isWheelEvent() const
     return false;
 }
 
+bool Event::isRelatedEvent() const
+{
+    return false;
+}
+
 bool Event::isDragEvent() const
 {
     return false;
@@ -254,4 +259,4 @@ void Event::trace(Visitor* visitor)
     visitor->trace(m_eventPath);
 }
 
-} // namespace WebCore
+} // namespace blink

@@ -30,13 +30,13 @@
 #include "core/html/canvas/WebGLExtension.h"
 #include "wtf/PassRefPtr.h"
 
-namespace WebCore {
+namespace blink {
 
 class WebGLShader;
 
 class WebGLDebugShaders FINAL : public WebGLExtension, public ScriptWrappable {
 public:
-    static PassRefPtr<WebGLDebugShaders> create(WebGLRenderingContextBase*);
+    static PassRefPtrWillBeRawPtr<WebGLDebugShaders> create(WebGLRenderingContextBase*);
     static bool supported(WebGLRenderingContextBase*);
     static const char* extensionName();
 
@@ -46,9 +46,9 @@ public:
     String getTranslatedShaderSource(WebGLShader*);
 
 private:
-    WebGLDebugShaders(WebGLRenderingContextBase*);
+    explicit WebGLDebugShaders(WebGLRenderingContextBase*);
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // WebGLDebugShaders_h

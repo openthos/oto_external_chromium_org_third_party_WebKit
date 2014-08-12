@@ -6,12 +6,13 @@
 #include "platform/scheduler/Scheduler.h"
 
 #include "platform/TestingPlatformSupport.h"
+#include "platform/TraceLocation.h"
 #include "public/platform/Platform.h"
 #include "public/platform/WebThread.h"
 
 #include <gtest/gtest.h>
 
-using WebCore::Scheduler;
+using blink::Scheduler;
 
 namespace {
 
@@ -53,7 +54,7 @@ private:
     WTF::Deque<OwnPtr<Task> > m_pendingTasks;
 };
 
-class SchedulerTestingPlatformSupport : WebCore::TestingPlatformSupport {
+class SchedulerTestingPlatformSupport : blink::TestingPlatformSupport {
 public:
     SchedulerTestingPlatformSupport()
         : TestingPlatformSupport(TestingPlatformSupport::Config())
@@ -145,13 +146,18 @@ void unorderedTestTask(int value, int* result)
     *result += value;
 }
 
+void idleTestTask(int value, int* result, double allottedTime)
+{
+    *result += value;
+}
+
 TEST_F(SchedulerTest, TestPostTask)
 {
     int result = 0;
-    m_scheduler->postTask(bind(&orderedTestTask, 1, &result));
-    m_scheduler->postTask(bind(&orderedTestTask, 2, &result));
-    m_scheduler->postTask(bind(&orderedTestTask, 3, &result));
-    m_scheduler->postTask(bind(&orderedTestTask, 4, &result));
+    m_scheduler->postTask(FROM_HERE, bind(&orderedTestTask, 1, &result));
+    m_scheduler->postTask(FROM_HERE, bind(&orderedTestTask, 2, &result));
+    m_scheduler->postTask(FROM_HERE, bind(&orderedTestTask, 3, &result));
+    m_scheduler->postTask(FROM_HERE, bind(&orderedTestTask, 4, &result));
     runPendingTasks();
     EXPECT_EQ(0x1234, result);
 }
@@ -159,12 +165,12 @@ TEST_F(SchedulerTest, TestPostTask)
 TEST_F(SchedulerTest, TestPostMixedTaskTypes)
 {
     int result = 0;
-    m_scheduler->postTask(bind(&unorderedTestTask, 1, &result));
-    m_scheduler->postInputTask(bind(&unorderedTestTask, 1, &result));
-    m_scheduler->postCompositorTask(bind(&unorderedTestTask, 1, &result));
-    m_scheduler->postTask(bind(&unorderedTestTask, 1, &result));
+    m_scheduler->postTask(FROM_HERE, bind(&unorderedTestTask, 1, &result));
+    m_scheduler->postInputTask(FROM_HERE, bind(&unorderedTestTask, 2, &result));
+    m_scheduler->postCompositorTask(FROM_HERE, bind(&unorderedTestTask, 4, &result));
+    m_scheduler->postTask(FROM_HERE, bind(&unorderedTestTask, 8, &result));
     runPendingTasks();
-    EXPECT_EQ(4, result);
+    EXPECT_EQ(15, result);
 }
 
 int s_sharedTimerTickCount;
@@ -189,6 +195,18 @@ TEST_F(SchedulerTest, TestSharedTimer)
 
     m_scheduler->setSharedTimerFiredFunction(nullptr);
     EXPECT_FALSE(m_platformSupport.sharedTimerRunning());
+}
+
+TEST_F(SchedulerTest, TestIdleTask)
+{
+    // TODO: Check task allottedTime when implemented in the scheduler.
+    int result = 0;
+    m_scheduler->postIdleTask(bind<double>(&idleTestTask, 1, &result));
+    m_scheduler->postIdleTask(bind<double>(&idleTestTask, 1, &result));
+    m_scheduler->postIdleTask(bind<double>(&idleTestTask, 1, &result));
+    m_scheduler->postIdleTask(bind<double>(&idleTestTask, 1, &result));
+    runPendingTasks();
+    EXPECT_EQ(4, result);
 }
 
 } // namespace

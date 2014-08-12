@@ -31,9 +31,13 @@
 #include "config.h"
 #include "platform/audio/AudioProcessor.h"
 
-namespace WebCore {
+namespace blink {
 
 AudioProcessor::~AudioProcessor()
+{
+}
+
+void AudioProcessor::trace(Visitor*)
 {
 }
 

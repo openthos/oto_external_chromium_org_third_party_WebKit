@@ -14,12 +14,8 @@ gyp_shared_intermediate_dir := $(call intermediates-dir-for,GYP,shared,,,$(GYP_V
 GYP_TARGET_DEPENDENCIES := \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_core_webcore_prerequisites_gyp,,,$(GYP_VAR_PREFIX))/webcore_prerequisites.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_core_make_core_generated_gyp,,,$(GYP_VAR_PREFIX))/make_core_generated.stamp \
-	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_core_inspector_overlay_page_gyp,,,$(GYP_VAR_PREFIX))/inspector_overlay_page.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_core_inspector_protocol_sources_gyp,,,$(GYP_VAR_PREFIX))/inspector_protocol_sources.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_core_inspector_instrumentation_sources_gyp,,,$(GYP_VAR_PREFIX))/inspector_instrumentation_sources.stamp \
-	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_core_injected_canvas_script_source_gyp,,,$(GYP_VAR_PREFIX))/injected_canvas_script_source.stamp \
-	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_core_injected_script_source_gyp,,,$(GYP_VAR_PREFIX))/injected_script_source.stamp \
-	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_core_debugger_script_source_gyp,,,$(GYP_VAR_PREFIX))/debugger_script_source.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_bindings_core_v8_bindings_core_v8_generated_gyp,,,$(GYP_VAR_PREFIX))/bindings_core_v8_generated.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_bindings_modules_modules_event_generated_gyp,,,$(GYP_VAR_PREFIX))/modules_event_generated.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_bindings_modules_v8_bindings_modules_v8_generated_gyp,,,$(GYP_VAR_PREFIX))/bindings_modules_v8_generated.stamp \
@@ -296,6 +292,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/bindings/core/v8/ScriptState.cpp \
 	third_party/WebKit/Source/bindings/core/v8/ScriptString.cpp \
 	third_party/WebKit/Source/bindings/core/v8/ScriptValue.cpp \
+	third_party/WebKit/Source/bindings/core/v8/ScriptWrappable.cpp \
 	third_party/WebKit/Source/bindings/core/v8/SerializedScriptValue.cpp \
 	third_party/WebKit/Source/bindings/core/v8/V8AbstractEventListener.cpp \
 	third_party/WebKit/Source/bindings/core/v8/V8Binding.cpp \
@@ -376,7 +373,6 @@ MY_DEFS_Debug := \
 	'-DSYSTEM_NATIVELY_SIGNALS_MEMORY_PRESSURE' \
 	'-DENABLE_EGLIMAGE=1' \
 	'-DCLD_VERSION=1' \
-	'-DCLD_DATA_FROM_STATIC' \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
@@ -394,6 +390,7 @@ MY_DEFS_Debug := \
 	'-DENABLE_WEB_AUDIO=1' \
 	'-DENABLE_OPENTYPE_VERTICAL=1' \
 	'-DU_USING_ICU_NAMESPACE=0' \
+	'-DU_ENABLE_DYLOAD=0' \
 	'-DSK_ENABLE_INST_COUNT=0' \
 	'-DSK_SUPPORT_GPU=1' \
 	'-DGR_GL_CUSTOM_SETUP_HEADER="GrGLConfig_chrome.h"' \
@@ -444,8 +441,8 @@ LOCAL_C_INCLUDES_Debug := \
 	$(LOCAL_PATH)/third_party/WebKit \
 	$(LOCAL_PATH)/third_party/ots/include \
 	$(LOCAL_PATH)/third_party/zlib \
-	$(PWD)/external/icu4c/common \
-	$(PWD)/external/icu4c/i18n \
+	$(PWD)/external/icu/icu4c/source/common \
+	$(PWD)/external/icu/icu4c/source/i18n \
 	$(LOCAL_PATH)/third_party/skia/src/core \
 	$(LOCAL_PATH)/third_party/skia/include/core \
 	$(LOCAL_PATH)/third_party/skia/include/effects \
@@ -533,7 +530,6 @@ MY_DEFS_Release := \
 	'-DSYSTEM_NATIVELY_SIGNALS_MEMORY_PRESSURE' \
 	'-DENABLE_EGLIMAGE=1' \
 	'-DCLD_VERSION=1' \
-	'-DCLD_DATA_FROM_STATIC' \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
@@ -551,6 +547,7 @@ MY_DEFS_Release := \
 	'-DENABLE_WEB_AUDIO=1' \
 	'-DENABLE_OPENTYPE_VERTICAL=1' \
 	'-DU_USING_ICU_NAMESPACE=0' \
+	'-DU_ENABLE_DYLOAD=0' \
 	'-DSK_ENABLE_INST_COUNT=0' \
 	'-DSK_SUPPORT_GPU=1' \
 	'-DGR_GL_CUSTOM_SETUP_HEADER="GrGLConfig_chrome.h"' \
@@ -602,8 +599,8 @@ LOCAL_C_INCLUDES_Release := \
 	$(LOCAL_PATH)/third_party/WebKit \
 	$(LOCAL_PATH)/third_party/ots/include \
 	$(LOCAL_PATH)/third_party/zlib \
-	$(PWD)/external/icu4c/common \
-	$(PWD)/external/icu4c/i18n \
+	$(PWD)/external/icu/icu4c/source/common \
+	$(PWD)/external/icu/icu4c/source/i18n \
 	$(LOCAL_PATH)/third_party/skia/src/core \
 	$(LOCAL_PATH)/third_party/skia/include/core \
 	$(LOCAL_PATH)/third_party/skia/include/effects \

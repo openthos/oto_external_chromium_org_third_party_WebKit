@@ -43,7 +43,31 @@ template <class C> inline void initializeScriptWrappableHelper(C* object)
     webCoreInitializeScriptWrappableForInterface(object);
 }
 
-namespace WebCore {
+namespace blink {
+
+/**
+ * The base class of all wrappable objects.
+ *
+ * This class provides the internal pointer to be stored in the wrapper objects,
+ * and its conversions from / to the DOM instances.
+ *
+ * Note that this class must not have vtbl (any virtual function) or any member
+ * variable which increase the size of instances.  Some of the classes sensitive
+ * to the size inherit from this class.  So this class must be zero size.
+ */
+class ScriptWrappableBase {
+public:
+    template <class T> static T* fromInternalPointer(void* internalPointer)
+    {
+        // Check if T* is castable to ScriptWrappableBase*, which means T
+        // doesn't have two or more ScriptWrappableBase as superclasses.
+        // If T has two ScriptWrappableBase as superclasses, conversions
+        // from T* to ScriptWrappableBase* are ambiguous.
+        ASSERT(static_cast<ScriptWrappableBase*>(static_cast<T*>(static_cast<ScriptWrappableBase*>(internalPointer))));
+        return static_cast<T*>(static_cast<ScriptWrappableBase*>(internalPointer));
+    }
+    void* toInternalPointer() { return this; }
+};
 
 /**
  * ScriptWrappable wraps a V8 object and its WrapperTypeInfo.
@@ -55,7 +79,7 @@ namespace WebCore {
  * The physical state space of ScriptWrappable is:
  * - uintptr_t m_wrapperOrTypeInfo;
  *   - if 0: the ScriptWrappable is uninitialized/empty.
- *   - if even: a pointer to WebCore::TypeInfo
+ *   - if even: a pointer to blink::TypeInfo
  *   - if odd: a pointer to v8::Persistent<v8::Object> + 1.
  *
  * In other words, one integer represents one of two object pointers,
@@ -74,7 +98,7 @@ namespace WebCore {
  *  - disposeWrapper (via setWeakCallback, triggered by V8 garbage collecter):
  *        remove v8::Persistent and install a TypeInfo of the previous value.
  */
-class ScriptWrappable {
+class ScriptWrappable : public ScriptWrappableBase {
 public:
     ScriptWrappable() : m_wrapperOrTypeInfo(0) { }
 
@@ -266,7 +290,6 @@ private:
 
     static void setWeakCallback(const v8::WeakCallbackData<v8::Object, ScriptWrappable>& data)
     {
-        ScriptForbiddenScope forbiddenScope;
         v8::Persistent<v8::Object> persistent;
         data.GetParameter()->getPersistent(&persistent);
         ASSERT(persistent == data.GetValue());
@@ -279,6 +302,6 @@ private:
     }
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // ScriptWrappable_h

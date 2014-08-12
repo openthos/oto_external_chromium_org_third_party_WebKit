@@ -72,7 +72,7 @@
 #include "platform/scroll/ScrollbarTheme.h"
 #include "public/platform/Platform.h"
 
-namespace WebCore {
+namespace blink {
 
 const int ResizerControlExpandRatioForTouch = 2;
 
@@ -205,18 +205,10 @@ void RenderLayerScrollableArea::invalidateScrollbarRect(Scrollbar* scrollbar, co
 
     IntRect intRect = pixelSnappedIntRect(repaintRect);
 
-    if (box().frameView()->isInPerformLayout()) {
-        if (scrollbar == m_vBar.get()) {
-            m_verticalBarDamage = intRect;
-            m_hasVerticalBarDamage = true;
-        } else {
-            m_horizontalBarDamage = intRect;
-            m_hasHorizontalBarDamage = true;
-        }
-
-    } else {
+    if (box().frameView()->isInPerformLayout())
+        addScrollbarDamage(scrollbar, intRect);
+    else
         box().invalidatePaintRectangle(intRect);
-    }
 }
 
 void RenderLayerScrollableArea::invalidateScrollCornerRect(const IntRect& rect)
@@ -432,8 +424,7 @@ IntPoint RenderLayerScrollableArea::maximumScrollPosition() const
 {
     if (!box().hasOverflowClip())
         return -scrollOrigin();
-
-    return -scrollOrigin() + enclosingIntRect(m_overflowRect).size() - enclosingIntRect(box().clientBoxRect()).size();
+    return -scrollOrigin() + IntPoint(pixelSnappedScrollWidth(), pixelSnappedScrollHeight()) - enclosingIntRect(box().clientBoxRect()).size();
 }
 
 IntRect RenderLayerScrollableArea::visibleContentRect(IncludeScrollbarsInRect scrollbarInclusion) const
@@ -1260,7 +1251,7 @@ void RenderLayerScrollableArea::updateResizerStyle()
 
 void RenderLayerScrollableArea::drawPlatformResizerImage(GraphicsContext* context, IntRect resizerCornerRect)
 {
-    float deviceScaleFactor = WebCore::deviceScaleFactor(box().frame());
+    float deviceScaleFactor = blink::deviceScaleFactor(box().frame());
 
     RefPtr<Image> resizeCornerImage;
     IntSize cornerResizerSize;
@@ -1474,4 +1465,4 @@ void RenderLayerScrollableArea::setTopmostScrollChild(RenderLayer* scrollChild)
     m_nextTopmostScrollChild = scrollChild;
 }
 
-} // Namespace WebCore
+} // namespace blink

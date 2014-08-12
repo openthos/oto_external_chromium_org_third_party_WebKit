@@ -35,11 +35,7 @@
 #include "bindings/core/v8/V8Binding.h"
 #include "platform/JSONValues.h"
 
-namespace WebCore {
-
-ScriptValue::~ScriptValue()
-{
-}
+namespace blink {
 
 v8::Handle<v8::Value> ScriptValue::v8Value() const
 {
@@ -55,6 +51,13 @@ v8::Handle<v8::Value> ScriptValue::v8Value() const
     //       return v8::Handle<v8::Value>();
     // instead of triggering RELEASE_ASSERT.
     RELEASE_ASSERT(&m_scriptState->world() == &DOMWrapperWorld::current(isolate()));
+    return m_value->newLocal(isolate());
+}
+
+v8::Handle<v8::Value> ScriptValue::v8ValueUnsafe() const
+{
+    if (isEmpty())
+        return v8::Handle<v8::Value>();
     return m_value->newLocal(isolate());
 }
 
@@ -78,4 +81,4 @@ PassRefPtr<JSONValue> ScriptValue::toJSONValue(ScriptState* scriptState) const
     return v8ToJSONValue(scriptState->isolate(), v8Value(), JSONValue::maxDepth);
 }
 
-} // namespace WebCore
+} // namespace blink

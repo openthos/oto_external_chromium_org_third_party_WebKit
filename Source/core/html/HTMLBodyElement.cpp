@@ -33,11 +33,12 @@
 #include "core/dom/Attribute.h"
 #include "core/frame/FrameView.h"
 #include "core/frame/LocalFrame.h"
+#include "core/frame/UseCounter.h"
 #include "core/html/HTMLFrameElementBase.h"
 #include "core/html/parser/HTMLParserIdioms.h"
 #include "core/rendering/RenderBox.h"
 
-namespace WebCore {
+namespace blink {
 
 using namespace HTMLNames;
 
@@ -81,8 +82,10 @@ void HTMLBodyElement::collectStyleForPresentationAttribute(const QualifiedName& 
     } else if (name == textAttr) {
         addHTMLColorToStyle(style, CSSPropertyColor, value);
     } else if (name == bgpropertiesAttr) {
-        if (equalIgnoringCase(value, "fixed"))
-           addPropertyToPresentationAttributeStyle(style, CSSPropertyBackgroundAttachment, CSSValueFixed);
+        if (equalIgnoringCase(value, "fixed")) {
+            UseCounter::count(document(), UseCounter::BgPropertiesFixed);
+            addPropertyToPresentationAttributeStyle(style, CSSPropertyBackgroundAttachment, CSSValueFixed);
+        }
     } else
         HTMLElement::collectStyleForPresentationAttribute(name, value, style);
 }
@@ -330,4 +333,4 @@ int HTMLBodyElement::scrollWidth()
     return view ? adjustForZoom(view->contentsWidth(), &document) : 0;
 }
 
-} // namespace WebCore
+} // namespace blink

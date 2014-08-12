@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2011, 2014 Apple Inc. All rights reserved.
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  *
  * This library is free software; you can redistribute it and/or
@@ -42,7 +42,7 @@
 // This needs to be here because Document.h also depends on it.
 #define DUMP_NODE_STATISTICS 0
 
-namespace WebCore {
+namespace blink {
 
 class Attribute;
 class ClassCollection;
@@ -57,6 +57,7 @@ class ExceptionState;
 class FloatPoint;
 class LocalFrame;
 class HTMLInputElement;
+class HTMLQualifiedName;
 class IntRect;
 class KeyboardEvent;
 class NSResolver;
@@ -77,6 +78,7 @@ class RenderBox;
 class RenderBoxModelObject;
 class RenderObject;
 class RenderStyle;
+class SVGQualifiedName;
 class ShadowRoot;
 class StaticNodeList;
 class TagCollection;
@@ -169,7 +171,8 @@ public:
 
     // DOM methods & attributes for Node
 
-    bool hasTagName(const QualifiedName&) const;
+    bool hasTagName(const HTMLQualifiedName&) const;
+    bool hasTagName(const SVGQualifiedName&) const;
     virtual String nodeName() const = 0;
     virtual String nodeValue() const;
     virtual void setNodeValue(const String&);
@@ -215,8 +218,6 @@ public:
     String textContent(bool convertBRsToNewlines = false) const;
     void setTextContent(const String&);
 
-    Node& lastDescendantOrSelf() const;
-
     // Other methods (not part of DOM)
 
     bool isElementNode() const { return getFlag(IsElementFlag); }
@@ -228,7 +229,7 @@ public:
     bool isPseudoElement() const { return pseudoId() != NOPSEUDO; }
     bool isBeforePseudoElement() const { return pseudoId() == BEFORE; }
     bool isAfterPseudoElement() const { return pseudoId() == AFTER; }
-    PseudoId pseudoId() const { return (isElementNode() && hasCustomStyleCallbacks()) ? customPseudoId() : NOPSEUDO; }
+    virtual PseudoId pseudoId() const { return NOPSEUDO; }
 
     bool isCustomElement() const { return getFlag(CustomElementFlag); }
     enum CustomElementState {
@@ -284,7 +285,6 @@ public:
     ContainerNode* parentOrShadowHostNode() const;
     Element* parentOrShadowHostElement() const;
     void setParentOrShadowHostNode(ContainerNode*);
-    Node& highestAncestorOrSelf() const;
 
     // Knows about all kinds of hosts.
     ContainerNode* parentOrShadowHostOrTemplateHostNode() const;
@@ -295,10 +295,8 @@ public:
     bool selfOrAncestorHasDirAutoAttribute() const { return getFlag(SelfOrAncestorHasDirAutoFlag); }
     void setSelfOrAncestorHasDirAutoAttribute(bool flag) { setFlag(flag, SelfOrAncestorHasDirAutoFlag); }
 
-    // Returns the enclosing event parent node (or self) that, when clicked, would trigger a navigation.
-    Node* enclosingLinkEventParentOrSelf();
-
-    bool isBlockFlowElement() const;
+    // Returns the enclosing event parent Element (or self) that, when clicked, would trigger a navigation.
+    Element* enclosingLinkEventParentOrSelf();
 
     // These low-level calls give the caller responsibility for maintaining the integrity of the tree.
     void setPreviousSibling(Node* previous) { m_previous = previous; }
@@ -322,14 +320,9 @@ public:
     // out of the Node class into an editing-specific source file.
     Node* previousLeafNode() const;
 
-    // enclosingBlockFlowElement() is deprecated. Use enclosingBlock instead.
-    Element* enclosingBlockFlowElement() const;
-
     bool isRootEditableElement() const;
     Element* rootEditableElement() const;
     Element* rootEditableElement(EditableType) const;
-
-    bool inSameContainingBlockFlowElement(Node*);
 
     // For <link> and <style> elements.
     virtual bool sheetLoaded() { return true; }
@@ -337,8 +330,6 @@ public:
     virtual void startLoadingDynamicSheet() { ASSERT_NOT_REACHED(); }
 
     bool hasName() const { return !isTextNode() && getFlag(HasNameOrIsEditingTextFlag); }
-    bool hasID() const;
-    bool hasClass() const;
 
     bool isUserActionElement() const { return getFlag(IsUserActionElementFlag); }
     void setUserActionElement(bool flag) { setFlag(flag, IsUserActionElementFlag); }
@@ -435,7 +426,6 @@ public:
         return false;
     }
 
-    virtual bool shouldUseInputMethod();
     virtual LayoutRect boundingBox() const;
     IntRect pixelSnappedBoundingBox() const { return pixelSnappedIntRect(boundingBox()); }
 
@@ -476,7 +466,6 @@ public:
     bool isDocumentTypeNode() const { return nodeType() == DOCUMENT_TYPE_NODE; }
     virtual bool childTypeAllowed(NodeType) const { return false; }
     unsigned countChildren() const;
-    Node* traverseToChildAt(unsigned index) const;
 
     bool isDescendantOf(const Node*) const;
     bool contains(const Node*) const;
@@ -492,10 +481,6 @@ public:
 
     // Whether or not a selection can be started in this object
     virtual bool canStartSelection() const;
-
-    // Getting points into and out of screen space
-    FloatPoint convertToPage(const FloatPoint&) const;
-    FloatPoint convertFromPage(const FloatPoint&) const;
 
     // -----------------------------------------------------------------------------
     // Integration with rendering tree
@@ -590,7 +575,6 @@ public:
     void showTreeForThisAcrossFrame() const;
 #endif
 
-    void invalidateNodeListCachesInAncestors(const QualifiedName* attrName = 0, Element* attributeOwnerElement = 0);
     NodeListsNodeData* nodeLists();
     void clearNodeLists();
 
@@ -598,14 +582,12 @@ public:
     virtual bool willRespondToMouseClickEvents();
     virtual bool willRespondToTouchEvents();
 
-    unsigned short compareDocumentPosition(const Node*) const;
-
     enum ShadowTreesTreatment {
         TreatShadowTreesAsDisconnected,
         TreatShadowTreesAsComposed
     };
 
-    unsigned short compareDocumentPositionInternal(const Node*, ShadowTreesTreatment) const;
+    unsigned short compareDocumentPosition(const Node*, ShadowTreesTreatment = TreatShadowTreesAsDisconnected) const;
 
     virtual Node* toNode() OVERRIDE FINAL;
 
@@ -786,12 +768,6 @@ private:
     friend class TreeShared<Node>;
     friend class WeakNodeMap;
 
-    virtual PseudoId customPseudoId() const
-    {
-        ASSERT(hasCustomStyleCallbacks());
-        return NOPSEUDO;
-    }
-
     unsigned styledSubtreeSize() const;
 
 #if !ENABLE(OILPAN)
@@ -901,13 +877,13 @@ PassRefPtrWillBeRawPtr<T> T::create(Document& document) \
     return adoptRefWillBeNoop(new T(document)); \
 }
 
-} // namespace WebCore
+} // namespace blink
 
 #ifndef NDEBUG
 // Outside the WebCore namespace for ease of invocation from gdb.
-void showNode(const WebCore::Node*);
-void showTree(const WebCore::Node*);
-void showNodePath(const WebCore::Node*);
+void showNode(const blink::Node*);
+void showTree(const blink::Node*);
+void showNodePath(const blink::Node*);
 #endif
 
 #endif

@@ -28,7 +28,7 @@
 
 #include "core/dom/FullscreenElementStack.h"
 
-namespace WebCore {
+namespace blink {
 
 bool DocumentFullscreen::webkitIsFullScreen(Document& document)
 {
@@ -51,11 +51,6 @@ Element* DocumentFullscreen::webkitCurrentFullScreenElement(Document& document)
     return 0;
 }
 
-void DocumentFullscreen::webkitCancelFullScreen(Document& document)
-{
-    FullscreenElementStack::from(document).fullyExitFullscreen();
-}
-
 bool DocumentFullscreen::webkitFullscreenEnabled(Document& document)
 {
     return FullscreenElementStack::fullscreenEnabled(document);
@@ -73,4 +68,4 @@ void DocumentFullscreen::webkitExitFullscreen(Document& document)
     FullscreenElementStack::from(document).exitFullscreen();
 }
 
-} // namespace WebCore
+} // namespace blink

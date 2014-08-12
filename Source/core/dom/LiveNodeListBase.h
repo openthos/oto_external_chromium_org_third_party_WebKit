@@ -27,13 +27,11 @@
 
 #include "core/HTMLNames.h"
 #include "core/dom/Document.h"
-#include "core/dom/Element.h"
 #include "core/dom/ElementTraversal.h"
-#include "core/dom/NodeTraversal.h"
 #include "core/html/CollectionType.h"
 #include "platform/heap/Handle.h"
 
-namespace WebCore {
+namespace blink {
 
 enum NodeListRootType {
     NodeListIsRootedAtNode,
@@ -94,7 +92,7 @@ protected:
     template <class NodeListType>
     static Element* traverseMatchingElementsBackwardToOffset(const NodeListType&, unsigned offset, Element& currentElement, unsigned& currentOffset);
 
-    void trace(Visitor* visitor) { visitor->trace(m_ownerNode); }
+    virtual void trace(Visitor* visitor) { visitor->trace(m_ownerNode); }
 
 private:
     RefPtrWillBeMember<ContainerNode> m_ownerNode; // Cannot be null.
@@ -191,6 +189,6 @@ Element* LiveNodeListBase::traverseMatchingElementsBackwardToOffset(const NodeLi
     return 0;
 }
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // LiveNodeListBase_h

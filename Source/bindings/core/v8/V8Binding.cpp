@@ -71,31 +71,16 @@
 #include "wtf/unicode/CharacterNames.h"
 #include "wtf/unicode/Unicode.h"
 
-namespace WebCore {
-
-v8::Handle<v8::Value> throwError(V8ErrorType errorType, const String& message, v8::Isolate* isolate)
-{
-    return V8ThrowException::throwError(errorType, message, isolate);
-}
-
-v8::Handle<v8::Value> throwError(v8::Handle<v8::Value> exception, v8::Isolate* isolate)
-{
-    return V8ThrowException::throwError(exception, isolate);
-}
-
-v8::Handle<v8::Value> throwTypeError(const String& message, v8::Isolate* isolate)
-{
-    return V8ThrowException::throwTypeError(message, isolate);
-}
+namespace blink {
 
 void throwArityTypeErrorForMethod(const char* method, const char* type, const char* valid, unsigned provided, v8::Isolate* isolate)
 {
-    throwTypeError(ExceptionMessages::failedToExecute(method, type, ExceptionMessages::invalidArity(valid, provided)), isolate);
+    V8ThrowException::throwTypeError(ExceptionMessages::failedToExecute(method, type, ExceptionMessages::invalidArity(valid, provided)), isolate);
 }
 
 void throwArityTypeErrorForConstructor(const char* type, const char* valid, unsigned provided, v8::Isolate* isolate)
 {
-    throwTypeError(ExceptionMessages::failedToConstruct(type, ExceptionMessages::invalidArity(valid, provided)), isolate);
+    V8ThrowException::throwTypeError(ExceptionMessages::failedToConstruct(type, ExceptionMessages::invalidArity(valid, provided)), isolate);
 }
 
 void throwArityTypeError(ExceptionState& exceptionState, const char* valid, unsigned provided)
@@ -106,12 +91,12 @@ void throwArityTypeError(ExceptionState& exceptionState, const char* valid, unsi
 
 void throwMinimumArityTypeErrorForMethod(const char* method, const char* type, unsigned expected, unsigned providedLeastNumMandatoryParams, v8::Isolate* isolate)
 {
-    throwTypeError(ExceptionMessages::failedToExecute(method, type, ExceptionMessages::notEnoughArguments(expected, providedLeastNumMandatoryParams)), isolate);
+    V8ThrowException::throwTypeError(ExceptionMessages::failedToExecute(method, type, ExceptionMessages::notEnoughArguments(expected, providedLeastNumMandatoryParams)), isolate);
 }
 
 void throwMinimumArityTypeErrorForConstructor(const char* type, unsigned expected, unsigned providedLeastNumMandatoryParams, v8::Isolate* isolate)
 {
-    throwTypeError(ExceptionMessages::failedToConstruct(type, ExceptionMessages::notEnoughArguments(expected, providedLeastNumMandatoryParams)), isolate);
+    V8ThrowException::throwTypeError(ExceptionMessages::failedToConstruct(type, ExceptionMessages::notEnoughArguments(expected, providedLeastNumMandatoryParams)), isolate);
 }
 
 void throwMinimumArityTypeError(ExceptionState& exceptionState, unsigned expected, unsigned providedLeastNumMandatoryParams)
@@ -936,4 +921,4 @@ PassRefPtr<TraceEvent::ConvertableToTraceFormat> devToolsTraceEventData(Executio
     return InspectorFunctionCallEvent::data(context, scriptId, resourceName, lineNumber);
 }
 
-} // namespace WebCore
+} // namespace blink

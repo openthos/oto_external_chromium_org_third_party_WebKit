@@ -35,7 +35,7 @@
 #include "core/svg/SVGElement.h"
 #include "platform/geometry/FloatRect.h"
 
-namespace WebCore {
+namespace blink {
 
 // Most renderers in the SVG rendering tree will inherit from this class
 // but not all. (e.g. RenderSVGForeignObject, RenderSVGBlock) thus methods
@@ -80,6 +80,8 @@ private:
     // This method should never be called, SVG uses a different nodeAtPoint method
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE FINAL;
     virtual void absoluteFocusRingQuads(Vector<FloatQuad>&) OVERRIDE FINAL;
+
+    void invalidatePaintIfNeeded(const PaintInvalidationState&);
 };
 
 }

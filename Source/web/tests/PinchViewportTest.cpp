@@ -67,7 +67,7 @@
     } while (false)
 
 
-using namespace WebCore;
+using namespace blink;
 using namespace blink;
 
 using ::testing::_;
@@ -635,7 +635,7 @@ TEST_F(PinchViewportTest, TestWebFrameRangeAccountsForPinchViewportScroll)
 }
 
 // Test that the scrollFocusedNodeIntoRect method works with the pinch viewport.
-TEST_F(PinchViewportTest, TestScrollFocusedNodeIntoRect)
+TEST_F(PinchViewportTest, DISABLED_TestScrollFocusedNodeIntoRect)
 {
     initializeWithDesktopSettings();
     webViewImpl()->resize(IntSize(500, 300));

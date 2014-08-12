@@ -33,7 +33,7 @@
 #include "core/rendering/RenderBlockFlow.h"
 #include "core/rendering/style/StyleInheritedData.h"
 
-namespace WebCore {
+namespace blink {
 
 struct LayerFragment;
 typedef Vector<LayerFragment, 1> LayerFragments;
@@ -64,11 +64,6 @@ public:
     virtual LayoutUnit pageLogicalWidth() const;
     virtual LayoutUnit pageLogicalHeight() const;
 
-    LayoutUnit logicalTopOfFlowThreadContentRect(const LayoutRect&) const;
-    LayoutUnit logicalBottomOfFlowThreadContentRect(const LayoutRect&) const;
-    LayoutUnit logicalTopForFlowThreadContent() const { return logicalTopOfFlowThreadContentRect(flowThreadPortionRect()); };
-    LayoutUnit logicalBottomForFlowThreadContent() const { return logicalBottomOfFlowThreadContentRect(flowThreadPortionRect()); };
-
     virtual bool canHaveChildren() const OVERRIDE FINAL { return false; }
     virtual bool canHaveGeneratedChildren() const OVERRIDE FINAL { return true; }
 
@@ -94,6 +89,6 @@ private:
 
 DEFINE_RENDER_OBJECT_TYPE_CASTS(RenderRegion, isRenderRegion());
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // RenderRegion_h

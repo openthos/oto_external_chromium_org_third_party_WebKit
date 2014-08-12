@@ -31,7 +31,7 @@
 #include "core/frame/LocalDOMWindow.h"
 #include "wtf/text/StringBuilder.h"
 
-namespace WebCore {
+namespace blink {
 
 /* MediaList is used to store 3 types of media related entities which mean the same:
  *
@@ -182,6 +182,7 @@ MediaList::MediaList(MediaQuerySet* mediaQueries, CSSStyleSheet* parentSheet)
     , m_parentStyleSheet(parentSheet)
     , m_parentRule(nullptr)
 {
+    ScriptWrappable::init(this);
 }
 
 MediaList::MediaList(MediaQuerySet* mediaQueries, CSSRule* parentRule)
@@ -189,6 +190,7 @@ MediaList::MediaList(MediaQuerySet* mediaQueries, CSSRule* parentRule)
     , m_parentStyleSheet(nullptr)
     , m_parentRule(parentRule)
 {
+    ScriptWrappable::init(this);
 }
 
 MediaList::~MediaList()

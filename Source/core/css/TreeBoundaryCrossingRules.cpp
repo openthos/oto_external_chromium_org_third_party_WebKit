@@ -34,7 +34,7 @@
 #include "core/dom/StyleEngine.h"
 #include "core/dom/shadow/ShadowRoot.h"
 
-namespace WebCore {
+namespace blink {
 
 static void addRules(RuleSet* ruleSet, const WillBeHeapVector<MinimalRuleData>& rules)
 {
@@ -109,8 +109,10 @@ void TreeBoundaryCrossingRules::collectFeaturesTo(RuleFeatureSet& features)
 
 void TreeBoundaryCrossingRules::trace(Visitor* visitor)
 {
+#if ENABLE(OILPAN)
     visitor->trace(m_treeBoundaryCrossingRuleSetMap);
     visitor->trace(m_scopingNodes);
+#endif
 }
 
-} // namespace WebCore
+} // namespace blink

@@ -10,7 +10,7 @@
 #include "wtf/RefCounted.h"
 #include "wtf/text/WTFString.h"
 
-namespace WebCore {
+namespace blink {
 
 class RefCountedScriptWrappable : public RefCounted<RefCountedScriptWrappable>, public ScriptWrappable {
 public:
@@ -19,12 +19,13 @@ public:
 
     const String& toString() const { return m_string; }
 
-private:
+protected:
     RefCountedScriptWrappable(const String&);
 
+private:
     String m_string;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // #ifndef RefCountedScriptWrappable_h

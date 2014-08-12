@@ -39,7 +39,7 @@
 #include "core/svg/SVGImageElement.h"
 #include "platform/graphics/GraphicsContextStateSaver.h"
 
-namespace WebCore {
+namespace blink {
 
 RenderSVGImage::RenderSVGImage(SVGImageElement* impl)
     : RenderSVGModelObject(impl)
@@ -65,26 +65,25 @@ bool RenderSVGImage::updateImageViewport()
     SVGLengthContext lengthContext(image);
     m_objectBoundingBox = FloatRect(image->x()->currentValue()->value(lengthContext), image->y()->currentValue()->value(lengthContext), image->width()->currentValue()->value(lengthContext), image->height()->currentValue()->value(lengthContext));
 
+    bool boundsChanged = oldBoundaries != m_objectBoundingBox;
+
     // Images with preserveAspectRatio=none should force non-uniform scaling. This can be achieved
     // by setting the image's container size to its intrinsic size.
     // See: http://www.w3.org/TR/SVG/single-page.html, 7.8 The ‘preserveAspectRatio’ attribute.
+    IntSize newViewportSize;
     if (image->preserveAspectRatio()->currentValue()->align() == SVGPreserveAspectRatio::SVG_PRESERVEASPECTRATIO_NONE) {
-        if (ImageResource* cachedImage = m_imageResource->cachedImage()) {
-            LayoutSize intrinsicSize = cachedImage->imageSizeForRenderer(0, style()->effectiveZoom());
-            if (intrinsicSize != m_imageResource->imageSize(style()->effectiveZoom())) {
-                m_imageResource->setContainerSizeForRenderer(roundedIntSize(intrinsicSize));
-                updatedViewport = true;
-            }
+        LayoutSize intrinsicSize = m_imageResource->intrinsicSize(style()->effectiveZoom());
+        if (intrinsicSize != m_imageResource->imageSize(style()->effectiveZoom())) {
+            newViewportSize = roundedIntSize(intrinsicSize);
+            updatedViewport = true;
         }
-    }
-
-    if (oldBoundaries != m_objectBoundingBox) {
-        if (!updatedViewport)
-            m_imageResource->setContainerSizeForRenderer(enclosingIntRect(m_objectBoundingBox).size());
+    } else if (boundsChanged) {
+        newViewportSize = enclosingIntRect(m_objectBoundingBox).size();
         updatedViewport = true;
-        m_needsBoundariesUpdate = true;
     }
-
+    if (updatedViewport)
+        m_imageResource->setContainerSizeForRenderer(newViewportSize);
+    m_needsBoundariesUpdate |= boundsChanged;
     return updatedViewport;
 }
 
@@ -189,9 +188,8 @@ bool RenderSVGImage::nodeAtFloatPoint(const HitTestRequest& request, HitTestResu
     PointerEventsHitRules hitRules(PointerEventsHitRules::SVG_IMAGE_HITTESTING, request, style()->pointerEvents());
     bool isVisible = (style()->visibility() == VISIBLE);
     if (isVisible || !hitRules.requireVisible) {
-        FloatPoint localPoint = localToParentTransform().inverse().mapPoint(pointInParent);
-
-        if (!SVGRenderSupport::pointInClippingArea(this, localPoint))
+        FloatPoint localPoint;
+        if (!SVGRenderSupport::transformToUserSpaceAndCheckClipping(this, localToParentTransform(), pointInParent, localPoint))
             return false;
 
         if (hitRules.canHitFill || hitRules.canHitBoundingBox) {
@@ -225,7 +223,7 @@ void RenderSVGImage::imageChanged(WrappedImagePtr, const IntRect*)
     paintInvalidationForWholeRenderer();
 }
 
-void RenderSVGImage::addFocusRingRects(Vector<IntRect>& rects, const LayoutPoint&, const RenderLayerModelObject*)
+void RenderSVGImage::addFocusRingRects(Vector<IntRect>& rects, const LayoutPoint&, const RenderLayerModelObject*) const
 {
     // this is called from paint() after the localTransform has already been applied
     IntRect contentRect = enclosingIntRect(paintInvalidationRectInLocalCoordinates());
@@ -233,4 +231,4 @@ void RenderSVGImage::addFocusRingRects(Vector<IntRect>& rects, const LayoutPoint
         rects.append(contentRect);
 }
 
-} // namespace WebCore
+} // namespace blink

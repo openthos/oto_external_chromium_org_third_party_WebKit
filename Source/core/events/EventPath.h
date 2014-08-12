@@ -33,7 +33,7 @@
 #include "wtf/HashMap.h"
 #include "wtf/Vector.h"
 
-namespace WebCore {
+namespace blink {
 
 class Event;
 class EventTarget;
@@ -47,7 +47,7 @@ enum EventDispatchBehavior {
     StayInsideShadowDOM
 };
 
-class EventPath : public NoBaseWillBeGarbageCollectedFinalized<EventPath> {
+class EventPath FINAL : public NoBaseWillBeGarbageCollected<EventPath> {
 public:
     explicit EventPath(Event*);
     explicit EventPath(Node*);

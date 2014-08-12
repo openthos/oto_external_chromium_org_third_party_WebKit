@@ -33,7 +33,9 @@
 #include "wtf/Forward.h"
 #endif
 
-namespace WebCore {
+#define WebCompositorAnimation WebAnimation
+
+namespace blink {
 class CCActiveAnimation;
 }
 

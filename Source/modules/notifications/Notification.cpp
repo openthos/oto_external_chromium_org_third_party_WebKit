@@ -39,8 +39,9 @@
 #include "core/page/WindowFocusAllowedIndicator.h"
 #include "modules/notifications/NotificationClient.h"
 #include "modules/notifications/NotificationController.h"
+#include "modules/notifications/NotificationPermissionClient.h"
 
-namespace WebCore {
+namespace blink {
 
 Notification* Notification::create(ExecutionContext* context, const String& title, const Dictionary& options)
 {
@@ -168,8 +169,13 @@ const String& Notification::permission(ExecutionContext* context)
 
 void Notification::requestPermission(ExecutionContext* context, PassOwnPtr<NotificationPermissionCallback> callback)
 {
-    ASSERT(toDocument(context)->page());
-    NotificationController::clientFrom(context).requestPermission(context, callback);
+    // FIXME: Assert that this code-path will only be reached for Document environments
+    // when Blink supports [Exposed] annotations on class members in IDL definitions.
+
+    if (NotificationPermissionClient* permissionClient = NotificationPermissionClient::from(context)) {
+        permissionClient->requestPermission(context, callback);
+        return;
+    }
 }
 
 bool Notification::dispatchEvent(PassRefPtrWillBeRawPtr<Event> event)
@@ -201,4 +207,4 @@ bool Notification::hasPendingActivity() const
     return m_state == NotificationStateShowing || m_asyncRunner.isActive();
 }
 
-} // namespace WebCore
+} // namespace blink

@@ -36,7 +36,7 @@
 #include "platform/weborigin/SecurityOrigin.h"
 #include "platform/weborigin/SecurityPolicy.h"
 
-namespace WebCore {
+namespace blink {
 
 typedef HashMap<RefPtr<Widget>, FrameView*> WidgetToParentMap;
 static WidgetToParentMap& widgetNewParentMap()
@@ -144,8 +144,7 @@ void HTMLFrameOwnerElement::disconnectContentFrame()
     // see if this behavior is really needed as Gecko does not allow this.
     if (Frame* frame = contentFrame()) {
         RefPtr<Frame> protect(frame);
-        if (frame->isLocalFrame())
-            toLocalFrame(frame)->loader().frameDetached();
+        frame->detach();
         frame->disconnectOwnerElement();
     }
 }
@@ -278,4 +277,4 @@ bool HTMLFrameOwnerElement::loadOrRedirectSubframe(const KURL& url, const Atomic
 }
 
 
-} // namespace WebCore
+} // namespace blink

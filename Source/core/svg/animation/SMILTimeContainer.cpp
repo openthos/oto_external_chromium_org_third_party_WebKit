@@ -33,7 +33,7 @@
 #include "core/svg/SVGSVGElement.h"
 #include "core/svg/animation/SVGSMILElement.h"
 
-namespace WebCore {
+namespace blink {
 
 static const double initialFrameDelay = 0.025;
 
@@ -467,7 +467,9 @@ SMILTime SMILTimeContainer::updateAnimations(SMILTime elapsed, bool seekToTime)
 
 void SMILTimeContainer::trace(Visitor* visitor)
 {
+#if ENABLE(OILPAN)
     visitor->trace(m_scheduledAnimations);
+#endif
 }
 
 }

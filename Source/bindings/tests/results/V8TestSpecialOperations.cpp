@@ -24,7 +24,7 @@
 #include "wtf/GetPtr.h"
 #include "wtf/RefPtr.h"
 
-namespace WebCore {
+namespace blink {
 
 static void initializeScriptWrappableForInterface(TestSpecialOperations* object)
 {
@@ -34,14 +34,14 @@ static void initializeScriptWrappableForInterface(TestSpecialOperations* object)
         ASSERT_NOT_REACHED();
 }
 
-} // namespace WebCore
+} // namespace blink
 
-void webCoreInitializeScriptWrappableForInterface(WebCore::TestSpecialOperations* object)
+void webCoreInitializeScriptWrappableForInterface(blink::TestSpecialOperations* object)
 {
-    WebCore::initializeScriptWrappableForInterface(object);
+    blink::initializeScriptWrappableForInterface(object);
 }
 
-namespace WebCore {
+namespace blink {
 const WrapperTypeInfo V8TestSpecialOperations::wrapperTypeInfo = { gin::kEmbedderBlink, V8TestSpecialOperations::domTemplate, V8TestSpecialOperations::derefObject, 0, 0, 0, V8TestSpecialOperations::installPerContextEnabledMethods, 0, WrapperTypeObjectPrototype, RefCountedObject };
 
 namespace TestSpecialOperationsV8Internal {
@@ -174,7 +174,7 @@ static void namedPropertyEnumeratorCallback(const v8::PropertyCallbackInfo<v8::A
 } // namespace TestSpecialOperationsV8Internal
 
 static const V8DOMConfiguration::MethodConfiguration V8TestSpecialOperationsMethods[] = {
-    {"namedItem", TestSpecialOperationsV8Internal::namedItemMethodCallback, 0, 1},
+    {"namedItem", TestSpecialOperationsV8Internal::namedItemMethodCallback, 0, 1, V8DOMConfiguration::ExposedToAllScripts},
 };
 
 static void installV8TestSpecialOperationsTemplate(v8::Handle<v8::FunctionTemplate> functionTemplate, v8::Isolate* isolate)
@@ -253,4 +253,4 @@ v8::Handle<v8::Value> toV8NoInline(TestSpecialOperations* impl, v8::Handle<v8::O
     return toV8(impl, creationContext, isolate);
 }
 
-} // namespace WebCore
+} // namespace blink

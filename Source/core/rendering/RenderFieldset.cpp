@@ -33,7 +33,7 @@
 using std::min;
 using std::max;
 
-namespace WebCore {
+namespace blink {
 
 using namespace HTMLNames;
 
@@ -159,12 +159,14 @@ void RenderFieldset::paintBoxDecorationBackground(PaintInfo& paintInfo, const La
         paintRect.setX(paintRect.x() + xOff);
     }
 
-    if (!boxShadowShouldBeAppliedToBackground(determineBackgroundBleedAvoidance(paintInfo.context)))
+    BoxDecorationData boxDecorationData(*style());
+
+    if (!boxShadowShouldBeAppliedToBackground(determineBackgroundBleedAvoidance(paintInfo.context, boxDecorationData)))
         paintBoxShadow(paintInfo, paintRect, style(), Normal);
-    paintFillLayers(paintInfo, resolveColor(CSSPropertyBackgroundColor), style()->backgroundLayers(), paintRect);
+    paintFillLayers(paintInfo, boxDecorationData.backgroundColor, style()->backgroundLayers(), paintRect);
     paintBoxShadow(paintInfo, paintRect, style(), Inset);
 
-    if (!style()->hasBorder())
+    if (!boxDecorationData.hasBorder)
         return;
 
     // Create a clipping region around the legend and paint the border as normal
@@ -213,4 +215,4 @@ void RenderFieldset::paintMask(PaintInfo& paintInfo, const LayoutPoint& paintOff
     paintMaskImages(paintInfo, paintRect);
 }
 
-} // namespace WebCore
+} // namespace blink

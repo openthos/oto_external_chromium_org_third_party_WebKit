@@ -37,7 +37,7 @@
 #include "platform/heap/Handle.h"
 #include "wtf/Noncopyable.h"
 
-namespace WebCore {
+namespace blink {
 
 class CharacterData;
 class LocalFrame;
@@ -92,7 +92,7 @@ public:
 
     Element* rootEditableElement() const { return m_selection.rootEditableElement(); }
     Element* rootEditableElementOrDocumentElement() const;
-    Node* rootEditableElementOrTreeScopeRootNode() const;
+    ContainerNode* rootEditableElementOrTreeScopeRootNode() const;
 
     bool hasEditableStyle() const { return m_selection.hasEditableStyle(); }
     bool isContentEditable() const { return m_selection.isContentEditable(); }
@@ -137,10 +137,11 @@ public:
     Position end() const { return m_selection.end(); }
 
     // Return the renderer that is responsible for painting the caret (in the selection start node)
-    RenderObject* caretRenderer() const;
+    RenderBlock* caretRenderer() const;
 
     // Caret rect local to the caret's renderer
     LayoutRect localCaretRect();
+    LayoutRect localCaretRectWithoutUpdateForTesting() const { return CaretBase::localCaretRectWithoutUpdate(); }
 
     // Bounds of (possibly transformed) caret in absolute coords
     IntRect absoluteCaretBounds();
@@ -262,6 +263,8 @@ private:
     void startObservingVisibleSelectionChange();
     void stopObservingVisibleSelectionChangeIfNecessary();
 
+    VisibleSelection validateSelection(const VisibleSelection&);
+
     LocalFrame* m_frame;
 
     LayoutUnit m_xPosForVerticalArrowNavigation;
@@ -304,12 +307,12 @@ inline void FrameSelection::setTypingStyle(PassRefPtrWillBeRawPtr<EditingStyle> 
 {
     m_typingStyle = style;
 }
-} // namespace WebCore
+} // namespace blink
 
 #ifndef NDEBUG
 // Outside the WebCore namespace for ease of invocation from gdb.
-void showTree(const WebCore::FrameSelection&);
-void showTree(const WebCore::FrameSelection*);
+void showTree(const blink::FrameSelection&);
+void showTree(const blink::FrameSelection*);
 #endif
 
 #endif // FrameSelection_h

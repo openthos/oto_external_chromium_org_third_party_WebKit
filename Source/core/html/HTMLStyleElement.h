@@ -26,10 +26,9 @@
 #include "core/dom/StyleElement.h"
 #include "core/html/HTMLElement.h"
 
-namespace WebCore {
+namespace blink {
 
 class HTMLStyleElement;
-class StyleSheet;
 
 template<typename T> class EventSender;
 typedef EventSender<HTMLStyleElement> StyleEventSender;

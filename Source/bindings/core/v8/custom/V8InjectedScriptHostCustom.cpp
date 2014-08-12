@@ -61,7 +61,7 @@
 #include "core/inspector/JavaScriptCallFrame.h"
 #include "platform/JSONValues.h"
 
-namespace WebCore {
+namespace blink {
 
 Node* InjectedScriptHost::scriptValueAsNode(ScriptState* scriptState, ScriptValue value)
 {
@@ -87,7 +87,7 @@ void V8InjectedScriptHost::inspectedObjectMethodCustom(const v8::FunctionCallbac
         return;
 
     if (!info[0]->IsInt32()) {
-        throwTypeError("argument has to be an integer", info.GetIsolate());
+        V8ThrowException::throwTypeError("argument has to be an integer", info.GetIsolate());
         return;
     }
 
@@ -494,4 +494,4 @@ void V8InjectedScriptHost::suppressWarningsAndCallMethodCustom(const v8::Functio
     v8SetReturnValue(info, result);
 }
 
-} // namespace WebCore
+} // namespace blink

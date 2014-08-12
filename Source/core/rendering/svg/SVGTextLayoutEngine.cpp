@@ -32,7 +32,7 @@
 // Set to a value > 0 to dump the text fragments
 #define DUMP_TEXT_FRAGMENTS 0
 
-namespace WebCore {
+namespace blink {
 
 SVGTextLayoutEngine::SVGTextLayoutEngine(Vector<SVGTextLayoutAttributes*>& layoutAttributes)
     : m_layoutAttributes(layoutAttributes)
@@ -240,7 +240,7 @@ void SVGTextLayoutEngine::layoutInlineTextBox(SVGInlineTextBox* textBox)
 {
     ASSERT(textBox);
 
-    RenderSVGInlineText& text = toRenderSVGInlineText(textBox->textRenderer());
+    RenderSVGInlineText& text = toRenderSVGInlineText(textBox->renderer());
     ASSERT(text.parent());
     ASSERT(text.parent()->node());
     ASSERT(text.parent()->node()->isSVGElement());

@@ -33,8 +33,9 @@
 
 #include "core/dom/Document.h"
 #include "core/html/imports/HTMLImportStateResolver.h"
+#include "wtf/Vector.h"
 
-namespace WebCore {
+namespace blink {
 
 HTMLImport* HTMLImport::root()
 {
@@ -140,4 +141,4 @@ void HTMLImport::showThis()
 }
 #endif
 
-} // namespace WebCore
+} // namespace blink

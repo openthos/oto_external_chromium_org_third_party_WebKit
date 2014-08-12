@@ -36,7 +36,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-using namespace WebCore;
+using namespace blink;
 using testing::InSequence;
 using testing::Return;
 using testing::Test;
@@ -237,11 +237,11 @@ protected:
     void doDeferredFrameTestTask(FakeCanvas2DLayerBridge* layer, bool skipCommands)
     {
         EXPECT_FALSE(Canvas2DLayerManager::get().m_taskObserverActive);
-        layer->willUse();
+        layer->finalizeFrame();
         layer->storageAllocatedForRecordingChanged(1);
         EXPECT_TRUE(Canvas2DLayerManager::get().m_taskObserverActive);
         if (skipCommands) {
-            layer->willUse();
+            layer->finalizeFrame();
             layer->skippedPendingDrawCommands();
         }
         blink::Platform::current()->currentThread()->exitRunLoop();

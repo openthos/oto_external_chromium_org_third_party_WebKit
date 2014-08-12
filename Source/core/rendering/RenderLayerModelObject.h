@@ -26,7 +26,7 @@
 #include "core/rendering/compositing/CompositedLayerMappingPtr.h"
 #include "core/rendering/RenderObject.h"
 
-namespace WebCore {
+namespace blink {
 
 class RenderLayer;
 class CompositedLayerMapping;
@@ -66,6 +66,7 @@ public:
     // This is null for anonymous renderers.
     ContainerNode* node() const { return toContainerNode(RenderObject::node()); }
 
+    virtual void invalidateTreeIfNeeded(const PaintInvalidationState&) OVERRIDE;
 protected:
     void createLayer(LayerType);
 
@@ -73,6 +74,7 @@ protected:
 
     virtual void addLayerHitTestRects(LayerHitTestRects&, const RenderLayer*, const LayoutPoint&, const LayoutRect&) const OVERRIDE;
 
+    virtual InvalidationReason invalidatePaintIfNeeded(const PaintInvalidationState&, const RenderLayerModelObject& newPaintInvalidationContainer);
 private:
     virtual bool isLayerModelObject() const OVERRIDE FINAL { return true; }
 
@@ -84,6 +86,6 @@ private:
 
 DEFINE_RENDER_OBJECT_TYPE_CASTS(RenderLayerModelObject, isLayerModelObject());
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // RenderLayerModelObject_h

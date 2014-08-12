@@ -34,9 +34,10 @@
 
 #include "core/HTMLNames.h"
 #include "core/dom/IdTargetObserverRegistry.h"
+#include "core/dom/NodeListsNodeData.h"
 #include "core/frame/UseCounter.h"
 
-namespace WebCore {
+namespace blink {
 
 inline HTMLDataListElement::HTMLDataListElement(Document& document)
     : HTMLElement(HTMLNames::datalistTag, document)
@@ -52,7 +53,7 @@ PassRefPtrWillBeRawPtr<HTMLDataListElement> HTMLDataListElement::create(Document
 
 PassRefPtrWillBeRawPtr<HTMLCollection> HTMLDataListElement::options()
 {
-    return ensureCachedHTMLCollection(DataListOptions);
+    return ensureCachedCollection<HTMLCollection>(DataListOptions);
 }
 
 void HTMLDataListElement::childrenChanged(const ChildrenChange& change)
@@ -72,4 +73,4 @@ void HTMLDataListElement::optionElementChildrenChanged()
     treeScope().idTargetObserverRegistry().notifyObservers(getIdAttribute());
 }
 
-} // namespace WebCore
+} // namespace blink

@@ -36,7 +36,7 @@
 #include "wtf/Vector.h"
 #include "wtf/text/WTFString.h"
 
-namespace WebCore {
+namespace blink {
 class ScriptValue;
 
 class ScriptCallArgumentHandler {
@@ -53,6 +53,7 @@ public:
     void appendArgument(int);
     void appendArgument(bool);
     void appendArgument(const Vector<ScriptValue>&);
+    void appendUndefinedArgument();
 
 protected:
     RefPtr<ScriptState> m_scriptState;
@@ -71,6 +72,6 @@ protected:
     String m_name;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // ScriptFunctionCall

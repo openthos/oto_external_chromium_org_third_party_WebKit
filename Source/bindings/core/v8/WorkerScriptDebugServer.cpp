@@ -40,7 +40,7 @@
 #include <v8.h>
 
 
-namespace WebCore {
+namespace blink {
 
 WorkerScriptDebugServer::WorkerScriptDebugServer(WorkerGlobalScope* workerGlobalScope)
     : ScriptDebugServer(v8::Isolate::GetCurrent())
@@ -98,10 +98,12 @@ ScriptDebugListener* WorkerScriptDebugServer::getDebugListenerForContext(v8::Han
 void WorkerScriptDebugServer::runMessageLoopOnPause(v8::Handle<v8::Context>)
 {
     MessageQueueWaitResult result;
+    m_workerGlobalScope->thread()->willEnterNestedLoop();
     do {
-        result = m_workerGlobalScope->thread()->runLoop().runDebuggerTask();
+        result = m_workerGlobalScope->thread()->runDebuggerTask();
     // Keep waiting until execution is resumed.
     } while (result == MessageQueueMessageReceived && isPaused());
+    m_workerGlobalScope->thread()->didLeaveNestedLoop();
 
     // The listener may have been removed in the nested loop.
     if (m_listener)
@@ -113,4 +115,4 @@ void WorkerScriptDebugServer::quitMessageLoopOnPause()
     // Nothing to do here in case of workers since runMessageLoopOnPause will check for paused state after each debugger command.
 }
 
-} // namespace WebCore
+} // namespace blink

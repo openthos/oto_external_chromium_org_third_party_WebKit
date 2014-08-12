@@ -7,17 +7,18 @@
             "common/Color.js",
             "common/Geometry.js",
             "common/Console.js",
-            "common/ModuleManager.js",
             "common/NotificationService.js",
             "common/Object.js",
             "common/ParsedURL.js",
             "common/Progress.js",
             "common/Settings.js",
             "common/TextRange.js",
+            "common/TextUtils.js",
             "common/Throttler.js",
             "common/UIString.js",
             "common/utilities.js",
-            "common/WebInspector.js"
+            "common/WebInspector.js",
+            "common/ModuleExtensionInterfaces.js"
         ]
     },
     {
@@ -26,6 +27,7 @@
         "sources": [
             "sdk/Target.js",
             "sdk/ApplicationCacheModel.js",
+            "sdk/BlackboxSupport.js",
             "sdk/CompilerScriptMapping.js",
             "sdk/ConsoleModel.js",
             "sdk/ContentProvider.js",
@@ -37,13 +39,13 @@
             "sdk/CSSMetadata.js",
             "sdk/CSSParser.js",
             "sdk/CSSStyleModel.js",
-            "sdk/CSSStyleSheetMapping.js",
+            "sdk/CSSWorkspaceBinding.js",
             "sdk/BreakpointManager.js",
             "sdk/DOMModel.js",
             "sdk/DOMStorage.js",
             "sdk/Database.js",
             "sdk/DebuggerModel.js",
-            "sdk/DebuggerScriptMapping.js",
+            "sdk/DebuggerWorkspaceBinding.js",
             "sdk/FileManager.js",
             "sdk/FileSystemMapping.js",
             "sdk/FileSystemModel.js",
@@ -118,6 +120,7 @@
             "ui/ShortcutRegistry.js",
             "ui/ShowMoreDataGridNode.js",
             "ui/SoftContextMenu.js",
+            "ui/SortableDataGrid.js",
             "ui/SplitView.js",
             "ui/StackView.js",
             "ui/StatusBarButton.js",
@@ -125,7 +128,6 @@
             "ui/TabbedPane.js",
             "ui/TextEditor.js",
             "ui/TextPrompt.js",
-            "ui/TextUtils.js",
             "ui/UIUtils.js",
             "ui/View.js",
             "ui/ViewportControl.js",
@@ -168,7 +170,7 @@
         "name": "screencast",
         "dependencies": ["components"],
         "sources": [
-            "ScreencastView.js"
+            "screencast/ScreencastView.js"
         ]
     },
     {
@@ -407,6 +409,7 @@
             "profiler/HeapSnapshotView.js",
             "profiler/ProfilesPanel.js",
             "profiler/ProfileLauncherView.js",
+            "profiler/ProfileTypeRegistry.js",
             "profiler/CanvasProfileView.js",
             "profiler/CanvasReplayStateView.js"
         ]
@@ -416,16 +419,16 @@
         "standalone": true,
         "dependencies": [],
         "sources": [
+            "common/TextUtils.js",
             "common/UIString.js",
             "common/utilities.js",
-            "profiler/HeapSnapshotCommon.js",
-            "profiler/heap_snapshot_worker/AllocationProfile.js",
-            "profiler/heap_snapshot_worker/HeapSnapshot.js",
-            "profiler/heap_snapshot_worker/HeapSnapshotLoader.js",
-            "profiler/heap_snapshot_worker/HeapSnapshotWorker.js",
-            "profiler/heap_snapshot_worker/HeapSnapshotWorkerDispatcher.js",
-            "profiler/heap_snapshot_worker/JSHeapSnapshot.js",
-            "ui/TextUtils.js"
+            "heap_snapshot_worker/AllocationProfile.js",
+            "heap_snapshot_worker/HeapSnapshot.js",
+            "heap_snapshot_worker/HeapSnapshotLoader.js",
+            "heap_snapshot_worker/HeapSnapshotWorker.js",
+            "heap_snapshot_worker/HeapSnapshotWorkerDispatcher.js",
+            "heap_snapshot_worker/JSHeapSnapshot.js",
+            "profiler/HeapSnapshotCommon.js"
         ]
     },
     {
@@ -451,11 +454,8 @@
     {
         "name": "main",
         "dependencies": [
-            "elements",
             "host",
             "screencast",
-            "settings",
-            "sources",
             "sdk",
             "toolbox"
         ],
@@ -496,5 +496,12 @@
             "main"
         ],
         "sources": []
+    },
+    {
+        "name": "documentation",
+        "dependencies": [],
+        "sources": [
+            "documentation/WikiParser.js"
+        ]
     }
 ]

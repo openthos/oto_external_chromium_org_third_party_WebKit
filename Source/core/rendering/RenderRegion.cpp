@@ -37,7 +37,7 @@
 #include "core/rendering/RenderFlowThread.h"
 #include "core/rendering/RenderView.h"
 
-namespace WebCore {
+namespace blink {
 
 RenderRegion::RenderRegion(Element* element, RenderFlowThread* flowThread)
     : RenderBlockFlow(element)
@@ -144,18 +144,6 @@ void RenderRegion::repaintFlowThreadContentRectangle(const LayoutRect& repaintRe
     invalidatePaintRectangle(clippedRect);
 }
 
-LayoutUnit RenderRegion::logicalTopOfFlowThreadContentRect(const LayoutRect& rect) const
-{
-    ASSERT(isValid());
-    return flowThread()->isHorizontalWritingMode() ? rect.y() : rect.x();
-}
-
-LayoutUnit RenderRegion::logicalBottomOfFlowThreadContentRect(const LayoutRect& rect) const
-{
-    ASSERT(isValid());
-    return flowThread()->isHorizontalWritingMode() ? rect.maxY() : rect.maxX();
-}
-
 void RenderRegion::computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const
 {
     if (!isValid()) {
@@ -167,4 +155,4 @@ void RenderRegion::computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, La
     maxLogicalWidth = m_flowThread->maxPreferredLogicalWidth();
 }
 
-} // namespace WebCore
+} // namespace blink

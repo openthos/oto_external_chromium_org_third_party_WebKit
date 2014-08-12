@@ -33,7 +33,7 @@
 #include "wtf/ListHashSet.h"
 #include "wtf/text/StringHash.h"
 
-namespace WebCore {
+namespace blink {
 
 class FontFace;
 class CSSFontSelector;
@@ -50,7 +50,8 @@ public:
     // a result of egregious spaghettification in FontFace/FontFaceSet.
     void add(CSSFontSelector*, const StyleRuleFontFace*, PassRefPtrWillBeRawPtr<FontFace>);
     void remove(const StyleRuleFontFace*);
-    void clear();
+    void clearCSSConnected();
+    void clearAll();
     void addFontFace(CSSFontSelector*, PassRefPtrWillBeRawPtr<FontFace>, bool cssConnected);
     void removeFontFace(FontFace*, bool cssConnected);
 

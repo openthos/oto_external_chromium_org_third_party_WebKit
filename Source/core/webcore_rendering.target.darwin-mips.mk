@@ -27,10 +27,10 @@ GYP_COPIED_SOURCE_ORIGIN_DIRS :=
 LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/rendering/AbstractInlineTextBox.cpp \
 	third_party/WebKit/Source/core/rendering/AutoTableLayout.cpp \
+	third_party/WebKit/Source/core/rendering/BidiRunForLine.cpp \
 	third_party/WebKit/Source/core/rendering/ClipRect.cpp \
 	third_party/WebKit/Source/core/rendering/CounterNode.cpp \
 	third_party/WebKit/Source/core/rendering/EllipsisBox.cpp \
-	third_party/WebKit/Source/core/rendering/FastTextAutosizer.cpp \
 	third_party/WebKit/Source/core/rendering/FilterEffectRenderer.cpp \
 	third_party/WebKit/Source/core/rendering/FixedTableLayout.cpp \
 	third_party/WebKit/Source/core/rendering/FloatingObjects.cpp \
@@ -115,6 +115,8 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/rendering/RenderScrollbarTheme.cpp \
 	third_party/WebKit/Source/core/rendering/RenderSearchField.cpp \
 	third_party/WebKit/Source/core/rendering/RenderSlider.cpp \
+	third_party/WebKit/Source/core/rendering/RenderSliderContainer.cpp \
+	third_party/WebKit/Source/core/rendering/RenderSliderThumb.cpp \
 	third_party/WebKit/Source/core/rendering/RenderTable.cpp \
 	third_party/WebKit/Source/core/rendering/RenderTableCaption.cpp \
 	third_party/WebKit/Source/core/rendering/RenderTableCell.cpp \
@@ -142,6 +144,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/rendering/ScrollAlignment.cpp \
 	third_party/WebKit/Source/core/rendering/SubtreeLayoutScope.cpp \
 	third_party/WebKit/Source/core/rendering/TextAutosizer.cpp \
+	third_party/WebKit/Source/core/rendering/TextRunConstructor.cpp \
 	third_party/WebKit/Source/core/rendering/break_lines.cpp \
 	third_party/WebKit/Source/core/rendering/compositing/CompositedLayerMapping.cpp \
 	third_party/WebKit/Source/core/rendering/compositing/CompositingInputsUpdater.cpp \
@@ -245,7 +248,6 @@ MY_DEFS_Debug := \
 	'-DSYSTEM_NATIVELY_SIGNALS_MEMORY_PRESSURE' \
 	'-DENABLE_EGLIMAGE=1' \
 	'-DCLD_VERSION=1' \
-	'-DCLD_DATA_FROM_STATIC' \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
@@ -263,6 +265,7 @@ MY_DEFS_Debug := \
 	'-DENABLE_WEB_AUDIO=1' \
 	'-DENABLE_OPENTYPE_VERTICAL=1' \
 	'-DU_USING_ICU_NAMESPACE=0' \
+	'-DU_ENABLE_DYLOAD=0' \
 	'-DSK_ENABLE_INST_COUNT=0' \
 	'-DSK_SUPPORT_GPU=1' \
 	'-DGR_GL_CUSTOM_SETUP_HEADER="GrGLConfig_chrome.h"' \
@@ -310,8 +313,8 @@ LOCAL_C_INCLUDES_Debug := \
 	$(gyp_shared_intermediate_dir)/blink \
 	$(LOCAL_PATH)/third_party/openmax_dl \
 	$(LOCAL_PATH)/third_party/angle/include \
-	$(PWD)/external/icu4c/common \
-	$(PWD)/external/icu4c/i18n \
+	$(PWD)/external/icu/icu4c/source/common \
+	$(PWD)/external/icu/icu4c/source/i18n \
 	$(LOCAL_PATH)/third_party/WebKit \
 	$(LOCAL_PATH)/third_party/skia/src/core \
 	$(LOCAL_PATH)/third_party/skia/include/core \
@@ -408,7 +411,6 @@ MY_DEFS_Release := \
 	'-DSYSTEM_NATIVELY_SIGNALS_MEMORY_PRESSURE' \
 	'-DENABLE_EGLIMAGE=1' \
 	'-DCLD_VERSION=1' \
-	'-DCLD_DATA_FROM_STATIC' \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
@@ -426,6 +428,7 @@ MY_DEFS_Release := \
 	'-DENABLE_WEB_AUDIO=1' \
 	'-DENABLE_OPENTYPE_VERTICAL=1' \
 	'-DU_USING_ICU_NAMESPACE=0' \
+	'-DU_ENABLE_DYLOAD=0' \
 	'-DSK_ENABLE_INST_COUNT=0' \
 	'-DSK_SUPPORT_GPU=1' \
 	'-DGR_GL_CUSTOM_SETUP_HEADER="GrGLConfig_chrome.h"' \
@@ -474,8 +477,8 @@ LOCAL_C_INCLUDES_Release := \
 	$(gyp_shared_intermediate_dir)/blink \
 	$(LOCAL_PATH)/third_party/openmax_dl \
 	$(LOCAL_PATH)/third_party/angle/include \
-	$(PWD)/external/icu4c/common \
-	$(PWD)/external/icu4c/i18n \
+	$(PWD)/external/icu/icu4c/source/common \
+	$(PWD)/external/icu/icu4c/source/i18n \
 	$(LOCAL_PATH)/third_party/WebKit \
 	$(LOCAL_PATH)/third_party/skia/src/core \
 	$(LOCAL_PATH)/third_party/skia/include/core \

@@ -26,7 +26,7 @@
 
 #include "core/html/HTMLElement.h"
 
-namespace WebCore {
+namespace blink {
 
 class HTMLSelectElement;
 class HTMLDivElement;
@@ -48,10 +48,19 @@ private:
     virtual void childrenChanged(const ChildrenChange&) OVERRIDE;
     virtual void accessKeyAction(bool sendMouseEvents) OVERRIDE;
     virtual void didAddUserAgentShadowRoot(ShadowRoot&) OVERRIDE;
+    virtual void attach(const AttachContext& = AttachContext()) OVERRIDE;
+    virtual void detach(const AttachContext& = AttachContext()) OVERRIDE;
+
+    // <optgroup> might not have a renderer so we manually manage a cached style.
+    void updateNonRenderStyle();
+    virtual RenderStyle* nonRendererStyle() const OVERRIDE;
+    virtual PassRefPtr<RenderStyle> customStyleForRenderer() OVERRIDE;
 
     void updateGroupLabel();
     void recalcSelectOptions();
     HTMLDivElement& optGroupLabelElement() const;
+
+    RefPtr<RenderStyle> m_style;
 };
 
 } //namespace

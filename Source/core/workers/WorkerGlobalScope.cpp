@@ -58,7 +58,7 @@
 #include "platform/weborigin/SecurityOrigin.h"
 #include "public/platform/WebURLRequest.h"
 
-namespace WebCore {
+namespace blink {
 
 class CloseWorkerGlobalScopeTask : public ExecutionContextTask {
 public:
@@ -82,7 +82,7 @@ WorkerGlobalScope::WorkerGlobalScope(const KURL& url, const String& userAgent, W
     , m_userAgent(userAgent)
     , m_script(adoptPtr(new WorkerScriptController(*this)))
     , m_thread(thread)
-    , m_workerInspectorController(adoptPtr(new WorkerInspectorController(this)))
+    , m_workerInspectorController(adoptRefWillBeNoop(new WorkerInspectorController(this)))
     , m_closing(false)
     , m_eventQueue(WorkerEventQueue::create(this))
     , m_workerClients(workerClients)
@@ -93,6 +93,7 @@ WorkerGlobalScope::WorkerGlobalScope(const KURL& url, const String& userAgent, W
     setClient(this);
     setSecurityOrigin(SecurityOrigin::create(url));
     m_workerClients->reattachThread();
+    m_thread->setWorkerInspectorController(m_workerInspectorController.get());
 }
 
 WorkerGlobalScope::~WorkerGlobalScope()
@@ -180,11 +181,16 @@ WorkerNavigator* WorkerGlobalScope::navigator() const
 
 void WorkerGlobalScope::postTask(PassOwnPtr<ExecutionContextTask> task)
 {
-    thread()->runLoop().postTask(task);
+    thread()->postTask(task);
 }
 
+// FIXME: Called twice, from WorkerThreadShutdownFinishTask and WorkerGlobalScope::dispose.
 void WorkerGlobalScope::clearInspector()
 {
+    if (!m_workerInspectorController)
+        return;
+    thread()->setWorkerInspectorController(nullptr);
+    m_workerInspectorController->dispose();
     m_workerInspectorController.clear();
 }
 
@@ -264,7 +270,7 @@ void WorkerGlobalScope::importScripts(const Vector<String>& urls, ExceptionState
         RefPtrWillBeRawPtr<ErrorEvent> errorEvent = nullptr;
         m_script->evaluate(ScriptSourceCode(scriptLoader->script(), scriptLoader->responseURL()), &errorEvent);
         if (errorEvent) {
-            m_script->rethrowExceptionFromImportedScript(errorEvent.release());
+            m_script->rethrowExceptionFromImportedScript(errorEvent.release(), exceptionState);
             return;
         }
     }
@@ -339,6 +345,7 @@ void WorkerGlobalScope::trace(Visitor* visitor)
     visitor->trace(m_console);
     visitor->trace(m_location);
     visitor->trace(m_navigator);
+    visitor->trace(m_workerInspectorController);
     visitor->trace(m_eventQueue);
     visitor->trace(m_workerClients);
     WillBeHeapSupplementable<WorkerGlobalScope>::trace(visitor);
@@ -346,4 +353,4 @@ void WorkerGlobalScope::trace(Visitor* visitor)
     EventTargetWithInlineData::trace(visitor);
 }
 
-} // namespace WebCore
+} // namespace blink

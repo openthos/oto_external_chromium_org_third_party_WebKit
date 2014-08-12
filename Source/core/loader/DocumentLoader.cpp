@@ -64,7 +64,7 @@
 #include "wtf/Assertions.h"
 #include "wtf/text/WTFString.h"
 
-namespace WebCore {
+namespace blink {
 
 static bool isArchiveMIMEType(const String& mimeType)
 {
@@ -375,11 +375,9 @@ void DocumentLoader::willSendRequest(ResourceRequest& newRequest, const Resource
     if (newRequest.cachePolicy() == UseProtocolCachePolicy && isRedirectAfterPost(newRequest, redirectResponse))
         newRequest.setCachePolicy(ReloadBypassingCache);
 
-    // If this is a sub-frame, check for mixed content blocking against the top frame.
-    if (m_frame->tree().parent()) {
-        // FIXME: This does not yet work with out-of-process iframes.
-        Frame* top = m_frame->tree().top();
-        if (top->isLocalFrame() && !toLocalFrame(top)->loader().mixedContentChecker()->canFrameInsecureContent(toLocalFrame(top)->document()->securityOrigin(), newRequest.url())) {
+    // If this is a sub-frame, check for mixed content blocking against the parent frame.
+    if (Frame* parent = m_frame->tree().parent()) {
+        if (parent->isLocalFrame() && !toLocalFrame(parent)->loader().mixedContentChecker()->canFrameInsecureContent(toLocalFrame(parent)->document()->securityOrigin(), newRequest.url())) {
             cancelMainResourceLoad(ResourceError::cancelledError(newRequest.url()));
             return;
         }
@@ -803,6 +801,8 @@ PassRefPtrWillBeRawPtr<DocumentWriter> DocumentLoader::createWriterFor(LocalFram
     if (ownerDocument) {
         document->setCookieURL(ownerDocument->cookieURL());
         document->setSecurityOrigin(ownerDocument->securityOrigin());
+        if (ownerDocument->isTransitionDocument())
+            document->setIsTransitionDocument();
     }
 
     frame->loader().didBeginDocument(dispatch);
@@ -835,4 +835,4 @@ void DocumentLoader::replaceDocument(const String& source, Document* ownerDocume
     endWriting(m_writer.get());
 }
 
-} // namespace WebCore
+} // namespace blink

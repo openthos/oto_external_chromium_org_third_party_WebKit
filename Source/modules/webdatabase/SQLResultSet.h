@@ -34,11 +34,11 @@
 #include "modules/webdatabase/SQLResultSetRowList.h"
 #include "wtf/ThreadSafeRefCounted.h"
 
-namespace WebCore {
+namespace blink {
 
 class ExceptionState;
 
-class SQLResultSet : public ThreadSafeRefCountedWillBeGarbageCollectedFinalized<SQLResultSet>, public ScriptWrappable {
+class SQLResultSet FINAL : public ThreadSafeRefCountedWillBeGarbageCollected<SQLResultSet>, public ScriptWrappable {
 public:
     static PassRefPtrWillBeRawPtr<SQLResultSet> create() { return adoptRefWillBeNoop(new SQLResultSet); }
     void trace(Visitor*);
@@ -63,6 +63,6 @@ private:
     bool m_isValid;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // SQLResultSet_h

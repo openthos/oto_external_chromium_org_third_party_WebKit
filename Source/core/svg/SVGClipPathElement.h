@@ -27,7 +27,7 @@
 #include "core/svg/SVGGraphicsElement.h"
 #include "core/svg/SVGUnitTypes.h"
 
-namespace WebCore {
+namespace blink {
 
 class RenderObject;
 
@@ -43,7 +43,6 @@ private:
 
     virtual bool needsPendingResourceHandling() const OVERRIDE { return false; }
 
-    bool isSupportedAttribute(const QualifiedName&);
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual void svgAttributeChanged(const QualifiedName&) OVERRIDE;
     virtual void childrenChanged(const ChildrenChange&) OVERRIDE;

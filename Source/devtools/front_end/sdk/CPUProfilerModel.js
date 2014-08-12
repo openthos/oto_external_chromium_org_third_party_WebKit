@@ -28,13 +28,13 @@
 
 /**
  * @constructor
- * @extends {WebInspector.SDKObject}
+ * @extends {WebInspector.SDKModel}
  * @param {!WebInspector.Target} target
  * @implements {ProfilerAgent.Dispatcher}
  */
 WebInspector.CPUProfilerModel = function(target)
 {
-    WebInspector.SDKObject.call(this, target);
+    WebInspector.SDKModel.call(this, WebInspector.CPUProfilerModel, target);
     this._isRecording = false;
     target.registerProfilerDispatcher(this);
     target.profilerAgent().enable();
@@ -72,7 +72,7 @@ WebInspector.CPUProfilerModel.prototype = {
     consoleProfileFinished: function(id, scriptLocation, cpuProfile, title)
     {
         // Make sure ProfilesPanel is initialized and CPUProfileType is created.
-        WebInspector.moduleManager.loadModule("profiler");
+        self.runtime.loadModule("profiler");
         var debuggerLocation = WebInspector.DebuggerModel.Location.fromPayload(this.target(), scriptLocation);
         this.dispatchEventToListeners(WebInspector.CPUProfilerModel.EventTypes.ConsoleProfileFinished, {protocolId: id, scriptLocation: debuggerLocation, cpuProfile: cpuProfile, title: title});
     },
@@ -85,7 +85,7 @@ WebInspector.CPUProfilerModel.prototype = {
     consoleProfileStarted: function(id, scriptLocation, title)
     {
         // Make sure ProfilesPanel is initialized and CPUProfileType is created.
-        WebInspector.moduleManager.loadModule("profiler");
+        self.runtime.loadModule("profiler");
         var debuggerLocation = WebInspector.DebuggerModel.Location.fromPayload(this.target(), scriptLocation)
         this.dispatchEventToListeners(WebInspector.CPUProfilerModel.EventTypes.ConsoleProfileStarted, {protocolId: id, scriptLocation: debuggerLocation, title: title});
     },
@@ -122,7 +122,7 @@ WebInspector.CPUProfilerModel.prototype = {
     },
 
 
-    __proto__: WebInspector.SDKObject.prototype
+    __proto__: WebInspector.SDKModel.prototype
 }
 
 /**

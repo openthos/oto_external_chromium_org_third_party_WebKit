@@ -35,7 +35,7 @@
 #include "wtf/RefPtr.h"
 #include "wtf/Threading.h"
 
-namespace WebCore {
+namespace blink {
 
 class AudioContext;
 
@@ -49,6 +49,7 @@ public:
     virtual ~AudioBufferSourceNode();
 
     // AudioNode
+    virtual void dispose() OVERRIDE;
     virtual void process(size_t framesToProcess) OVERRIDE;
 
     // setBuffer() is called on the main thread. This is the buffer we use for playback.
@@ -135,12 +136,15 @@ private:
     // This RefPtr is connection reference. We must call AudioNode::
     // makeConnection() after ref(), and call AudioNode::breakConnection()
     // before deref().
-    RefPtr<PannerNode> m_pannerNode;
+    // Oilpan: This holds connection references. We must call
+    // AudioNode::makeConnection when we add an AudioNode to this, and must call
+    // AudioNode::breakConnection() when we remove an AudioNode from this.
+    RefPtrWillBeMember<PannerNode> m_pannerNode;
 
     // This synchronizes process() with setBuffer() which can cause dynamic channel count changes.
     mutable Mutex m_processLock;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // AudioBufferSourceNode_h

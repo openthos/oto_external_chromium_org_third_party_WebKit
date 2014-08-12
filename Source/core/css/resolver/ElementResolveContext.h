@@ -25,9 +25,10 @@
 #include "core/dom/Element.h"
 #include "core/rendering/style/RenderStyleConstants.h"
 
-namespace WebCore {
+namespace blink {
 
 class ContainerNode;
+class Document;
 class Element;
 class RenderStyle;
 
@@ -35,14 +36,7 @@ class RenderStyle;
 class ElementResolveContext {
     STACK_ALLOCATED();
 public:
-    ElementResolveContext()
-        : m_element(nullptr)
-        , m_parentNode(nullptr)
-        , m_rootElementStyle(0)
-        , m_elementLinkState(NotInsideLink)
-        , m_distributedToInsertionPoint(false)
-    {
-    }
+    explicit ElementResolveContext(const Document&);
 
     explicit ElementResolveContext(Element&);
 
@@ -60,6 +54,6 @@ private:
     bool m_distributedToInsertionPoint;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // ElementResolveContext_h

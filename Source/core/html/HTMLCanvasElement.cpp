@@ -48,6 +48,7 @@
 #include "platform/graphics/Canvas2DImageBufferSurface.h"
 #include "platform/graphics/GraphicsContextStateSaver.h"
 #include "platform/graphics/ImageBuffer.h"
+#include "platform/graphics/RecordingImageBufferSurface.h"
 #include "platform/graphics/UnacceleratedImageBufferSurface.h"
 #include "platform/graphics/gpu/WebGLImageBufferSurface.h"
 #include "platform/transforms/AffineTransform.h"
@@ -55,7 +56,7 @@
 #include <math.h>
 #include <v8.h>
 
-namespace WebCore {
+namespace blink {
 
 using namespace HTMLNames;
 
@@ -91,6 +92,7 @@ DEFINE_NODE_FACTORY(HTMLCanvasElement)
 
 HTMLCanvasElement::~HTMLCanvasElement()
 {
+    resetDirtyRect();
     v8::Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-m_externallyAllocatedMemory);
 #if !ENABLE(OILPAN)
     HashSet<RawPtr<CanvasObserver> >::iterator end = m_observers.end();
@@ -192,27 +194,56 @@ CanvasRenderingContext* HTMLCanvasElement::getContext(const String& type, Canvas
 
 void HTMLCanvasElement::didDraw(const FloatRect& rect)
 {
+    if (rect.isEmpty())
+        return;
     clearCopiedImage();
-
-    if (RenderBox* ro = renderBox()) {
-        FloatRect srcRect(0, 0, size().width(), size().height());
-        FloatRect r = rect;
-        r.intersect(srcRect);
-        if (r.isEmpty() || m_dirtyRect.contains(r))
-            return;
-        m_dirtyRect.unite(r);
-        FloatRect mappedDirtyRect = mapRect(r, srcRect, ro->contentBoxRect());
-
-        ro->invalidatePaintRectangle(enclosingIntRect(mappedDirtyRect));
-    }
-
-    notifyObserversCanvasChanged(rect);
+    if (m_dirtyRect.isEmpty())
+        blink::Platform::current()->currentThread()->addTaskObserver(this);
+    m_dirtyRect.unite(rect);
 }
 
-void HTMLCanvasElement::didPresent()
+void HTMLCanvasElement::didFinalizeFrame()
 {
-    // Canvas was presented externally (without going through paint())
+    if (m_dirtyRect.isEmpty())
+        return;
+
+    // Propagate the m_dirtyRect accumulated so far to the compositor
+    // before restarting with a blank dirty rect.
+    FloatRect srcRect(0, 0, size().width(), size().height());
+    m_dirtyRect.intersect(srcRect);
+    if (RenderBox* ro = renderBox()) {
+        FloatRect mappedDirtyRect = mapRect(m_dirtyRect, srcRect, ro->contentBoxRect());
+        ro->invalidatePaintRectangle(enclosingIntRect(mappedDirtyRect));
+    }
+    notifyObserversCanvasChanged(m_dirtyRect);
+    blink::Platform::current()->currentThread()->removeTaskObserver(this);
     m_dirtyRect = FloatRect();
+}
+
+void HTMLCanvasElement::resetDirtyRect()
+{
+    if (m_dirtyRect.isEmpty())
+        return;
+    blink::Platform::current()->currentThread()->removeTaskObserver(this);
+    m_dirtyRect = FloatRect();
+}
+
+void HTMLCanvasElement::didProcessTask()
+{
+    // This method gets invoked if didDraw was called earlier in the current task.
+    ASSERT(!m_dirtyRect.isEmpty());
+    if (is3D()) {
+        didFinalizeFrame();
+    } else {
+        ASSERT(hasImageBuffer());
+        m_imageBuffer->finalizeFrame();
+    }
+    ASSERT(m_dirtyRect.isEmpty());
+}
+
+void HTMLCanvasElement::willProcessTask()
+{
+    ASSERT_NOT_REACHED();
 }
 
 void HTMLCanvasElement::notifyObserversCanvasChanged(const FloatRect& rect)
@@ -227,7 +258,7 @@ void HTMLCanvasElement::reset()
     if (m_ignoreReset)
         return;
 
-    m_dirtyRect = FloatRect();
+    resetDirtyRect();
 
     bool ok;
     bool hadImageBuffer = hasImageBuffer();
@@ -298,9 +329,6 @@ bool HTMLCanvasElement::paintsIntoCanvasBuffer() const
 
 void HTMLCanvasElement::paint(GraphicsContext* context, const LayoutRect& r)
 {
-    // Clear the dirty rect
-    m_dirtyRect = FloatRect();
-
     if (context->paintingDisabled())
         return;
 
@@ -453,6 +481,12 @@ PassOwnPtr<ImageBufferSurface> HTMLCanvasElement::createImageBufferSurface(const
     if (is3D())
         return adoptPtr(new WebGLImageBufferSurface(size(), opacityMode));
 
+    if (RuntimeEnabledFeatures::displayList2dCanvasEnabled()) {
+        OwnPtr<ImageBufferSurface> surface = adoptPtr(new RecordingImageBufferSurface(size(), opacityMode));
+        if (surface->isValid())
+            return surface.release();
+    }
+
     if (shouldAccelerate(deviceSize)) {
         if (document().settings())
             *msaaSampleCount = document().settings()->accelerated2dCanvasMSAASampleCount();
@@ -603,8 +637,11 @@ void HTMLCanvasElement::ensureUnacceleratedImageBuffer()
 Image* HTMLCanvasElement::copiedImage() const
 {
     if (!m_copiedImage && buffer()) {
-        if (m_context)
+        if (m_context && m_context->is3d()) {
+            toWebGLRenderingContext(m_context.get())->setSavingImage(true);
             m_context->paintRenderingResultsToCanvas();
+            toWebGLRenderingContext(m_context.get())->setSavingImage(false);
+        }
         m_copiedImage = buffer()->copyImage(CopyBackingStore, Unscaled);
         updateExternallyAllocatedMemory();
     }
@@ -630,6 +667,7 @@ void HTMLCanvasElement::discardImageBuffer()
 {
     m_contextStateSaver.clear(); // uses context owned by m_imageBuffer
     m_imageBuffer.clear();
+    resetDirtyRect();
     updateExternallyAllocatedMemory();
 }
 
@@ -640,9 +678,11 @@ bool HTMLCanvasElement::hasValidImageBuffer() const
 
 void HTMLCanvasElement::clearCopiedImage()
 {
-    m_copiedImage.clear();
+    if (m_copiedImage) {
+        m_copiedImage.clear();
+        updateExternallyAllocatedMemory();
+    }
     m_didClearImageBuffer = false;
-    updateExternallyAllocatedMemory();
 }
 
 AffineTransform HTMLCanvasElement::baseTransform() const

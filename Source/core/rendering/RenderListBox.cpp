@@ -53,13 +53,14 @@
 #include "core/rendering/RenderText.h"
 #include "core/rendering/RenderTheme.h"
 #include "core/rendering/RenderView.h"
+#include "core/rendering/TextRunConstructor.h"
 #include "platform/fonts/FontCache.h"
 #include "platform/graphics/GraphicsContext.h"
 #include "platform/scroll/Scrollbar.h"
 #include "platform/text/BidiTextRun.h"
 #include <math.h>
 
-namespace WebCore {
+namespace blink {
 
 using namespace HTMLNames;
 
@@ -137,4 +138,4 @@ void RenderListBox::stopAutoscroll()
     select->handleMouseRelease();
 }
 
-} // namespace WebCore
+} // namespace blink

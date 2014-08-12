@@ -41,7 +41,7 @@
 #include "wtf/text/WTFString.h"
 #include <v8.h>
 
-namespace WebCore {
+namespace blink {
 
 class Element;
 class Path2D;
@@ -128,7 +128,7 @@ public:
 
     bool getWithUndefinedOrNullCheck(const String&, String&) const;
     bool getWithUndefinedOrNullCheck(const String&, RefPtrWillBeMember<Element>&) const;
-    bool getWithUndefinedOrNullCheck(const String&, RefPtr<Path2D>&) const;
+    bool getWithUndefinedOrNullCheck(const String&, RefPtrWillBeMember<Path2D>&) const;
 
     bool hasProperty(const String&) const;
 

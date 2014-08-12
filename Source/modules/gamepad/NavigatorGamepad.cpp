@@ -37,7 +37,7 @@
 #include "modules/gamepad/WebKitGamepadList.h"
 #include "platform/RuntimeEnabledFeatures.h"
 
-namespace WebCore {
+namespace blink {
 
 template<typename T>
 static void sampleGamepad(unsigned index, T& gamepad, const blink::WebGamepad& webGamepad)
@@ -172,7 +172,7 @@ void NavigatorGamepad::dispatchOneEvent()
 
 NavigatorGamepad::NavigatorGamepad(LocalFrame* frame)
     : DOMWindowProperty(frame)
-    , DeviceEventControllerBase(frame ? frame->page() : 0)
+    , PlatformEventController(frame ? frame->page() : 0)
     , DOMWindowLifecycleObserver(frame ? frame->domWindow() : 0)
     , m_dispatchOneEventRunner(this, &NavigatorGamepad::dispatchOneEvent)
 {
@@ -290,4 +290,4 @@ void NavigatorGamepad::pageVisibilityChanged()
         m_dispatchOneEventRunner.runAsync();
 }
 
-} // namespace WebCore
+} // namespace blink

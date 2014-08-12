@@ -38,7 +38,7 @@
 #include "platform/heap/Handle.h"
 #include "wtf/text/AtomicString.h"
 
-namespace WebCore {
+namespace blink {
 
 class ShareableElementData;
 class StylePropertySet;
@@ -111,6 +111,10 @@ private:
     PassRefPtrWillBeRawPtr<UniqueElementData> makeUniqueCopy() const;
 };
 
+#define DEFINE_ELEMENT_DATA_TYPE_CASTS(thisType,  pointerPredicate, referencePredicate) \
+    template<typename T> inline thisType* to##thisType(const RefPtr<T>& data) { return to##thisType(data.get()); } \
+    DEFINE_TYPE_CASTS(thisType, ElementData, data, pointerPredicate, referencePredicate)
+
 #if COMPILER(MSVC)
 #pragma warning(push)
 #pragma warning(disable: 4200) // Disable "zero-sized array in struct/union" warning
@@ -145,6 +149,8 @@ public:
     Attribute m_attributeArray[0];
 };
 
+DEFINE_ELEMENT_DATA_TYPE_CASTS(ShareableElementData, !data->isUnique(), !data.isUnique());
+
 #if COMPILER(MSVC)
 #pragma warning(pop)
 #endif
@@ -160,14 +166,8 @@ public:
     static PassRefPtrWillBeRawPtr<UniqueElementData> create();
     PassRefPtrWillBeRawPtr<ShareableElementData> makeShareableCopy() const;
 
-    // These functions do no error/duplicate checking.
-    void appendAttribute(const QualifiedName&, const AtomicString&);
-    void removeAttributeAt(size_t index);
-
+    MutableAttributeCollection attributes();
     AttributeCollection attributes() const;
-
-    Attribute& attributeAt(unsigned index);
-    Attribute* findAttributeByName(const QualifiedName&);
 
     UniqueElementData();
     explicit UniqueElementData(const ShareableElementData&);
@@ -180,8 +180,10 @@ public:
     // attributes. Most modern pages don't use presentation attributes though
     // so this might not make sense.
     mutable RefPtrWillBeMember<StylePropertySet> m_presentationAttributeStyle;
-    Vector<Attribute, 4> m_attributeVector;
+    AttributeVector m_attributeVector;
 };
+
+DEFINE_ELEMENT_DATA_TYPE_CASTS(UniqueElementData, data->isUnique(), data.isUnique());
 
 #if !ENABLE(OILPAN)
 inline void ElementData::deref()
@@ -196,14 +198,14 @@ inline const StylePropertySet* ElementData::presentationAttributeStyle() const
 {
     if (!m_isUnique)
         return 0;
-    return static_cast<const UniqueElementData*>(this)->m_presentationAttributeStyle.get();
+    return toUniqueElementData(this)->m_presentationAttributeStyle.get();
 }
 
 inline AttributeCollection ElementData::attributes() const
 {
     if (isUnique())
-        return static_cast<const UniqueElementData*>(this)->attributes();
-    return static_cast<const ShareableElementData*>(this)->attributes();
+        return toUniqueElementData(this)->attributes();
+    return toShareableElementData(this)->attributes();
 }
 
 inline AttributeCollection ShareableElementData::attributes() const
@@ -216,21 +218,11 @@ inline AttributeCollection UniqueElementData::attributes() const
     return AttributeCollection(m_attributeVector.data(), m_attributeVector.size());
 }
 
-inline void UniqueElementData::appendAttribute(const QualifiedName& attributeName, const AtomicString& value)
+inline MutableAttributeCollection UniqueElementData::attributes()
 {
-    m_attributeVector.append(Attribute(attributeName, value));
+    return MutableAttributeCollection(m_attributeVector);
 }
 
-inline void UniqueElementData::removeAttributeAt(size_t index)
-{
-    m_attributeVector.remove(index);
-}
-
-inline Attribute& UniqueElementData::attributeAt(unsigned index)
-{
-    return m_attributeVector.at(index);
-}
-
-} // namespace WebCore
+} // namespace blink
 
 #endif // ElementData_h

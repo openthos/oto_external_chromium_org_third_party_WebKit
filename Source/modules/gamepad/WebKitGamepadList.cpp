@@ -5,15 +5,11 @@
 #include "config.h"
 #include "modules/gamepad/WebKitGamepadList.h"
 
-namespace WebCore {
+namespace blink {
 
 WebKitGamepadList::WebKitGamepadList()
 {
     ScriptWrappable::init(this);
-}
-
-WebKitGamepadList::~WebKitGamepadList()
-{
 }
 
 void WebKitGamepadList::set(unsigned index, WebKitGamepad* gamepad)
@@ -35,4 +31,4 @@ void WebKitGamepadList::trace(Visitor* visitor)
     }
 }
 
-} // namespace WebCore
+} // namespace blink

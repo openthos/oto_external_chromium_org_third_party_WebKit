@@ -64,7 +64,7 @@
 #include "wtf/text/StringBuilder.h"
 #include "wtf/text/StringUTF8Adaptor.h"
 
-namespace WebCore {
+namespace blink {
 
 // CSP 1.0 Directives
 const char ContentSecurityPolicy::ConnectSrc[] = "connect-src";
@@ -679,14 +679,19 @@ void ContentSecurityPolicy::reportUnsupportedDirective(const String& name) const
     DEFINE_STATIC_LOCAL(String, policyURIMessage, ("The 'policy-uri' directive has been removed from the specification. Please specify a complete policy via the Content-Security-Policy header."));
 
     String message = "Unrecognized Content-Security-Policy directive '" + name + "'.\n";
-    if (equalIgnoringCase(name, allow))
+    MessageLevel level = ErrorMessageLevel;
+    if (equalIgnoringCase(name, allow)) {
         message = allowMessage;
-    else if (equalIgnoringCase(name, options))
+    } else if (equalIgnoringCase(name, options)) {
         message = optionsMessage;
-    else if (equalIgnoringCase(name, policyURI))
+    } else if (equalIgnoringCase(name, policyURI)) {
         message = policyURIMessage;
+    } else if (isDirectiveName(name)) {
+        message = "The Content-Security-Policy directive '" + name + "' is implemented behind a flag which is currently disabled.\n";
+        level = InfoMessageLevel;
+    }
 
-    logToConsole(message);
+    logToConsole(message, level);
 }
 
 void ContentSecurityPolicy::reportDirectiveAsSourceExpression(const String& directiveName, const String& sourceExpression) const
@@ -751,9 +756,9 @@ void ContentSecurityPolicy::reportMissingReportURI(const String& policy) const
     logToConsole("The Content Security Policy '" + policy + "' was delivered in report-only mode, but does not specify a 'report-uri'; the policy will have no effect. Please either add a 'report-uri' directive, or deliver the policy via the 'Content-Security-Policy' header.");
 }
 
-void ContentSecurityPolicy::logToConsole(const String& message) const
+void ContentSecurityPolicy::logToConsole(const String& message, MessageLevel level) const
 {
-    m_executionContext->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, message);
+    m_executionContext->addConsoleMessage(SecurityMessageSource, level, message);
 }
 
 void ContentSecurityPolicy::reportBlockedScriptExecutionToInspector(const String& directiveText) const
@@ -787,4 +792,4 @@ void ContentSecurityPolicy::didSendViolationReport(const String& report)
     m_violationReportsSent.add(report.impl()->hash());
 }
 
-} // namespace WebCore
+} // namespace blink

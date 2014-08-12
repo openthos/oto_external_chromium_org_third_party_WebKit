@@ -28,17 +28,14 @@
 #include "config.h"
 #include "modules/geolocation/Geolocation.h"
 
-#include "core/dom/DOMException.h"
 #include "core/dom/Document.h"
-#include "core/dom/ExceptionCode.h"
 #include "modules/geolocation/Coordinates.h"
-#include "modules/geolocation/GeofencingRegion.h"
 #include "modules/geolocation/GeolocationController.h"
 #include "modules/geolocation/GeolocationError.h"
 #include "modules/geolocation/GeolocationPosition.h"
 #include "wtf/CurrentTime.h"
 
-namespace WebCore {
+namespace blink {
 
 static const char permissionDeniedErrorMessage[] = "User denied Geolocation";
 static const char failedToStartServiceErrorMessage[] = "Failed to start Geolocation service";
@@ -77,70 +74,6 @@ static PositionError* createPositionError(GeolocationError* error)
     }
 
     return PositionError::create(code, error->message());
-}
-
-void Geolocation::Watchers::trace(Visitor* visitor)
-{
-    visitor->trace(m_idToNotifierMap);
-    visitor->trace(m_notifierToIdMap);
-}
-
-bool Geolocation::Watchers::add(int id, GeoNotifier* notifier)
-{
-    ASSERT(id > 0);
-    if (!m_idToNotifierMap.add(id, notifier).isNewEntry)
-        return false;
-    m_notifierToIdMap.set(notifier, id);
-    return true;
-}
-
-GeoNotifier* Geolocation::Watchers::find(int id)
-{
-    ASSERT(id > 0);
-    IdToNotifierMap::iterator iter = m_idToNotifierMap.find(id);
-    if (iter == m_idToNotifierMap.end())
-        return 0;
-    return iter->value.get();
-}
-
-void Geolocation::Watchers::remove(int id)
-{
-    ASSERT(id > 0);
-    IdToNotifierMap::iterator iter = m_idToNotifierMap.find(id);
-    if (iter == m_idToNotifierMap.end())
-        return;
-    m_notifierToIdMap.remove(iter->value);
-    m_idToNotifierMap.remove(iter);
-}
-
-void Geolocation::Watchers::remove(GeoNotifier* notifier)
-{
-    NotifierToIdMap::iterator iter = m_notifierToIdMap.find(notifier);
-    if (iter == m_notifierToIdMap.end())
-        return;
-    m_idToNotifierMap.remove(iter->value);
-    m_notifierToIdMap.remove(iter);
-}
-
-bool Geolocation::Watchers::contains(GeoNotifier* notifier) const
-{
-    return m_notifierToIdMap.contains(notifier);
-}
-
-void Geolocation::Watchers::clear()
-{
-    m_idToNotifierMap.clear();
-    m_notifierToIdMap.clear();
-}
-
-bool Geolocation::Watchers::isEmpty() const
-{
-    return m_idToNotifierMap.isEmpty();
-}
-
-void Geolocation::Watchers::getNotifiersVector(GeoNotifierVector& copy) const
-{
-    copyValuesToVector(m_idToNotifierMap, copy);
 }
 
 Geolocation* Geolocation::create(ExecutionContext* context)
@@ -590,19 +523,4 @@ void Geolocation::handlePendingPermissionNotifiers()
     }
 }
 
-ScriptPromise Geolocation::registerRegion(ScriptState* scriptState, GeofencingRegion* region)
-{
-    return ScriptPromise::rejectWithDOMException(scriptState, DOMException::create(NotSupportedError));
-}
-
-ScriptPromise Geolocation::unregisterRegion(ScriptState* scriptState, const String& regionId)
-{
-    return ScriptPromise::rejectWithDOMException(scriptState, DOMException::create(NotSupportedError));
-}
-
-ScriptPromise Geolocation::getRegisteredRegions(ScriptState* scriptState) const
-{
-    return ScriptPromise::rejectWithDOMException(scriptState, DOMException::create(NotSupportedError));
-}
-
-} // namespace WebCore
+} // namespace blink

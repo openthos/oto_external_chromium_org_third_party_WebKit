@@ -46,7 +46,7 @@
 #include "platform/weborigin/SecurityOrigin.h"
 #include "wtf/text/StringBuilder.h"
 
-namespace WebCore {
+namespace blink {
 
 namespace InspectorAgentState {
 static const char inspectorAgentEnabled[] = "inspectorAgentEnabled";
@@ -63,7 +63,16 @@ InspectorInspectorAgent::InspectorInspectorAgent(Page* page, InjectedScriptManag
 
 InspectorInspectorAgent::~InspectorInspectorAgent()
 {
+#if !ENABLE(OILPAN)
     m_instrumentingAgents->setInspectorInspectorAgent(0);
+#endif
+}
+
+void InspectorInspectorAgent::trace(Visitor* visitor)
+{
+    visitor->trace(m_inspectedPage);
+    visitor->trace(m_injectedScriptManager);
+    InspectorBaseAgent::trace(visitor);
 }
 
 void InspectorInspectorAgent::didClearDocumentOfWindowObject(LocalFrame* frame)
@@ -160,4 +169,4 @@ void InspectorInspectorAgent::inspect(PassRefPtr<TypeBuilder::Runtime::RemoteObj
     m_pendingInspectData.second = hints;
 }
 
-} // namespace WebCore
+} // namespace blink

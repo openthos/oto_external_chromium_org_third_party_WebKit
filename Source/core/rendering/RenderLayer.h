@@ -60,7 +60,7 @@
 #include "platform/graphics/CompositingReasons.h"
 #include "wtf/OwnPtr.h"
 
-namespace WebCore {
+namespace blink {
 
 class FilterEffectRenderer;
 class FilterOperations;
@@ -119,8 +119,6 @@ public:
 
     void setLayerType(LayerType layerType) { m_layerType = layerType; }
 
-    bool cannotBlitToWindow() const;
-
     bool isTransparent() const { return renderer()->isTransparent() || renderer()->hasMask(); }
     RenderLayer* transparentPaintingAncestor();
     void beginTransparencyLayers(GraphicsContext*, const RenderLayer* rootLayer, const LayoutRect& paintDirtyRect, const LayoutSize& subPixelAccumulation, PaintBehavior);
@@ -137,11 +135,11 @@ public:
         return curr;
     }
 
-    const LayoutPoint& location() const { return m_topLeft; }
-    void setLocation(const LayoutPoint& p) { m_topLeft = p; }
-
-    const IntSize& size() const { return m_layerSize; }
-    void setSize(const IntSize& size) { m_layerSize = size; }
+    const LayoutPoint& location() const { ASSERT(!m_needsPositionUpdate); return m_location; }
+    // FIXME: size() should ASSERT(!m_needsPositionUpdate) as well, but that fails in some tests,
+    // for example, fast/repaint/clipped-relative.html.
+    const IntSize& size() const { return m_size; }
+    void setSizeHackForRenderTreeAsText(const IntSize& size) { m_size = size; }
 
     LayoutRect rect() const { return LayoutRect(location(), size()); }
 
@@ -153,19 +151,8 @@ public:
     // Allows updates of layer content without invalidating paint.
     void contentChanged(ContentChangeType);
 
-    enum UpdateLayerPositionsFlag {
-        CheckForPaintInvalidation = 1 << 0,
-        NeedsFullPaintInvalidationInBacking = 1 << 1,
-        UpdatePagination = 1 << 2,
-        ForceMayNeedPaintInvalidation = 1 << 3,
-    };
-    typedef unsigned UpdateLayerPositionsFlags;
-
-    void updateLayerPositionsAfterLayout(const RenderLayer* rootLayer, UpdateLayerPositionsFlags);
+    void updateLayerPositionsAfterLayout();
     void updateLayerPositionsAfterOverflowScroll();
-
-    // FIXME: Should updateLayerPositions be private?
-    void updateLayerPositionRecursive(UpdateLayerPositionsFlags = CheckForPaintInvalidation);
 
     bool isPaginated() const { return m_isPaginated; }
     RenderLayer* enclosingPaginationLayer() const { return m_enclosingPaginationLayer; }
@@ -240,7 +227,7 @@ public:
         return !renderer()->hasColumns() && !renderer()->hasTransform() && !renderer()->isSVGRoot();
     }
 
-    void convertToLayerCoords(const RenderLayer* ancestorLayer, LayoutPoint& location) const;
+    void convertToLayerCoords(const RenderLayer* ancestorLayer, LayoutPoint&) const;
     void convertToLayerCoords(const RenderLayer* ancestorLayer, LayoutRect&) const;
 
     // The two main functions that use the layer system.  The paint method
@@ -568,6 +555,7 @@ private:
     // Returns true if the position changed.
     bool updateLayerPosition();
 
+    void updateLayerPositionRecursive();
     void updateLayerPositionsAfterScrollRecursive();
 
     void setNextSibling(RenderLayer* next) { m_next = next; }
@@ -579,6 +567,11 @@ private:
 
     void paintLayerContentsAndReflection(GraphicsContext*, const LayerPaintingInfo&, PaintLayerFlags);
     void paintLayerByApplyingTransform(GraphicsContext*, const LayerPaintingInfo&, PaintLayerFlags, const LayoutPoint& translationOffset = LayoutPoint());
+
+    // Returns whether this layer should be painted during sofware painting (i.e., not via calls from CompositedLayerMapping to draw into composited
+    // layers).
+    bool shouldPaintLayerInSoftwareMode(GraphicsContext*, const LayerPaintingInfo&, PaintLayerFlags paintFlags);
+
     void paintChildren(unsigned childrenToVisit, GraphicsContext*, const LayerPaintingInfo&, PaintLayerFlags);
     void paintPaginatedChildLayer(RenderLayer* childLayer, GraphicsContext*, const LayerPaintingInfo&, PaintLayerFlags);
     void paintChildLayerIntoColumns(RenderLayer* childLayer, GraphicsContext*, const LayerPaintingInfo&, PaintLayerFlags, const Vector<RenderLayer*>& columnLayers, size_t columnIndex);
@@ -592,7 +585,7 @@ private:
         const LayoutRect& transparencyPaintDirtyRect, bool haveTransparency, const LayerPaintingInfo&, PaintBehavior, RenderObject* paintingRootForRenderer, PaintLayerFlags);
     void paintForegroundForFragments(const LayerFragments&, GraphicsContext*, GraphicsContext* transparencyLayerContext,
         const LayoutRect& transparencyPaintDirtyRect, bool haveTransparency, const LayerPaintingInfo&, PaintBehavior, RenderObject* paintingRootForRenderer,
-        bool selectionOnly, bool forceBlackText, PaintLayerFlags);
+        bool selectionOnly, PaintLayerFlags);
     void paintForegroundForFragmentsWithPhase(PaintPhase, const LayerFragments&, GraphicsContext*, const LayerPaintingInfo&, PaintBehavior, RenderObject* paintingRootForRenderer, PaintLayerFlags);
     void paintOutlineForFragments(const LayerFragments&, GraphicsContext*, const LayerPaintingInfo&, PaintBehavior, RenderObject* paintingRootForRenderer, PaintLayerFlags);
     void paintOverflowControlsForFragments(const LayerFragments&, GraphicsContext*, const LayerPaintingInfo&, PaintLayerFlags);
@@ -657,6 +650,7 @@ private:
 
     LayoutRect paintingExtent(const RenderLayer* rootLayer, const LayoutRect& paintDirtyRect, const LayoutSize& subPixelAccumulation, PaintBehavior);
 
+    void updatePaginationRecursive(bool needsPaginationUpdate = false);
     void updatePagination();
 
     // FIXME: Temporary. Remove when new columns come online.
@@ -688,6 +682,10 @@ private:
     unsigned m_hasVisibleNonLayerContent : 1;
 
     unsigned m_isPaginated : 1; // If we think this layer is split by a multi-column ancestor, then this bit will be set.
+
+#if ENABLE(ASSERT)
+    unsigned m_needsPositionUpdate : 1;
+#endif
 
     unsigned m_3DTransformedDescendantStatusDirty : 1;
     // Set on a stacking context layer that has 3D descendants anywhere
@@ -730,10 +728,10 @@ private:
     LayoutSize m_offsetForInFlowPosition;
 
     // Our (x,y) coordinates are in our parent layer's coordinate space.
-    LayoutPoint m_topLeft;
+    LayoutPoint m_location;
 
     // The layer's width/height
-    IntSize m_layerSize;
+    IntSize m_size;
 
     // Cached normal flow values for absolute positioned elements with static left/top values.
     LayoutUnit m_staticInlinePosition;
@@ -770,12 +768,12 @@ private:
     LayoutSize m_subpixelAccumulation; // The accumulated subpixel offset of a composited layer's composited bounds compared to absolute coordinates.
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #ifndef NDEBUG
 // Outside the WebCore namespace for ease of invocation from gdb.
-void showLayerTree(const WebCore::RenderLayer*);
-void showLayerTree(const WebCore::RenderObject*);
+void showLayerTree(const blink::RenderLayer*);
+void showLayerTree(const blink::RenderObject*);
 #endif
 
 #endif // RenderLayer_h

@@ -29,7 +29,7 @@
 #include "core/dom/ScriptLoader.h"
 #include "core/events/Event.h"
 
-namespace WebCore {
+namespace blink {
 
 inline SVGScriptElement::SVGScriptElement(Document& document, bool wasInsertedByParser, bool alreadyStarted)
     : SVGElement(SVGNames::scriptTag, document)
@@ -38,6 +38,10 @@ inline SVGScriptElement::SVGScriptElement(Document& document, bool wasInsertedBy
     , m_loader(ScriptLoader::create(this, wasInsertedByParser, alreadyStarted))
 {
     ScriptWrappable::init(this);
+}
+
+SVGScriptElement::~SVGScriptElement()
+{
 }
 
 PassRefPtrWillBeRawPtr<SVGScriptElement> SVGScriptElement::create(Document& document, bool insertedByParser)

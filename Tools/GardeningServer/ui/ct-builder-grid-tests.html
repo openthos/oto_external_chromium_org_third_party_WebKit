@@ -6,6 +6,8 @@ found in the LICENSE file.
 
 <link rel="import" href="ct-builder-grid.html">
 
+<link rel="import" href="ct-builder.html">
+
 <script>
 (function () {
 
@@ -13,24 +15,19 @@ var kExampleFailures = [{
     "testName": "plugins/gesture-events-scrolled.html",
     "resultNodesByBuilder": {
         "WebKit Win7 (dbg)": {
-            "expected": "PASS",
-            "is_unexpected": true,
             "actual": "CRASH",
-            "time": 0.9
+            "masterUrl": "http://master-one",
+            "earliestFailingBuild": "1",
         },
         "WebKit Mac10.6 (dbg)": {
-            "expected": "PASS",
-            "is_unexpected": true,
             "actual": "CRASH",
-            "has_stderr": true,
-            "time": 1.8
+            "masterUrl": "http://master-one",
+            "earliestFailingBuild": "2",
         },
         "WebKit Mac10.7": {
-            "expected": "PASS",
-            "is_unexpected": true,
             "actual": "TEXT",
-            "has_stderr": true,
-            "time": 3.2
+            "masterUrl": "http://master-one",
+            "earliestFailingBuild": "3",
         }
     },
     "oldestFailingRevision": 177164,
@@ -39,46 +36,50 @@ var kExampleFailures = [{
     "testName": "plugins/transformed-events.html",
     "resultNodesByBuilder": {
         "WebKit Win7 (dbg)": {
-            "expected": "PASS",
-            "is_unexpected": true,
             "actual": "TEXT",
-            "time": 0.6
+            "masterUrl": "http://master-one",
+            "earliestFailingBuild": "1",
         },
         "WebKit Mac10.7": {
-            "expected": "PASS",
-            "is_unexpected": true,
             "actual": "CRASH",
-            "has_stderr": true,
-            "time": 3.2
+            "masterUrl": "http://master-two",
+            "earliestFailingBuild": "4",
         },
     },
     "oldestFailingRevision": 177164,
     "newestPassingRevision": 177165
 }];
 
+var kExampleBuilderLatestRevisions = {
+  'WebKit Mac10.7': {
+    blink: 177164,
+  },
+  'WebKit Mac10.6 (dbg)': {
+    blink: 177166,
+  },
+  'WebKit Win7 (dbg)': {
+    blink: 177166,
+  },
+};
+
 module("ct-builder-grid");
 
-asyncTest("basic", 7, function() {
+asyncTest("basic", 5, function() {
   var grid = document.createElement('ct-builder-grid');
   grid.failures = kExampleFailures;
 
-  Platform.endOfMicrotask(function() {
-    var rows = grid.shadowRoot.querySelectorAll('tbody tr');
-    equal(rows.length, 2);
+  requestAnimationFrame(function() {
+    var builders = grid.shadowRoot.querySelectorAll('ct-builder');
+    equal(builders.length, 4);
+    deepEqual(builders[0].builder, new CTBuilder(
+        'http://master-one', 'WebKit Mac10.6 (dbg)', '2'));
+    deepEqual(builders[1].builder, new CTBuilder(
+        'http://master-one', 'WebKit Mac10.7', '3'));
+    deepEqual(builders[2].builder, new CTBuilder(
+        'http://master-two', 'WebKit Mac10.7', '4'));
+    deepEqual(builders[3].builder, new CTBuilder(
+        'http://master-one', 'WebKit Win7 (dbg)', '1'));
 
-    var row1 = grid.shadowRoot.querySelector('tbody td.CRASH').parentNode;
-    equal(row1.children.length, 3);
-    equal(row1.children[1].querySelectorAll('ct-builder').length, 1);
-    equal(row1.children[1].querySelectorAll('ct-builder')[0].builderName, 'WebKit Mac10.7');
-
-    equal(row1.children[2].querySelectorAll('ct-builder').length, 2);
-    equal(row1.children[2].querySelectorAll('ct-builder')[0].builderName, 'WebKit Mac10.6 (dbg)');
-    equal(row1.children[2].querySelectorAll('ct-builder')[1].builderName, 'WebKit Win7 (dbg)');
-
-    var row2 = grid.shadowRoot.querySelector('tbody td.TEXT').parentNode;
-    equal(row2.children.length, 3);
-    equal(row2.children[1].querySelectorAll('ct-builder').length, 1);
-    equal(row2.children[2].querySelectorAll('ct-builder').length, 1);
     start();
   });
 });

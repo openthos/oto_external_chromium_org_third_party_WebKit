@@ -36,7 +36,7 @@
 #include "public/web/WebEmbeddedWorkerStartData.h"
 #include "public/web/WebFrameClient.h"
 
-namespace WebCore {
+namespace blink {
 class WorkerScriptLoader;
 class WorkerThread;
 }
@@ -47,15 +47,20 @@ class ServiceWorkerGlobalScopeProxy;
 class WebServiceWorkerNetworkProvider;
 class WebView;
 
-class WebEmbeddedWorkerImpl FINAL :
-    public WebEmbeddedWorker,
-    public WebFrameClient {
+class WebEmbeddedWorkerImpl FINAL
+    : public WebEmbeddedWorker
+    , public WebFrameClient {
     WTF_MAKE_NONCOPYABLE(WebEmbeddedWorkerImpl);
 public:
     WebEmbeddedWorkerImpl(
         PassOwnPtr<WebServiceWorkerContextClient>,
         PassOwnPtr<WebWorkerPermissionClientProxy>);
     virtual ~WebEmbeddedWorkerImpl();
+
+    // Terminate all WebEmbeddedWorkerImpl for testing purposes.
+    // Note that this only schedules termination and
+    // does not synchronously wait for it to complete.
+    static void terminateAll();
 
     // WebEmbeddedWorker overrides.
     virtual void startWorkerContext(const WebEmbeddedWorkerStartData&) OVERRIDE;
@@ -66,7 +71,6 @@ public:
     virtual void reattachDevTools(const WebString& savedState) OVERRIDE;
     virtual void detachDevTools() OVERRIDE;
     virtual void dispatchDevToolsMessage(const WebString&) OVERRIDE;
-
 
 private:
     class Loader;
@@ -98,7 +102,7 @@ private:
     // Kept around only while main script loading is ongoing.
     OwnPtr<Loader> m_mainScriptLoader;
 
-    RefPtr<WebCore::WorkerThread> m_workerThread;
+    RefPtr<blink::WorkerThread> m_workerThread;
     OwnPtr<LoaderProxy> m_loaderProxy;
     OwnPtr<ServiceWorkerGlobalScopeProxy> m_workerGlobalScopeProxy;
 

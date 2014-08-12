@@ -42,14 +42,14 @@ class WebSocketStreamError;
 class WebSocketStreamHandle;
 }
 
-namespace WebCore {
+namespace blink {
 
-class PLATFORM_EXPORT SocketStreamHandleInternal : public NoBaseWillBeGarbageCollectedFinalized<SocketStreamHandleInternal>, public blink::WebSocketStreamHandleClient {
+class PLATFORM_EXPORT SocketStreamHandleInternal : public GarbageCollectedFinalized<SocketStreamHandleInternal>, public blink::WebSocketStreamHandleClient {
     WTF_MAKE_NONCOPYABLE(SocketStreamHandleInternal);
 public:
-    static PassOwnPtrWillBeRawPtr<SocketStreamHandleInternal> create(SocketStreamHandle* handle)
+    static SocketStreamHandleInternal* create(SocketStreamHandle* handle)
     {
-        return adoptPtrWillBeNoop(new SocketStreamHandleInternal(handle));
+        return new SocketStreamHandleInternal(handle);
     }
     virtual ~SocketStreamHandleInternal();
 
@@ -75,12 +75,12 @@ public:
 private:
     explicit SocketStreamHandleInternal(SocketStreamHandle*);
 
-    RawPtrWillBeMember<SocketStreamHandle> m_handle;
+    Member<SocketStreamHandle> m_handle;
     OwnPtr<blink::WebSocketStreamHandle> m_socket;
     int m_maxPendingSendAllowed;
     int m_pendingAmountSent;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // SocketStreamHandleInternal_h

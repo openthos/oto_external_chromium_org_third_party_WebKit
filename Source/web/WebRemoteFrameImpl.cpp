@@ -17,7 +17,7 @@
 #include "web/WebViewImpl.h"
 #include <v8/include/v8.h>
 
-using namespace WebCore;
+using namespace blink;
 
 namespace blink {
 
@@ -631,6 +631,12 @@ bool WebRemoteFrameImpl::isPrintScalingDisabledForPlugin(const WebNode&)
 {
     ASSERT_NOT_REACHED();
     return false;
+}
+
+int WebRemoteFrameImpl::getPrintCopiesForPlugin(const WebNode&)
+{
+    ASSERT_NOT_REACHED();
+    return 1;
 }
 
 bool WebRemoteFrameImpl::hasCustomPageSizeStyle(int pageIndex)

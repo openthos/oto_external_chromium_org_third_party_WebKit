@@ -26,7 +26,7 @@
 #include "core/rendering/RenderOverflow.h"
 #include "core/rendering/style/ShadowData.h"
 
-namespace WebCore {
+namespace blink {
 
 class HitTestRequest;
 class HitTestResult;
@@ -173,8 +173,9 @@ public:
     // Helper functions used during line construction and placement.
     void determineSpacingForFlowBoxes(bool lastLine, bool isLogicallyLastRunWrapped, RenderObject* logicallyLastRunRenderer);
     LayoutUnit getFlowSpacingLogicalWidth();
-    float placeBoxesInInlineDirection(float logicalLeft, bool& needsWordSpacing, GlyphOverflowAndFallbackFontsMap&);
-    float placeBoxRangeInInlineDirection(InlineBox* firstChild, InlineBox* lastChild, float& logicalLeft, float& minLogicalLeft, float& maxLogicalRight, bool& needsWordSpacing, GlyphOverflowAndFallbackFontsMap&);
+    float placeBoxesInInlineDirection(float logicalLeft, bool& needsWordSpacing);
+    float placeBoxRangeInInlineDirection(InlineBox* firstChild, InlineBox* lastChild,
+        float& logicalLeft, float& minLogicalLeft, float& maxLogicalRight, bool& needsWordSpacing);
     void beginPlacingBoxRangesInInlineDirection(float logicalLeft) { setLogicalLeft(logicalLeft); }
     void endPlacingBoxRangesInInlineDirection(float logicalLeft, float logicalRight, float minLogicalLeft, float maxLogicalRight)
     {
@@ -374,11 +375,11 @@ inline void InlineFlowBox::setHasBadChildList()
 #endif
 }
 
-} // namespace WebCore
+} // namespace blink
 
 #ifndef NDEBUG
 // Outside the WebCore namespace for ease of invocation from gdb.
-void showTree(const WebCore::InlineFlowBox*);
+void showTree(const blink::InlineFlowBox*);
 #endif
 
 #endif // InlineFlowBox_h

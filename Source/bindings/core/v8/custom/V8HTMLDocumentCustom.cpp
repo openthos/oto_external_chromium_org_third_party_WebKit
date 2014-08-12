@@ -47,7 +47,7 @@
 #include "wtf/RefPtr.h"
 #include "wtf/StdLibExtras.h"
 
-namespace WebCore {
+namespace blink {
 
 // HTMLDocument ----------------------------------------------------------------
 
@@ -70,7 +70,7 @@ void V8HTMLDocument::openMethodCustom(const v8::FunctionCallbackInfo<v8::Value>&
                 return;
             // If the open property is not a function throw a type error.
             if (!function->IsFunction()) {
-                throwTypeError("open is not a function", info.GetIsolate());
+                V8ThrowException::throwTypeError("open is not a function", info.GetIsolate());
                 return;
             }
             // Wrap up the arguments and call the function.
@@ -91,4 +91,4 @@ void V8HTMLDocument::openMethodCustom(const v8::FunctionCallbackInfo<v8::Value>&
     v8SetReturnValue(info, info.Holder());
 }
 
-} // namespace WebCore
+} // namespace blink

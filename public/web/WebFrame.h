@@ -46,7 +46,7 @@
 struct NPObject;
 
 #if BLINK_IMPLEMENTATION
-namespace WebCore { class Frame; }
+namespace blink { class Frame; }
 #endif
 
 namespace v8 {
@@ -500,6 +500,9 @@ public:
     // return true, otherwise return false.
     virtual bool isPrintScalingDisabledForPlugin(const WebNode& = WebNode()) = 0;
 
+    // Returns the number of copies to be printed.
+    virtual int getPrintCopiesForPlugin(const WebNode& = WebNode()) = 0;
+
     // CSS3 Paged Media ----------------------------------------------------
 
     // Returns true if page box (margin boxes and page borders) is visible.
@@ -674,7 +677,7 @@ public:
     virtual WebString layerTreeAsText(bool showDebugInfo = false) const = 0;
 
 #if BLINK_IMPLEMENTATION
-    static WebFrame* fromFrame(WebCore::Frame*);
+    static WebFrame* fromFrame(blink::Frame*);
 #endif
 
 protected:
@@ -695,7 +698,7 @@ private:
 };
 
 #if BLINK_IMPLEMENTATION
-WebCore::Frame* toWebCoreFrame(const WebFrame*);
+blink::Frame* toWebCoreFrame(const WebFrame*);
 #endif
 
 } // namespace blink

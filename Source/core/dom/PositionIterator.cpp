@@ -30,7 +30,7 @@
 #include "core/html/HTMLHtmlElement.h"
 #include "core/rendering/RenderBlock.h"
 
-namespace WebCore {
+namespace blink {
 
 using namespace HTMLNames;
 
@@ -171,7 +171,7 @@ bool PositionIterator::isCandidate() const
         return false;
     }
 
-    if (isRenderedTableElement(m_anchorNode) || editingIgnoresContent(m_anchorNode))
+    if (isRenderedHTMLTableElement(m_anchorNode) || editingIgnoresContent(m_anchorNode))
         return (atStartOfNode() || atEndOfNode()) && !Position::nodeIsUserSelectNone(m_anchorNode->parentNode());
 
     if (!isHTMLHtmlElement(*m_anchorNode) && renderer->isRenderBlockFlow()) {
@@ -185,4 +185,4 @@ bool PositionIterator::isCandidate() const
     return false;
 }
 
-} // namespace WebCore
+} // namespace blink

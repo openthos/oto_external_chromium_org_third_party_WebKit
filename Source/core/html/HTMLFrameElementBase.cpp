@@ -38,7 +38,7 @@
 #include "core/page/Page.h"
 #include "core/rendering/RenderPart.h"
 
-namespace WebCore {
+namespace blink {
 
 using namespace HTMLNames;
 
@@ -207,22 +207,6 @@ bool HTMLFrameElementBase::isHTMLContentAttribute(const Attribute& attribute) co
     return attribute.name() == srcdocAttr || HTMLFrameOwnerElement::isHTMLContentAttribute(attribute);
 }
 
-int HTMLFrameElementBase::width()
-{
-    document().updateLayoutIgnorePendingStylesheets();
-    if (!renderBox())
-        return 0;
-    return renderBox()->width();
-}
-
-int HTMLFrameElementBase::height()
-{
-    document().updateLayoutIgnorePendingStylesheets();
-    if (!renderBox())
-        return 0;
-    return renderBox()->height();
-}
-
 // FIXME: Remove this code once we have input routing in the browser
 // process. See http://crbug.com/339659.
 void HTMLFrameElementBase::defaultEventHandler(Event* event)
@@ -234,4 +218,4 @@ void HTMLFrameElementBase::defaultEventHandler(Event* event)
     HTMLFrameOwnerElement::defaultEventHandler(event);
 }
 
-} // namespace WebCore
+} // namespace blink

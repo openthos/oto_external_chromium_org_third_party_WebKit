@@ -33,7 +33,7 @@
 #include "platform/mhtml/MHTMLArchive.h"
 #include "platform/weborigin/KURL.h"
 
-namespace WebCore {
+namespace blink {
 
 ArchiveResourceCollection::ArchiveResourceCollection()
 {
@@ -100,8 +100,10 @@ PassRefPtrWillBeRawPtr<MHTMLArchive> ArchiveResourceCollection::popSubframeArchi
 
 void ArchiveResourceCollection::trace(Visitor* visitor)
 {
+#if ENABLE(OILPAN)
     visitor->trace(m_subresources);
     visitor->trace(m_subframes);
+#endif
 }
 
 }

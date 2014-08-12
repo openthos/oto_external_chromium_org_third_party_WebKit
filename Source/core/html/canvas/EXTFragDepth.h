@@ -30,11 +30,11 @@
 #include "core/html/canvas/WebGLExtension.h"
 #include "wtf/PassRefPtr.h"
 
-namespace WebCore {
+namespace blink {
 
 class EXTFragDepth FINAL : public WebGLExtension, public ScriptWrappable {
 public:
-    static PassRefPtr<EXTFragDepth> create(WebGLRenderingContextBase*);
+    static PassRefPtrWillBeRawPtr<EXTFragDepth> create(WebGLRenderingContextBase*);
     static bool supported(WebGLRenderingContextBase*);
     static const char* extensionName();
 
@@ -45,6 +45,6 @@ private:
     explicit EXTFragDepth(WebGLRenderingContextBase*);
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // EXTFragDepth_h

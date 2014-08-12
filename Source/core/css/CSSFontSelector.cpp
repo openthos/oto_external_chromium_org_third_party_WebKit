@@ -41,7 +41,7 @@
 #include "platform/fonts/SimpleFontData.h"
 #include "wtf/text/AtomicString.h"
 
-namespace WebCore {
+namespace blink {
 
 CSSFontSelector::CSSFontSelector(Document* document)
     : m_document(document)
@@ -160,6 +160,7 @@ void CSSFontSelector::clearDocument()
 {
     m_fontLoader->clearResourceFetcherAndFontSelector();
     m_document = nullptr;
+    m_fontFaceCache.clearAll();
 }
 #endif
 

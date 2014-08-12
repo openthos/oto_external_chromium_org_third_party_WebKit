@@ -44,7 +44,7 @@
 #include <v8-profiler.h>
 #include <v8.h>
 
-namespace WebCore {
+namespace blink {
 
 typedef HashMap<String, double> ProfileNameIdleTimeMap;
 
@@ -96,7 +96,7 @@ PassRefPtrWillBeRawPtr<ScriptProfile> ScriptProfiler::stop(const String& title)
 
 void ScriptProfiler::collectGarbage()
 {
-    v8::V8::LowMemoryNotification();
+    v8::Isolate::GetCurrent()->LowMemoryNotification();
 }
 
 ScriptValue ScriptProfiler::objectByHeapObjectId(unsigned id)
@@ -307,4 +307,4 @@ void ScriptProfiler::setIdle(bool isIdle)
         profiler->SetIdle(isIdle);
 }
 
-} // namespace WebCore
+} // namespace blink

@@ -45,7 +45,7 @@
 #include "wtf/MathExtras.h"
 #include "wtf/text/StringBuilder.h"
 
-namespace WebCore {
+namespace blink {
 
 // The following values default values are defined within the WebVTT Regions Spec.
 // https://dvcs.w3.org/hg/text-tracks/raw-file/default/608toVTT/region.html
@@ -89,6 +89,7 @@ VTTRegion::VTTRegion()
     , m_currentTop(0)
     , m_scrollTimer(this, &VTTRegion::scrollTimerFired)
 {
+    ScriptWrappable::init(this);
 }
 
 VTTRegion::~VTTRegion()
@@ -372,9 +373,10 @@ void VTTRegion::displayLastVTTCueBox()
     float regionBottom = m_regionDisplayTree->getBoundingClientRect()->bottom();
 
     // Find first cue that is not entirely displayed and scroll it upwards.
-    for (Element* child = ElementTraversal::firstWithin(*m_cueContainer); child && !m_scrollTimer.isActive(); child = ElementTraversal::nextSibling(*child)) {
-        float childTop = toHTMLDivElement(child)->getBoundingClientRect()->top();
-        float childBottom = toHTMLDivElement(child)->getBoundingClientRect()->bottom();
+    for (Element* child = ElementTraversal::firstChild(*m_cueContainer); child && !m_scrollTimer.isActive(); child = ElementTraversal::nextSibling(*child)) {
+        RefPtrWillBeRawPtr<ClientRect> clientRect = child->getBoundingClientRect();
+        float childTop = clientRect->top();
+        float childBottom = clientRect->bottom();
 
         if (regionBottom >= childBottom)
             continue;
@@ -475,4 +477,4 @@ void VTTRegion::trace(Visitor* visitor)
     visitor->trace(m_track);
 }
 
-} // namespace WebCore
+} // namespace blink

@@ -30,6 +30,7 @@
 #include "bindings/core/v8/ExceptionStatePlaceholder.h"
 #include "bindings/core/v8/ScriptPromise.h"
 #include "bindings/core/v8/ScriptValue.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "core/css/CSSComputedStyleDeclaration.h"
 #include "core/dom/ContextLifecycleObserver.h"
 #include "core/page/scrolling/ScrollingCoordinator.h"
@@ -39,12 +40,12 @@
 #include "wtf/RefCounted.h"
 #include "wtf/text/WTFString.h"
 
-namespace WebCore {
+namespace blink {
 
 class CanvasRenderingContext2D;
 class ClientRect;
 class ClientRectList;
-class DOMPoint;
+class WebKitPoint;
 class DOMStringList;
 class LocalDOMWindow;
 class Document;
@@ -59,7 +60,6 @@ class InternalRuntimeFlags;
 class InternalSettings;
 class LayerRectList;
 class LocalFrame;
-class MallocStatistics;
 class Node;
 class Page;
 class PagePopupController;
@@ -70,7 +70,7 @@ class StaticNodeList;
 class ShadowRoot;
 class TypeConversions;
 
-class Internals FINAL : public RefCountedWillBeGarbageCollectedFinalized<Internals>, public ContextLifecycleObserver {
+class Internals FINAL : public RefCountedWillBeGarbageCollectedFinalized<Internals>, public ScriptWrappable, public ContextLifecycleObserver {
 public:
     static PassRefPtrWillBeRawPtr<Internals> create(Document*);
     virtual ~Internals();
@@ -108,7 +108,6 @@ public:
     void setShadowPseudoId(Element*, const AtomicString&, ExceptionState&);
 
     // CSS Animation / Transition testing.
-    unsigned numberOfActiveAnimations() const;
     void pauseAnimations(double pauseTime, ExceptionState&);
 
     bool isValidContentSelect(Element* insertionPoint, ExceptionState&);
@@ -170,9 +169,9 @@ public:
     unsigned lengthFromRange(Element* scope, const Range*, ExceptionState&);
     String rangeAsText(const Range*, ExceptionState&);
 
-    PassRefPtrWillBeRawPtr<DOMPoint> touchPositionAdjustedToBestClickableNode(long x, long y, long width, long height, Document*, ExceptionState&);
+    PassRefPtrWillBeRawPtr<WebKitPoint> touchPositionAdjustedToBestClickableNode(long x, long y, long width, long height, Document*, ExceptionState&);
     Node* touchNodeAdjustedToBestClickableNode(long x, long y, long width, long height, Document*, ExceptionState&);
-    PassRefPtrWillBeRawPtr<DOMPoint> touchPositionAdjustedToBestContextMenuNode(long x, long y, long width, long height, Document*, ExceptionState&);
+    PassRefPtrWillBeRawPtr<WebKitPoint> touchPositionAdjustedToBestContextMenuNode(long x, long y, long width, long height, Document*, ExceptionState&);
     Node* touchNodeAdjustedToBestContextMenuNode(long x, long y, long width, long height, Document*, ExceptionState&);
     PassRefPtrWillBeRawPtr<ClientRect> bestZoomableAreaForTouchPoint(long x, long y, long width, long height, Document*, ExceptionState&);
 
@@ -258,7 +257,6 @@ public:
     void registerURLSchemeAsBypassingContentSecurityPolicy(const String& scheme);
     void removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(const String& scheme);
 
-    PassRefPtrWillBeRawPtr<MallocStatistics> mallocStatistics() const;
     PassRefPtrWillBeRawPtr<TypeConversions> typeConversions() const;
     PrivateScriptTest* privateScriptTest() const;
 
@@ -285,6 +283,8 @@ public:
     String getImageSourceURL(Element*, ExceptionState&);
 
     bool isSelectPopupVisible(Node*);
+    bool selectPopupItemStyleIsRtl(Node*, int);
+    int selectPopupItemStyleFontHeight(Node*, int);
 
     PassRefPtrWillBeRawPtr<ClientRect> selectionBounds(ExceptionState&);
     String baseURL(Document*, ExceptionState&);
@@ -330,6 +330,6 @@ private:
     RefPtrWillBeMember<InternalProfilers> m_profilers;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif

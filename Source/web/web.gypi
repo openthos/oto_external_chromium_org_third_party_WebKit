@@ -27,8 +27,6 @@
       'DragClientImpl.h',
       'EditorClientImpl.cpp',
       'EditorClientImpl.h',
-      'EventListenerWrapper.cpp',
-      'EventListenerWrapper.h',
       'ExternalDateTimeChooser.cpp',
       'ExternalDateTimeChooser.h',
       'ExternalPopupMenu.cpp',
@@ -122,9 +120,6 @@
       'WebDOMCustomEvent.cpp',
       'WebDOMError.cpp',
       'WebDOMEvent.cpp',
-      'WebDOMEventListener.cpp',
-      'WebDOMEventListenerPrivate.cpp',
-      'WebDOMEventListenerPrivate.h',
       'WebDOMFileSystem.cpp',
       'WebDOMMediaStreamTrack.cpp',
       'WebDOMMessageEvent.cpp',
@@ -231,6 +226,7 @@
       'WebSharedWorkerImpl.cpp',
       'WebSharedWorkerImpl.h',
       'WebSocket.cpp',
+      'WebSocketChannelClientProxy.h',
       'WebSocketImpl.cpp',
       'WebSocketImpl.h',
       'WebSpeechGrammar.cpp',
@@ -266,7 +262,8 @@
     ],
     'web_unittest_files': [
       'WebNodeTest.cpp',
-      # FIXME: Move the tests to Source/web/.
+      # FIXME: Move the tests from web/tests/ to appropriate places.
+      # crbug.com/353585
       'tests/ActivityLoggerTest.cpp',
       'tests/AssociatedURLLoaderTest.cpp',
       'tests/ChromeClientImplTest.cpp',
@@ -313,6 +310,7 @@
       'tests/WebURLRequestTest.cpp',
       'tests/WebURLResponseTest.cpp',
       'tests/WebUserGestureTokenTest.cpp',
+      'tests/WebUnitTests.cpp',
       'tests/WebViewTest.cpp',
     ],
     'conditions': [

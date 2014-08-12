@@ -36,7 +36,7 @@
 using std::max;
 using std::min;
 
-namespace WebCore {
+namespace blink {
 
 // Clamp rowspan and colspan at 8k.
 // Firefox used a limit of 8190 for rowspan but they changed it to 65,534.
@@ -132,12 +132,12 @@ bool HTMLTableCellElement::isURLAttribute(const Attribute& attribute) const
 
 bool HTMLTableCellElement::hasLegalLinkAttribute(const QualifiedName& name) const
 {
-    return (hasLocalName(tdTag) && name == backgroundAttr) || HTMLTablePartElement::hasLegalLinkAttribute(name);
+    return (hasTagName(tdTag) && name == backgroundAttr) || HTMLTablePartElement::hasLegalLinkAttribute(name);
 }
 
 const QualifiedName& HTMLTableCellElement::subResourceAttributeName() const
 {
-    return hasLocalName(tdTag) ? backgroundAttr : HTMLTablePartElement::subResourceAttributeName();
+    return hasTagName(tdTag) ? backgroundAttr : HTMLTablePartElement::subResourceAttributeName();
 }
 
 const AtomicString& HTMLTableCellElement::abbr() const
@@ -186,4 +186,4 @@ HTMLTableCellElement* HTMLTableCellElement::cellAbove() const
     return toHTMLTableCellElement(cellAboveRenderer->node());
 }
 
-} // namespace WebCore
+} // namespace blink

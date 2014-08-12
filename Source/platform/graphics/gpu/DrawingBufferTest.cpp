@@ -44,7 +44,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-using namespace WebCore;
+using namespace blink;
 using namespace blink;
 using testing::Test;
 using testing::_;
@@ -312,6 +312,41 @@ TEST_F(DrawingBufferTest, verifyDestructionCompleteAfterAllMailboxesReleased)
 
     weakPointer->markContentsChanged();
     weakPointer->mailboxReleased(mailbox3);
+    EXPECT_EQ(live, false);
+}
+
+TEST_F(DrawingBufferTest, verifyDrawingBufferStaysAliveIfResourcesAreLost)
+{
+    bool live = true;
+    m_drawingBuffer->m_live = &live;
+    blink::WebExternalTextureMailbox mailbox1;
+    blink::WebExternalTextureMailbox mailbox2;
+    blink::WebExternalTextureMailbox mailbox3;
+
+    m_drawingBuffer->markContentsChanged();
+    EXPECT_TRUE(m_drawingBuffer->prepareMailbox(&mailbox1, 0));
+    m_drawingBuffer->markContentsChanged();
+    EXPECT_TRUE(m_drawingBuffer->prepareMailbox(&mailbox2, 0));
+    m_drawingBuffer->markContentsChanged();
+    EXPECT_TRUE(m_drawingBuffer->prepareMailbox(&mailbox3, 0));
+
+    m_drawingBuffer->markContentsChanged();
+    m_drawingBuffer->mailboxReleased(mailbox1, true);
+    EXPECT_EQ(live, true);
+
+    m_drawingBuffer->beginDestruction();
+    EXPECT_EQ(live, true);
+
+    m_drawingBuffer->markContentsChanged();
+    m_drawingBuffer->mailboxReleased(mailbox2, false);
+    EXPECT_EQ(live, true);
+
+    DrawingBufferForTests* weakPtr = m_drawingBuffer.get();
+    m_drawingBuffer.clear();
+    EXPECT_EQ(live, true);
+
+    weakPtr->markContentsChanged();
+    weakPtr->mailboxReleased(mailbox3, true);
     EXPECT_EQ(live, false);
 }
 

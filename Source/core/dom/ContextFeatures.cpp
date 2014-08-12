@@ -31,7 +31,7 @@
 #include "core/page/Page.h"
 #include "platform/RuntimeEnabledFeatures.h"
 
-namespace WebCore {
+namespace blink {
 
 PassOwnPtr<ContextFeaturesClient> ContextFeaturesClient::empty()
 {
@@ -47,13 +47,6 @@ ContextFeatures* ContextFeatures::defaultSwitch()
 {
     DEFINE_STATIC_REF_WILL_BE_PERSISTENT(ContextFeatures, instance, (ContextFeatures::create(ContextFeaturesClient::empty())));
     return instance;
-}
-
-bool ContextFeatures::dialogElementEnabled(Document* document)
-{
-    if (!document)
-        return RuntimeEnabledFeatures::dialogElementEnabled();
-    return document->contextFeatures().isEnabled(document, DialogElement, RuntimeEnabledFeatures::dialogElementEnabled());
 }
 
 bool ContextFeatures::pagePopupEnabled(Document* document)

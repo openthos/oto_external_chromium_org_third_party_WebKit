@@ -37,7 +37,7 @@
 #include "wtf/Vector.h"
 #include "wtf/text/WTFString.h"
 
-namespace WebCore {
+namespace blink {
 
 class DOMFileSystemBase;
 class DirectoryReaderBase;
@@ -79,6 +79,7 @@ protected:
     OwnPtr<ErrorCallback> m_errorCallback;
     Persistent<DOMFileSystemBase> m_fileSystem;
     RefPtrWillBePersistent<ExecutionContext> m_executionContext;
+    int m_asyncOperationId;
 };
 
 // Subclasses ----------------------------------------------------------------

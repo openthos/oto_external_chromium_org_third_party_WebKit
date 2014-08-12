@@ -60,7 +60,7 @@
 #include "wtf/MathExtras.h"
 #include "wtf/TypeTraits.h"
 
-namespace WebCore {
+namespace blink {
 
 namespace {
 
@@ -126,13 +126,12 @@ LengthSize animatableValueToLengthSize(const AnimatableValue* value, const Style
         animatableValueToLength(animatableLengthSize->height(), state, range));
 }
 
-template <CSSPropertyID property>
 void setFillSize(FillLayer* fillLayer, const AnimatableValue* value, const StyleResolverState& state)
 {
     if (value->isLengthSize())
         fillLayer->setSize(FillSize(SizeLength, animatableValueToLengthSize(value, state, ValueRangeNonNegative)));
     else
-        state.styleMap().mapFillSize(property, fillLayer, toAnimatableUnknown(value)->toCSSValue().get());
+        state.styleMap().mapFillSize(fillLayer, toAnimatableUnknown(value)->toCSSValue().get());
 }
 
 PassRefPtr<SVGLength> animatableValueToNonNegativeSVGLength(const AnimatableValue* value)
@@ -151,26 +150,8 @@ void setOnFillLayers(FillLayer& fillLayers, const AnimatableValue* value, StyleR
     FillLayer* fillLayer = &fillLayers;
     FillLayer* prev = 0;
     for (size_t i = 0; i < values.size(); ++i) {
-        if (!fillLayer) {
-            switch (property) {
-            case CSSPropertyBackgroundImage:
-            case CSSPropertyBackgroundPositionX:
-            case CSSPropertyBackgroundPositionY:
-            case CSSPropertyBackgroundSize:
-            case CSSPropertyWebkitBackgroundSize:
-                fillLayer = new FillLayer(BackgroundFillLayer);
-                break;
-            case CSSPropertyWebkitMaskImage:
-            case CSSPropertyWebkitMaskPositionX:
-            case CSSPropertyWebkitMaskPositionY:
-            case CSSPropertyWebkitMaskSize:
-                fillLayer = new FillLayer(MaskFillLayer);
-                break;
-            default:
-                ASSERT_NOT_REACHED();
-            }
-            prev->setNext(fillLayer);
-        }
+        if (!fillLayer)
+            fillLayer = prev->ensureNext();
         const AnimatableValue* layerValue = values[i].get();
         switch (property) {
         case CSSPropertyBackgroundImage:
@@ -193,7 +174,7 @@ void setOnFillLayers(FillLayer& fillLayers, const AnimatableValue* value, StyleR
         case CSSPropertyBackgroundSize:
         case CSSPropertyWebkitBackgroundSize:
         case CSSPropertyWebkitMaskSize:
-            setFillSize<property>(fillLayer, layerValue, state);
+            setFillSize(fillLayer, layerValue, state);
             break;
         default:
             ASSERT_NOT_REACHED();
@@ -225,6 +206,26 @@ void setOnFillLayers(FillLayer& fillLayers, const AnimatableValue* value, StyleR
         }
         fillLayer = fillLayer->next();
     }
+}
+
+FontStretch animatableValueToFontStretch(const AnimatableValue* value)
+{
+    ASSERT(FontStretchUltraCondensed == 1 && FontStretchUltraExpanded == 9);
+    unsigned index = round(toAnimatableDouble(value)->toDouble()) - 1;
+    static const FontStretch stretchValues[] = {
+        FontStretchUltraCondensed,
+        FontStretchExtraCondensed,
+        FontStretchCondensed,
+        FontStretchSemiCondensed,
+        FontStretchNormal,
+        FontStretchSemiExpanded,
+        FontStretchExpanded,
+        FontStretchExtraExpanded,
+        FontStretchUltraExpanded
+    };
+
+    index = clampTo<unsigned>(index, 0, WTF_ARRAY_LENGTH(stretchValues) - 1);
+    return stretchValues[index];
 }
 
 FontWeight animatableValueToFontWeight(const AnimatableValue* value)
@@ -373,6 +374,9 @@ void AnimatedStyleBuilder::applyProperty(CSSPropertyID property, StyleResolverSt
         return;
     case CSSPropertyFontSize:
         style->setFontSize(clampTo<float>(toAnimatableDouble(value)->toDouble(), 0));
+        return;
+    case CSSPropertyFontStretch:
+        style->setFontStretch(animatableValueToFontStretch(value));
         return;
     case CSSPropertyFontWeight:
         style->setFontWeight(animatableValueToFontWeight(value));
@@ -558,20 +562,11 @@ void AnimatedStyleBuilder::applyProperty(CSSPropertyID property, StyleResolverSt
         style->setPerspective(clampTo<float>(toAnimatableDouble(value)->toDouble()));
         return;
     case CSSPropertyPerspectiveOrigin: {
-        ASSERT(RuntimeEnabledFeatures::cssTransformsUnprefixedEnabled());
         const AnimatableLengthPoint* animatableLengthPoint = toAnimatableLengthPoint(value);
         style->setPerspectiveOriginX(animatableValueToLength(animatableLengthPoint->x(), state));
         style->setPerspectiveOriginY(animatableValueToLength(animatableLengthPoint->y(), state));
         return;
     }
-    case CSSPropertyWebkitPerspectiveOriginX:
-        ASSERT(!RuntimeEnabledFeatures::cssTransformsUnprefixedEnabled());
-        style->setPerspectiveOriginX(animatableValueToLength(value, state));
-        return;
-    case CSSPropertyWebkitPerspectiveOriginY:
-        ASSERT(!RuntimeEnabledFeatures::cssTransformsUnprefixedEnabled());
-        style->setPerspectiveOriginY(animatableValueToLength(value, state));
-        return;
     case CSSPropertyShapeOutside:
         style->setShapeOutside(toAnimatableShapeValue(value)->shapeValue());
         return;
@@ -592,25 +587,12 @@ void AnimatedStyleBuilder::applyProperty(CSSPropertyID property, StyleResolverSt
         return;
     }
     case CSSPropertyTransformOrigin: {
-        ASSERT(RuntimeEnabledFeatures::cssTransformsUnprefixedEnabled());
         const AnimatableLengthPoint3D* animatableLengthPoint3D = toAnimatableLengthPoint3D(value);
         style->setTransformOriginX(animatableValueToLength(animatableLengthPoint3D->x(), state));
         style->setTransformOriginY(animatableValueToLength(animatableLengthPoint3D->y(), state));
         style->setTransformOriginZ(clampTo<float>(toAnimatableDouble(animatableLengthPoint3D->z())->toDouble()));
         return;
     }
-    case CSSPropertyWebkitTransformOriginX:
-        ASSERT(!RuntimeEnabledFeatures::cssTransformsUnprefixedEnabled());
-        style->setTransformOriginX(animatableValueToLength(value, state));
-        return;
-    case CSSPropertyWebkitTransformOriginY:
-        ASSERT(!RuntimeEnabledFeatures::cssTransformsUnprefixedEnabled());
-        style->setTransformOriginY(animatableValueToLength(value, state));
-        return;
-    case CSSPropertyWebkitTransformOriginZ:
-        ASSERT(!RuntimeEnabledFeatures::cssTransformsUnprefixedEnabled());
-        style->setTransformOriginZ(toAnimatableDouble(value)->toDouble());
-        return;
     case CSSPropertyWidows:
         style->setWidows(animatableValueRoundClampTo<unsigned short>(value, 1));
         return;
@@ -637,4 +619,4 @@ void AnimatedStyleBuilder::applyProperty(CSSPropertyID property, StyleResolverSt
     }
 }
 
-} // namespace WebCore
+} // namespace blink

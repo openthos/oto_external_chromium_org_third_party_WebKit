@@ -26,15 +26,12 @@
 
 #include "core/HTMLNames.h"
 #include "core/css/MediaList.h"
-#include "core/css/StyleSheetContents.h"
-#include "core/dom/ContextFeatures.h"
 #include "core/dom/Document.h"
 #include "core/events/Event.h"
 #include "core/events/EventSender.h"
-#include "core/dom/StyleEngine.h"
 #include "core/dom/shadow/ShadowRoot.h"
 
-namespace WebCore {
+namespace blink {
 
 using namespace HTMLNames;
 

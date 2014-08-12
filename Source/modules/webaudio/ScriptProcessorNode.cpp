@@ -38,7 +38,7 @@
 #include "public/platform/Platform.h"
 #include "wtf/Float32Array.h"
 
-namespace WebCore {
+namespace blink {
 
 #if !ENABLE(OILPAN)
 // We need a dedicated specialization for ScriptProcessorNode because it doesn't
@@ -121,7 +121,13 @@ ScriptProcessorNode::ScriptProcessorNode(AudioContext* context, float sampleRate
 
 ScriptProcessorNode::~ScriptProcessorNode()
 {
+    ASSERT(!isInitialized());
+}
+
+void ScriptProcessorNode::dispose()
+{
     uninitialize();
+    AudioNode::dispose();
 }
 
 void ScriptProcessorNode::initialize()
@@ -282,6 +288,6 @@ void ScriptProcessorNode::trace(Visitor* visitor)
     AudioNode::trace(visitor);
 }
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // ENABLE(WEB_AUDIO)

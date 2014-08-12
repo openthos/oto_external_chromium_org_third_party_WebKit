@@ -46,7 +46,7 @@
 
 #include "platform/scroll/ScrollableArea.h"
 
-namespace WebCore {
+namespace blink {
 
 enum ResizerHitTestType {
     ResizerForPointer,
@@ -255,6 +255,6 @@ private:
     RenderScrollbarPart* m_resizer;
 };
 
-} // Namespace WebCore
+} // namespace blink
 
 #endif // RenderLayerScrollableArea_h

@@ -68,12 +68,12 @@
 #include "core/editing/TextIterator.h"
 #include "core/fetch/MemoryCache.h"
 #include "core/fetch/ResourceFetcher.h"
-#include "core/frame/DOMPoint.h"
 #include "core/frame/LocalDOMWindow.h"
 #include "core/frame/EventHandlerRegistry.h"
 #include "core/frame/FrameView.h"
 #include "core/frame/LocalFrame.h"
 #include "core/frame/Settings.h"
+#include "core/frame/WebKitPoint.h"
 #include "core/html/HTMLContentElement.h"
 #include "core/html/HTMLIFrameElement.h"
 #include "core/html/HTMLInputElement.h"
@@ -114,7 +114,6 @@
 #include "core/testing/InternalSettings.h"
 #include "core/testing/LayerRect.h"
 #include "core/testing/LayerRectList.h"
-#include "core/testing/MallocStatistics.h"
 #include "core/testing/MockPagePopupDriver.h"
 #include "core/testing/PrivateScriptTest.h"
 #include "core/testing/TypeConversions.h"
@@ -140,7 +139,7 @@
 #include "wtf/text/StringBuffer.h"
 #include <v8.h>
 
-namespace WebCore {
+namespace blink {
 
 // FIXME: oilpan: These will be removed soon.
 static MockPagePopupDriver* s_pagePopupDriver = 0;
@@ -188,7 +187,7 @@ void Internals::resetToConsistentState(Page* page)
     page->setDeviceScaleFactor(1);
     page->setIsCursorVisible(true);
     page->setPageScaleFactor(1, IntPoint(0, 0));
-    WebCore::overrideUserPreferredLanguages(Vector<AtomicString>());
+    blink::overrideUserPreferredLanguages(Vector<AtomicString>());
     delete s_pagePopupDriver;
     s_pagePopupDriver = 0;
     page->chrome().client().resetPagePopupDriver();
@@ -207,6 +206,7 @@ Internals::Internals(Document* document)
     : ContextLifecycleObserver(document)
     , m_runtimeFlags(InternalRuntimeFlags::create())
 {
+    ScriptWrappable::init(this);
 }
 
 Document* Internals::contextDocument() const
@@ -467,13 +467,6 @@ unsigned short Internals::compareTreeScopePosition(const Node* node1, const Node
         return 0;
     }
     return treeScope1->comparePosition(*treeScope2);
-}
-
-unsigned Internals::numberOfActiveAnimations() const
-{
-    LocalFrame* contextFrame = frame();
-    Document* document = contextFrame->document();
-    return document->timeline().numberOfActiveAnimationsForTesting();
 }
 
 void Internals::pauseAnimations(double pauseTime, ExceptionState& exceptionState)
@@ -1102,7 +1095,7 @@ String Internals::rangeAsText(const Range* range, ExceptionState& exceptionState
 // FIXME: The next four functions are very similar - combine them once
 // bestClickableNode/bestContextMenuNode have been combined..
 
-PassRefPtrWillBeRawPtr<DOMPoint> Internals::touchPositionAdjustedToBestClickableNode(long x, long y, long width, long height, Document* document, ExceptionState& exceptionState)
+PassRefPtrWillBeRawPtr<WebKitPoint> Internals::touchPositionAdjustedToBestClickableNode(long x, long y, long width, long height, Document* document, ExceptionState& exceptionState)
 {
     if (!document || !document->frame()) {
         exceptionState.throwDOMException(InvalidAccessError, document ? "The document's frame cannot be retrieved." : "The document provided is invalid.");
@@ -1123,7 +1116,7 @@ PassRefPtrWillBeRawPtr<DOMPoint> Internals::touchPositionAdjustedToBestClickable
 
     bool foundNode = eventHandler.bestClickableNodeForHitTestResult(result, adjustedPoint, targetNode);
     if (foundNode)
-        return DOMPoint::create(adjustedPoint.x(), adjustedPoint.y());
+        return WebKitPoint::create(adjustedPoint.x(), adjustedPoint.y());
 
     return nullptr;
 }
@@ -1150,7 +1143,7 @@ Node* Internals::touchNodeAdjustedToBestClickableNode(long x, long y, long width
     return targetNode;
 }
 
-PassRefPtrWillBeRawPtr<DOMPoint> Internals::touchPositionAdjustedToBestContextMenuNode(long x, long y, long width, long height, Document* document, ExceptionState& exceptionState)
+PassRefPtrWillBeRawPtr<WebKitPoint> Internals::touchPositionAdjustedToBestContextMenuNode(long x, long y, long width, long height, Document* document, ExceptionState& exceptionState)
 {
     if (!document || !document->frame()) {
         exceptionState.throwDOMException(InvalidAccessError, document ? "The document's frame cannot be retrieved." : "The document provided is invalid.");
@@ -1171,9 +1164,9 @@ PassRefPtrWillBeRawPtr<DOMPoint> Internals::touchPositionAdjustedToBestContextMe
 
     bool foundNode = eventHandler.bestContextMenuNodeForHitTestResult(result, adjustedPoint, targetNode);
     if (foundNode)
-        return DOMPoint::create(adjustedPoint.x(), adjustedPoint.y());
+        return WebKitPoint::create(adjustedPoint.x(), adjustedPoint.y());
 
-    return DOMPoint::create(x, y);
+    return WebKitPoint::create(x, y);
 }
 
 Node* Internals::touchNodeAdjustedToBestContextMenuNode(long x, long y, long width, long height, Document* document, ExceptionState& exceptionState)
@@ -1246,7 +1239,7 @@ int Internals::lastSpellCheckProcessedSequence(Document* document, ExceptionStat
 
 Vector<AtomicString> Internals::userPreferredLanguages() const
 {
-    return WebCore::userPreferredLanguages();
+    return blink::userPreferredLanguages();
 }
 
 // Optimally, the bindings generator would pass a Vector<AtomicString> here but
@@ -1256,7 +1249,7 @@ void Internals::setUserPreferredLanguages(const Vector<String>& languages)
     Vector<AtomicString> atomicLanguages;
     for (size_t i = 0; i < languages.size(); ++i)
         atomicLanguages.append(AtomicString(languages[i]));
-    WebCore::overrideUserPreferredLanguages(atomicLanguages);
+    blink::overrideUserPreferredLanguages(atomicLanguages);
 }
 
 unsigned Internals::activeDOMObjectCount(Document* document, ExceptionState& exceptionState)
@@ -1623,6 +1616,9 @@ bool Internals::hasGrammarMarker(Document* document, int from, int length, Excep
 
 unsigned Internals::numberOfScrollableAreas(Document* document, ExceptionState&)
 {
+    if (!document || !document->frame())
+        return 0;
+
     unsigned count = 0;
     LocalFrame* frame = document->frame();
     if (frame->view()->scrollableAreas())
@@ -1915,11 +1911,6 @@ void Internals::removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(const 
     SchemeRegistry::removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(scheme);
 }
 
-PassRefPtrWillBeRawPtr<MallocStatistics> Internals::mallocStatistics() const
-{
-    return MallocStatistics::create();
-}
-
 PassRefPtrWillBeRawPtr<TypeConversions> Internals::typeConversions() const
 {
     return TypeConversions::create();
@@ -1988,7 +1979,7 @@ void Internals::forceFullRepaint(Document* document, ExceptionState& exceptionSt
     }
 
     if (RenderView *renderView = document->renderView())
-        renderView->repaintViewAndCompositedLayers();
+        renderView->invalidatePaintForViewAndCompositedLayers();
 }
 
 PassRefPtrWillBeRawPtr<ClientRectList> Internals::draggableRegions(Document* document, ExceptionState& exceptionState)
@@ -2141,7 +2132,7 @@ String Internals::markerTextForListItem(Element* element, ExceptionState& except
         exceptionState.throwDOMException(InvalidAccessError, ExceptionMessages::argumentNullOrIncorrectType(1, "Element"));
         return String();
     }
-    return WebCore::markerTextForListItem(element);
+    return blink::markerTextForListItem(element);
 }
 
 String Internals::getImageSourceURL(Element* element, ExceptionState& exceptionState)
@@ -2177,6 +2168,38 @@ bool Internals::isSelectPopupVisible(Node* node)
 
     RenderMenuList* menuList = toRenderMenuList(renderer);
     return menuList->popupIsVisible();
+}
+
+bool Internals::selectPopupItemStyleIsRtl(Node* node, int itemIndex)
+{
+    if (!node || !isHTMLSelectElement(*node))
+        return false;
+
+    HTMLSelectElement& select = toHTMLSelectElement(*node);
+
+    RenderObject* renderer = select.renderer();
+    if (!renderer || !renderer->isMenuList())
+        return false;
+
+    RenderMenuList& menuList = toRenderMenuList(*renderer);
+    PopupMenuStyle itemStyle = menuList.itemStyle(itemIndex);
+    return itemStyle.textDirection() == RTL;
+}
+
+int Internals::selectPopupItemStyleFontHeight(Node* node, int itemIndex)
+{
+    if (!node || !isHTMLSelectElement(*node))
+        return false;
+
+    HTMLSelectElement& select = toHTMLSelectElement(*node);
+
+    RenderObject* renderer = select.renderer();
+    if (!renderer || !renderer->isMenuList())
+        return false;
+
+    RenderMenuList& menuList = toRenderMenuList(*renderer);
+    PopupMenuStyle itemStyle = menuList.itemStyle(itemIndex);
+    return itemStyle.font().fontMetrics().height();
 }
 
 bool Internals::loseSharedGraphicsContext3D()
@@ -2348,4 +2371,4 @@ String Internals::serializeNavigationMarkup(Document* document)
     return markup.toString();
 }
 
-} // namespace WebCore
+} // namespace blink

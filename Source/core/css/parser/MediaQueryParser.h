@@ -11,10 +11,9 @@
 #include "core/css/MediaQueryExp.h"
 #include "core/css/parser/MediaQueryBlockWatcher.h"
 #include "core/css/parser/MediaQueryToken.h"
-#include "wtf/Vector.h"
 #include "wtf/text/WTFString.h"
 
-namespace WebCore {
+namespace blink {
 
 class MediaQuerySet;
 
@@ -102,6 +101,6 @@ private:
 
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // MediaQueryParser_h

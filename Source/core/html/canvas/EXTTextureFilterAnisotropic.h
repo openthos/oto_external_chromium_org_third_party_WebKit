@@ -30,11 +30,11 @@
 #include "core/html/canvas/WebGLExtension.h"
 #include "wtf/PassRefPtr.h"
 
-namespace WebCore {
+namespace blink {
 
 class EXTTextureFilterAnisotropic FINAL : public WebGLExtension, public ScriptWrappable {
 public:
-    static PassRefPtr<EXTTextureFilterAnisotropic> create(WebGLRenderingContextBase*);
+    static PassRefPtrWillBeRawPtr<EXTTextureFilterAnisotropic> create(WebGLRenderingContextBase*);
     static bool supported(WebGLRenderingContextBase*);
     static const char* extensionName();
 
@@ -42,9 +42,9 @@ public:
     virtual WebGLExtensionName name() const OVERRIDE;
 
 private:
-    EXTTextureFilterAnisotropic(WebGLRenderingContextBase*);
+    explicit EXTTextureFilterAnisotropic(WebGLRenderingContextBase*);
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // EXTTextureFilterAnisotropic_h

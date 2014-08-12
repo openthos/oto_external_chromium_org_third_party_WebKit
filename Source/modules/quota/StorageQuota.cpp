@@ -44,7 +44,7 @@
 #include "public/platform/WebStorageQuotaCallbacks.h"
 #include "public/platform/WebStorageQuotaType.h"
 
-namespace WebCore {
+namespace blink {
 
 namespace {
 
@@ -113,8 +113,4 @@ ScriptPromise StorageQuota::requestPersistentQuota(ScriptState* scriptState, uns
     return client->requestPersistentQuota(scriptState, newQuota);
 }
 
-StorageQuota::~StorageQuota()
-{
-}
-
-} // namespace WebCore
+} // namespace blink

@@ -55,7 +55,7 @@
 #include "platform/network/ResourceRequest.h"
 #include "platform/network/ResourceResponse.h"
 
-namespace WebCore {
+namespace blink {
 
 class FrontendMenuProvider FINAL : public ContextMenuProvider {
 public:
@@ -131,12 +131,17 @@ InspectorFrontendHost::~InspectorFrontendHost()
     ASSERT(!m_client);
 }
 
+void InspectorFrontendHost::trace(Visitor* visitor)
+{
+    visitor->trace(m_frontendPage);
+}
+
 void InspectorFrontendHost::disconnectClient()
 {
     m_client = 0;
     if (m_menuProvider)
         m_menuProvider->disconnect();
-    m_frontendPage = 0;
+    m_frontendPage = nullptr;
 }
 
 void InspectorFrontendHost::setZoomFactor(float zoom)
@@ -205,7 +210,8 @@ void InspectorFrontendHost::showContextMenu(Page* page, float x, float y, const 
 
     RefPtr<FrontendMenuProvider> menuProvider = FrontendMenuProvider::create(this, frontendApiObject, items);
     m_menuProvider = menuProvider.get();
-    page->inspectorController().showContextMenu(x, y, menuProvider);
+    float zoom = page->deprecatedLocalMainFrame()->pageZoomFactor();
+    page->inspectorController().showContextMenu(x * zoom, y * zoom, menuProvider);
 }
 
 void InspectorFrontendHost::showContextMenu(Event* event, const Vector<ContextMenuItem>& items)
@@ -250,4 +256,4 @@ bool InspectorFrontendHost::isHostedMode()
     return false;
 }
 
-} // namespace WebCore
+} // namespace blink

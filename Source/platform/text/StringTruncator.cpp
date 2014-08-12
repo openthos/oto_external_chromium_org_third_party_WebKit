@@ -33,10 +33,9 @@
 #include "platform/text/TextBreakIterator.h"
 #include "platform/text/TextRun.h"
 #include "wtf/Assertions.h"
-#include "wtf/Vector.h"
 #include "wtf/unicode/CharacterNames.h"
 
-namespace WebCore {
+namespace blink {
 
 #define STRING_BUFFER_SIZE 2048
 
@@ -199,4 +198,4 @@ float StringTruncator::width(const String& string, const Font& font)
     return stringWidth(font, string);
 }
 
-} // namespace WebCore
+} // namespace blink

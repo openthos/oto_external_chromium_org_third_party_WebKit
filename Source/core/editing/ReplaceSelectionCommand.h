@@ -29,7 +29,7 @@
 #include "core/dom/NodeTraversal.h"
 #include "core/editing/CompositeEditCommand.h"
 
-namespace WebCore {
+namespace blink {
 
 class DocumentFragment;
 class ReplacementFragment;
@@ -69,8 +69,8 @@ private:
         void didReplaceNode(Node&, Node& newNode);
 
         Node* firstNodeInserted() const { return m_firstNodeInserted.get(); }
-        Node* lastLeafInserted() const { return m_lastNodeInserted ? &m_lastNodeInserted->lastDescendantOrSelf() : 0; }
-        Node* pastLastLeaf() const { return m_lastNodeInserted ? NodeTraversal::next(m_lastNodeInserted->lastDescendantOrSelf()) : 0; }
+        Node* lastLeafInserted() const { return m_lastNodeInserted ? &NodeTraversal::lastWithinOrSelf(*m_lastNodeInserted) : 0; }
+        Node* pastLastLeaf() const { return m_lastNodeInserted ? NodeTraversal::next(NodeTraversal::lastWithinOrSelf(*m_lastNodeInserted)) : 0; }
 
     private:
         RefPtrWillBeMember<Node> m_firstNodeInserted;
@@ -92,7 +92,7 @@ private:
 
     void removeRedundantStylesAndKeepStyleSpanInline(InsertedNodes&);
     void makeInsertedContentRoundTrippableWithHTMLTreeBuilder(const InsertedNodes&);
-    void moveNodeOutOfAncestor(PassRefPtrWillBeRawPtr<Node>, PassRefPtrWillBeRawPtr<Node> ancestor);
+    void moveNodeOutOfAncestor(PassRefPtrWillBeRawPtr<Node>, PassRefPtrWillBeRawPtr<ContainerNode> ancestor);
     void handleStyleSpans(InsertedNodes&);
 
     VisiblePosition positionAtStartOfInsertedContent() const;
@@ -119,6 +119,6 @@ private:
     bool m_shouldMergeEnd;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // ReplaceSelectionCommand_h

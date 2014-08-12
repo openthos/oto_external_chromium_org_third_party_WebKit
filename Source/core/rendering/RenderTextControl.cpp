@@ -25,10 +25,11 @@
 #include "core/html/HTMLTextFormControlElement.h"
 #include "core/rendering/HitTestResult.h"
 #include "core/rendering/RenderTheme.h"
+#include "core/rendering/TextRunConstructor.h"
 #include "platform/scroll/ScrollbarTheme.h"
 #include "wtf/unicode/CharacterNames.h"
 
-namespace WebCore {
+namespace blink {
 
 RenderTextControl::RenderTextControl(HTMLTextFormControlElement* element)
     : RenderBlockFlow(element)
@@ -282,7 +283,7 @@ void RenderTextControl::computePreferredLogicalWidths()
     clearPreferredLogicalWidthsDirty();
 }
 
-void RenderTextControl::addFocusRingRects(Vector<IntRect>& rects, const LayoutPoint& additionalOffset, const RenderLayerModelObject*)
+void RenderTextControl::addFocusRingRects(Vector<IntRect>& rects, const LayoutPoint& additionalOffset, const RenderLayerModelObject*) const
 {
     if (!size().isEmpty())
         rects.append(pixelSnappedIntRect(additionalOffset, size()));
@@ -299,4 +300,4 @@ RenderObject* RenderTextControl::layoutSpecialExcludedChild(bool relayoutChildre
     return placeholderRenderer;
 }
 
-} // namespace WebCore
+} // namespace blink

@@ -44,7 +44,7 @@ using namespace WTF;
 using namespace Unicode;
 using namespace std;
 
-namespace WebCore {
+namespace blink {
 
 CodePath Font::s_codePath = AutoPath;
 
@@ -115,10 +115,11 @@ void Font::drawText(GraphicsContext* context, const TextRunPaintInfo& runInfo, c
     if (codePathToUse != ComplexPath && fontDescription().typesettingFeatures() && (runInfo.from || runInfo.to != runInfo.run.length()))
         codePathToUse = ComplexPath;
 
-    if (codePathToUse != ComplexPath)
-        return drawSimpleText(context, runInfo, point);
-
-    return drawComplexText(context, runInfo, point);
+    if (codePathToUse != ComplexPath) {
+        drawSimpleText(context, runInfo, point);
+    } else {
+        drawComplexText(context, runInfo, point);
+    }
 }
 
 void Font::drawEmphasisMarks(GraphicsContext* context, const TextRunPaintInfo& runInfo, const AtomicString& mark, const FloatPoint& point) const
@@ -160,9 +161,8 @@ float Font::width(const TextRun& run, HashSet<const SimpleFontData*>* fallbackFo
             glyphOverflow = 0;
     }
 
-    bool hasKerningOrLigatures = fontDescription().typesettingFeatures() & (Kerning | Ligatures);
     bool hasWordSpacingOrLetterSpacing = fontDescription().wordSpacing() || fontDescription().letterSpacing();
-    bool isCacheable = (codePathToUse == ComplexPath || hasKerningOrLigatures)
+    bool isCacheable = codePathToUse == ComplexPath
         && !hasWordSpacingOrLetterSpacing // Word spacing and letter spacing can change the width of a word.
         && !run.allowTabs(); // If we allow tabs and a tab occurs inside a word, the width of the word varies based on its position on the line.
 
@@ -180,8 +180,8 @@ float Font::width(const TextRun& run, HashSet<const SimpleFontData*>* fallbackFo
     if (codePathToUse == ComplexPath) {
         result = floatWidthForComplexText(run, fallbackFonts, &glyphBounds);
     } else {
-        result = floatWidthForSimpleText(run, fallbackFonts,
-            glyphOverflow || isCacheable ? &glyphBounds : 0);
+        ASSERT(!isCacheable);
+        result = floatWidthForSimpleText(run, fallbackFonts, glyphOverflow ? &glyphBounds : 0);
     }
 
     if (cacheEntry && (!fallbackFonts || fallbackFonts->isEmpty())) {

@@ -36,10 +36,9 @@
 #include "platform/graphics/skia/SkiaUtils.h"
 #include "wtf/CurrentTime.h"
 #include "wtf/PassRefPtr.h"
-#include "wtf/Vector.h"
 #include "wtf/text/WTFString.h"
 
-namespace WebCore {
+namespace blink {
 
 BitmapImage::BitmapImage(ImageObserver* observer)
     : Image(observer)
@@ -303,7 +302,7 @@ void BitmapImage::draw(GraphicsContext* ctxt, const FloatRect& dstRect, const Fl
         }
     }
 
-    bm->draw(ctxt, normSrcRect, normDstRect, WebCoreCompositeToSkiaComposite(compositeOp, blendMode));
+    bm->draw(ctxt, normSrcRect, normDstRect, compositeOp, blendMode);
 
     if (ImageObserver* observer = imageObserver())
         observer->didDraw(this);
@@ -365,6 +364,14 @@ float BitmapImage::frameDurationAtIndex(size_t index)
 PassRefPtr<NativeImageSkia> BitmapImage::nativeImageForCurrentFrame()
 {
     return frameAtIndex(currentFrame());
+}
+
+PassRefPtr<Image> BitmapImage::imageForDefaultFrame()
+{
+    if (isBitmapImage() && maybeAnimated())
+        return BitmapImage::create(frameAtIndex(0));
+
+    return Image::imageForDefaultFrame();
 }
 
 bool BitmapImage::frameHasAlphaAtIndex(size_t index)

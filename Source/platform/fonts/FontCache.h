@@ -37,7 +37,6 @@
 #include "wtf/HashMap.h"
 #include "wtf/PassRefPtr.h"
 #include "wtf/RefPtr.h"
-#include "wtf/Vector.h"
 #include "wtf/text/CString.h"
 #include "wtf/text/WTFString.h"
 #include "wtf/unicode/Unicode.h"
@@ -56,7 +55,7 @@ struct IDWriteFactory;
 
 class SkTypeface;
 
-namespace WebCore {
+namespace blink {
 
 class FontCacheClient;
 class FontFaceCreationParams;

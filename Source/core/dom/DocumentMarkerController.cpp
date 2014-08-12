@@ -38,7 +38,7 @@
 #include <stdio.h>
 #endif
 
-namespace WebCore {
+namespace blink {
 
 namespace {
 
@@ -478,7 +478,9 @@ Vector<IntRect> DocumentMarkerController::renderedRectsForMarkers(DocumentMarker
 
 void DocumentMarkerController::trace(Visitor* visitor)
 {
+#if ENABLE(OILPAN)
     visitor->trace(m_markers);
+#endif
 }
 
 void DocumentMarkerController::removeMarkers(Node* node, DocumentMarker::MarkerTypes markerTypes)
@@ -725,10 +727,10 @@ void DocumentMarkerController::showMarkers() const
 }
 #endif
 
-} // namespace WebCore
+} // namespace blink
 
 #ifndef NDEBUG
-void showDocumentMarkers(const WebCore::DocumentMarkerController* controller)
+void showDocumentMarkers(const blink::DocumentMarkerController* controller)
 {
     if (controller)
         controller->showMarkers();

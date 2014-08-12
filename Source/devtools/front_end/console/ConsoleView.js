@@ -112,8 +112,7 @@ WebInspector.ConsoleView = function(hideContextSelector)
     this._showAllMessagesCheckbox.inputElement.checked = true;
     this._showAllMessagesCheckbox.inputElement.addEventListener("change", this._updateMessageList.bind(this), false);
 
-    if (!WebInspector.experimentsSettings.workersInMainWindow.isEnabled())
-        this._showAllMessagesCheckbox.element.classList.add("hidden");
+    this._showAllMessagesCheckbox.element.classList.add("hidden");
 
     statusBarElement.appendChild(this._showAllMessagesCheckbox.element);
 
@@ -144,6 +143,9 @@ WebInspector.ConsoleView = function(hideContextSelector)
     WebInspector.multitargetConsoleModel.addEventListener(WebInspector.ConsoleModel.Events.ConsoleCleared, this._consoleCleared, this);
     WebInspector.multitargetConsoleModel.addEventListener(WebInspector.ConsoleModel.Events.MessageAdded, this._onConsoleMessageAdded, this);
     WebInspector.multitargetConsoleModel.addEventListener(WebInspector.ConsoleModel.Events.CommandEvaluated, this._commandEvaluated, this);
+    WebInspector.targetManager.addModelListener(WebInspector.RuntimeModel, WebInspector.RuntimeModel.Events.ExecutionContextCreated, this._onExecutionContextCreated, this);
+    WebInspector.targetManager.addModelListener(WebInspector.RuntimeModel, WebInspector.RuntimeModel.Events.ExecutionContextDestroyed, this._onExecutionContextDestroyed, this);
+
     /**
      * @param {!WebInspector.ConsoleMessage} message
      * @this {WebInspector.ConsoleView}
@@ -201,8 +203,8 @@ WebInspector.ConsoleView.prototype = {
     {
         this._viewport.invalidate();
         target.runtimeModel.executionContexts().forEach(this._executionContextCreated, this);
-        target.runtimeModel.addEventListener(WebInspector.RuntimeModel.Events.ExecutionContextCreated, this._onExecutionContextCreated, this);
-        target.runtimeModel.addEventListener(WebInspector.RuntimeModel.Events.ExecutionContextDestroyed, this._onExecutionContextDestroyed, this);
+        if (WebInspector.targetManager.targets().length > 1)
+            this._showAllMessagesCheckbox.element.classList.toggle("hidden", false);
     },
 
     /**
@@ -211,8 +213,6 @@ WebInspector.ConsoleView.prototype = {
     targetRemoved: function(target)
     {
         this._clearExecutionContextsForTarget(target);
-        target.runtimeModel.removeEventListener(WebInspector.RuntimeModel.Events.ExecutionContextCreated, this._onExecutionContextCreated, this);
-        target.runtimeModel.removeEventListener(WebInspector.RuntimeModel.Events.ExecutionContextDestroyed, this._onExecutionContextDestroyed, this);
     },
 
     _registerWithMessageSink: function()
@@ -776,8 +776,9 @@ WebInspector.ConsoleView.prototype = {
      * @param {?WebInspector.RemoteObject} result
      * @param {boolean} wasThrown
      * @param {!WebInspector.ConsoleMessage} originatingConsoleMessage
+     * @param {?DebuggerAgent.ExceptionDetails=} exceptionDetails
      */
-    _printResult: function(result, wasThrown, originatingConsoleMessage)
+    _printResult: function(result, wasThrown, originatingConsoleMessage, exceptionDetails)
     {
         if (!result)
             return;
@@ -791,7 +792,11 @@ WebInspector.ConsoleView.prototype = {
         function addMessage(url, lineNumber, columnNumber)
         {
             var level = wasThrown ? WebInspector.ConsoleMessage.MessageLevel.Error : WebInspector.ConsoleMessage.MessageLevel.Log;
-            var message = new WebInspector.ConsoleMessage(target, WebInspector.ConsoleMessage.MessageSource.JS, level, "", WebInspector.ConsoleMessage.MessageType.Result, url, lineNumber, columnNumber, undefined, [result]);
+            var message;
+            if (!wasThrown)
+                message = new WebInspector.ConsoleMessage(target, WebInspector.ConsoleMessage.MessageSource.JS, level, "", WebInspector.ConsoleMessage.MessageType.Result, url, lineNumber, columnNumber, undefined, [result]);
+            else
+                message = new WebInspector.ConsoleMessage(target, WebInspector.ConsoleMessage.MessageSource.JS, level, exceptionDetails.text, WebInspector.ConsoleMessage.MessageType.Result, exceptionDetails.url, exceptionDetails.line, exceptionDetails.column, undefined, [WebInspector.UIString("Uncaught"), result], exceptionDetails.stackTrace);
             message.setOriginatingMessage(originatingConsoleMessage);
             target.consoleModel.addMessage(message);
         }
@@ -804,26 +809,21 @@ WebInspector.ConsoleView.prototype = {
         result.functionDetails(didGetDetails);
 
         /**
-         * @param {?DebuggerAgent.FunctionDetails} response
+         * @param {?WebInspector.DebuggerModel.FunctionDetails} response
          */
         function didGetDetails(response)
         {
-            if (!response) {
+            if (!response || !response.location) {
                 addMessage();
                 return;
             }
 
             var url;
-            var lineNumber;
-            var columnNumber;
             var script = target.debuggerModel.scriptForId(response.location.scriptId);
-            if (script && script.sourceURL) {
+            if (script && script.sourceURL)
                 url = script.sourceURL;
-                lineNumber = response.location.lineNumber + 1;
-                columnNumber = response.location.columnNumber + 1;
-            }
             // FIXME: this should be using live location.
-            addMessage(url, lineNumber, columnNumber);
+            addMessage(url, response.location.lineNumber, response.location.columnNumber);
         }
     },
 
@@ -848,7 +848,7 @@ WebInspector.ConsoleView.prototype = {
         var data = /**{{result: ?WebInspector.RemoteObject, wasThrown: boolean, text: string, commandMessage: !WebInspector.ConsoleMessage}} */ (event.data);
         this._prompt.pushHistoryItem(data.text);
         WebInspector.settings.consoleHistory.set(this._prompt.historyData.slice(-30));
-        this._printResult(data.result, data.wasThrown, data.commandMessage);
+        this._printResult(data.result, data.wasThrown, data.commandMessage, data.exceptionDetails);
     },
 
     /**

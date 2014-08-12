@@ -27,7 +27,7 @@
 #include "core/svg/SVGElement.h"
 #include "platform/graphics/filters/LightSource.h"
 
-namespace WebCore {
+namespace blink {
 
 class Filter;
 
@@ -83,13 +83,13 @@ private:
     RefPtr<SVGAnimatedNumber> m_limitingConeAngle;
 };
 
-inline bool isSVGFELightElement(const Node& node)
+inline bool isSVGFELightElement(const SVGElement& element)
 {
-    return node.hasTagName(SVGNames::feDistantLightTag) || node.hasTagName(SVGNames::fePointLightTag) || node.hasTagName(SVGNames::feSpotLightTag);
+    return element.hasTagName(SVGNames::feDistantLightTag) || element.hasTagName(SVGNames::fePointLightTag) || element.hasTagName(SVGNames::feSpotLightTag);
 }
 
-DEFINE_ELEMENT_TYPE_CASTS_WITH_FUNCTION(SVGFELightElement);
+DEFINE_SVGELEMENT_TYPE_CASTS_WITH_FUNCTION(SVGFELightElement);
 
-} // namespace WebCore
+} // namespace blink
 
 #endif

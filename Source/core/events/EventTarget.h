@@ -37,7 +37,7 @@
 #include "core/events/ThreadLocalEventNames.h"
 #include "platform/heap/Handle.h"
 
-namespace WebCore {
+namespace blink {
 
 class LocalDOMWindow;
 class Event;
@@ -138,6 +138,8 @@ public:
     bool fireEventListeners(Event*);
 
     virtual void trace(Visitor*) { }
+
+    virtual bool keepEventInNode(Event*) { return false; };
 
 protected:
     EventTarget();
@@ -241,7 +243,7 @@ inline bool EventTarget::hasCapturingEventListeners(const AtomicString& eventTyp
     return d->eventListenerMap.containsCapturing(eventType);
 }
 
-} // namespace WebCore
+} // namespace blink
 
 #if ENABLE(OILPAN)
 #define DEFINE_EVENT_TARGET_REFCOUNTING(baseClass) \

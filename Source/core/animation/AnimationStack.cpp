@@ -32,17 +32,17 @@
 #include "core/animation/AnimationStack.h"
 
 #include "core/animation/CompositorAnimations.h"
+#include "core/animation/StyleInterpolation.h"
 #include "core/animation/css/CSSAnimations.h"
-#include "core/animation/interpolation/StyleInterpolation.h"
 #include "wtf/BitArray.h"
 #include "wtf/NonCopyingSort.h"
 #include <algorithm>
 
-namespace WebCore {
+namespace blink {
 
 namespace {
 
-void copyToActiveInterpolationMap(const WillBeHeapVector<RefPtrWillBeMember<WebCore::Interpolation> >& source, WillBeHeapHashMap<CSSPropertyID, RefPtrWillBeMember<WebCore::Interpolation> >& target)
+void copyToActiveInterpolationMap(const WillBeHeapVector<RefPtrWillBeMember<blink::Interpolation> >& source, WillBeHeapHashMap<CSSPropertyID, RefPtrWillBeMember<blink::Interpolation> >& target)
 {
     for (size_t i = 0; i < source.size(); ++i) {
         Interpolation* interpolation = source[i].get();
@@ -105,10 +105,6 @@ WillBeHeapHashMap<CSSPropertyID, RefPtrWillBeMember<Interpolation> > AnimationSt
             const SampledEffect& effect = *effects[i];
             if (effect.priority() != priority || (cancelledAnimationPlayers && effect.animation() && cancelledAnimationPlayers->contains(effect.animation()->player())))
                 continue;
-            if (newAnimations && effect.sortInfo().startTime() > timelineCurrentTime) {
-                copyNewAnimationsToActiveInterpolationMap(*newAnimations, result);
-                newAnimations = 0;
-            }
             copyToActiveInterpolationMap(effect.interpolations(), result);
         }
     }
@@ -171,4 +167,4 @@ bool AnimationStack::getAnimatedBoundingBox(FloatBox& box, CSSPropertyID propert
     return true;
 }
 
-} // namespace WebCore
+} // namespace blink

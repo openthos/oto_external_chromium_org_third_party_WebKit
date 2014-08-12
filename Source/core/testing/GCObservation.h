@@ -32,14 +32,15 @@
 #define GCObservation_h
 
 #include "bindings/core/v8/ScopedPersistent.h"
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "platform/heap/Handle.h"
 #include "wtf/PassRefPtr.h"
 #include "wtf/RefCounted.h"
 #include <v8.h>
 
-namespace WebCore {
+namespace blink {
 
-class GCObservation : public RefCountedWillBeGarbageCollectedFinalized<GCObservation> {
+class GCObservation : public RefCountedWillBeGarbageCollectedFinalized<GCObservation>, public ScriptWrappable {
 public:
     static PassRefPtrWillBeRawPtr<GCObservation> create(v8::Handle<v8::Value> observedValue)
     {

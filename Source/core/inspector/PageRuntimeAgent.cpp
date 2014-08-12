@@ -43,7 +43,7 @@
 #include "core/page/Page.h"
 #include "platform/weborigin/SecurityOrigin.h"
 
-namespace WebCore {
+namespace blink {
 
 PageRuntimeAgent::PageRuntimeAgent(InjectedScriptManager* injectedScriptManager, ScriptDebugServer* scriptDebugServer, Page* page, InspectorPageAgent* pageAgent)
     : InspectorRuntimeAgent(injectedScriptManager, scriptDebugServer)
@@ -55,7 +55,16 @@ PageRuntimeAgent::PageRuntimeAgent(InjectedScriptManager* injectedScriptManager,
 
 PageRuntimeAgent::~PageRuntimeAgent()
 {
+#if !ENABLE(OILPAN)
     m_instrumentingAgents->setPageRuntimeAgent(0);
+#endif
+}
+
+void PageRuntimeAgent::trace(Visitor* visitor)
+{
+    visitor->trace(m_inspectedPage);
+    visitor->trace(m_pageAgent);
+    InspectorRuntimeAgent::trace(visitor);
 }
 
 void PageRuntimeAgent::init()
@@ -162,5 +171,5 @@ void PageRuntimeAgent::frameWindowDiscarded(LocalDOMWindow* window)
     m_scriptStateToId.removeAll(scriptStatesToRemove);
 }
 
-} // namespace WebCore
+} // namespace blink
 

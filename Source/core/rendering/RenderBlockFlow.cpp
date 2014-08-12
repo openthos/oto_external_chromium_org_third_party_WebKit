@@ -33,7 +33,6 @@
 
 #include "core/accessibility/AXObjectCache.h"
 #include "core/frame/FrameView.h"
-#include "core/rendering/FastTextAutosizer.h"
 #include "core/rendering/HitTestLocation.h"
 #include "core/rendering/RenderFlowThread.h"
 #include "core/rendering/RenderLayer.h"
@@ -41,11 +40,12 @@
 #include "core/rendering/RenderPagedFlowThread.h"
 #include "core/rendering/RenderText.h"
 #include "core/rendering/RenderView.h"
+#include "core/rendering/TextAutosizer.h"
 #include "core/rendering/line/LineWidth.h"
 #include "core/rendering/svg/SVGTextRunRenderingContext.h"
 #include "platform/text/BidiTextRun.h"
 
-namespace WebCore {
+namespace blink {
 
 bool RenderBlockFlow::s_canPropagateFloatIntoSibling = false;
 
@@ -280,6 +280,42 @@ void RenderBlockFlow::setColumnCountAndHeight(unsigned count, LayoutUnit pageLog
     }
 }
 
+void RenderBlockFlow::setBreakAtLineToAvoidWidow(int lineToBreak)
+{
+    ASSERT(lineToBreak >= 0);
+    ensureRareData();
+    ASSERT(!m_rareData->m_didBreakAtLineToAvoidWidow);
+    m_rareData->m_lineBreakToAvoidWidow = lineToBreak;
+}
+
+void RenderBlockFlow::setDidBreakAtLineToAvoidWidow()
+{
+    ASSERT(!shouldBreakAtLineToAvoidWidow());
+
+    // This function should be called only after a break was applied to avoid widows
+    // so assert |m_rareData| exists.
+    ASSERT(m_rareData);
+
+    m_rareData->m_didBreakAtLineToAvoidWidow = true;
+}
+
+void RenderBlockFlow::clearDidBreakAtLineToAvoidWidow()
+{
+    if (!m_rareData)
+        return;
+
+    m_rareData->m_didBreakAtLineToAvoidWidow = false;
+}
+
+void RenderBlockFlow::clearShouldBreakAtLineToAvoidWidow() const
+{
+    ASSERT(shouldBreakAtLineToAvoidWidow());
+    if (!m_rareData)
+        return;
+
+    m_rareData->m_lineBreakToAvoidWidow = -1;
+}
+
 bool RenderBlockFlow::isSelfCollapsingBlock() const
 {
     m_hasOnlySelfCollapsingChildren = RenderBlock::isSelfCollapsingBlock();
@@ -331,8 +367,8 @@ void RenderBlockFlow::layoutBlock(bool relayoutChildren)
 inline bool RenderBlockFlow::layoutBlockFlow(bool relayoutChildren, LayoutUnit &pageLogicalHeight, SubtreeLayoutScope& layoutScope)
 {
     LayoutUnit oldLeft = logicalLeft();
-    if (updateLogicalWidthAndColumnWidth())
-        relayoutChildren = true;
+    bool logicalWidthChanged = updateLogicalWidthAndColumnWidth();
+    relayoutChildren |= logicalWidthChanged;
 
     rebuildFloatsFromIntruding();
 
@@ -342,7 +378,7 @@ inline bool RenderBlockFlow::layoutBlockFlow(bool relayoutChildren, LayoutUnit &
     if (pageLogicalHeightChanged)
         relayoutChildren = true;
 
-    LayoutState state(*this, locationOffset(), pageLogicalHeight, pageLogicalHeightChanged, columnInfo());
+    LayoutState state(*this, locationOffset(), pageLogicalHeight, pageLogicalHeightChanged, columnInfo(), logicalWidthChanged);
 
     // We use four values, maxTopPos, maxTopNeg, maxBottomPos, and maxBottomNeg, to track
     // our current maximal positive and negative margins. These values are used when we
@@ -371,7 +407,7 @@ inline bool RenderBlockFlow::layoutBlockFlow(bool relayoutChildren, LayoutUnit &
     if (!firstChild() && !isAnonymousBlock())
         setChildrenInline(true);
 
-    FastTextAutosizer::LayoutScope fastTextAutosizerLayoutScope(this);
+    TextAutosizer::LayoutScope textAutosizerLayoutScope(this);
 
     if (childrenInline())
         layoutInlineChildren(relayoutChildren, m_repaintLogicalTop, m_repaintLogicalBottom, afterEdge);
@@ -500,10 +536,9 @@ void RenderBlockFlow::layoutBlockChild(RenderBox* child, MarginInfo& marginInfo,
     // Go ahead and position the child as though it didn't collapse with the top.
     setLogicalTopForChild(child, logicalTopEstimate);
 
-    RenderBlock* childRenderBlock = child->isRenderBlock() ? toRenderBlock(child) : 0;
-    RenderBlockFlow* childRenderBlockFlow = (childRenderBlock && child->isRenderBlockFlow()) ? toRenderBlockFlow(child) : 0;
+    RenderBlockFlow* childRenderBlockFlow = child->isRenderBlockFlow() ? toRenderBlockFlow(child) : 0;
     bool markDescendantsWithFloats = false;
-    if (logicalTopEstimate != oldLogicalTop && !child->avoidsFloats() && childRenderBlock && childRenderBlock->containsFloats()) {
+    if (logicalTopEstimate != oldLogicalTop && childRenderBlockFlow && !childRenderBlockFlow->avoidsFloats() && childRenderBlockFlow->containsFloats()) {
         markDescendantsWithFloats = true;
     } else if (UNLIKELY(logicalTopEstimate.mightBeSaturated())) {
         // logicalTopEstimate, returned by estimateLogicalTopPosition, might be saturated for
@@ -557,7 +592,7 @@ void RenderBlockFlow::layoutBlockChild(RenderBox* child, MarginInfo& marginInfo,
     // Now we have a final top position. See if it really does end up being different from our estimate.
     // clearFloatsIfNeeded can also mark the child as needing a layout even though we didn't move. This happens
     // when collapseMargins dynamically adds overhanging floats because of a child with negative margins.
-    if (logicalTopAfterClear != logicalTopEstimate || child->needsLayout() || (paginated && childRenderBlock && childRenderBlock->shouldBreakAtLineToAvoidWidow())) {
+    if (logicalTopAfterClear != logicalTopEstimate || child->needsLayout() || (paginated && childRenderBlockFlow && childRenderBlockFlow->shouldBreakAtLineToAvoidWidow())) {
         SubtreeLayoutScope layoutScope(*child);
         if (child->shrinkToAvoidFloats()) {
             // The child's width depends on the line width.
@@ -567,12 +602,11 @@ void RenderBlockFlow::layoutBlockChild(RenderBox* child, MarginInfo& marginInfo,
             layoutScope.setChildNeedsLayout(child);
         }
 
-        if (childRenderBlock) {
-            if (!child->avoidsFloats() && childRenderBlock->containsFloats())
-                childRenderBlockFlow->markAllDescendantsWithFloatsForLayout();
-            if (!child->needsLayout())
-                child->markForPaginationRelayoutIfNeeded(layoutScope);
-        }
+        if (childRenderBlockFlow && !childRenderBlockFlow->avoidsFloats() && childRenderBlockFlow->containsFloats())
+            childRenderBlockFlow->markAllDescendantsWithFloatsForLayout();
+
+        if (!child->needsLayout())
+            child->markForPaginationRelayoutIfNeeded(layoutScope);
 
         // Our guess was wrong. Make the child lay itself out again.
         child->layoutIfNeeded();
@@ -644,7 +678,7 @@ LayoutUnit RenderBlockFlow::adjustBlockChildForPagination(LayoutUnit logicalTopA
         SubtreeLayoutScope layoutScope(*child);
 
         if (childBlockFlow) {
-            if (!child->avoidsFloats() && childBlockFlow->containsFloats())
+            if (!childBlockFlow->avoidsFloats() && childBlockFlow->containsFloats())
                 childBlockFlow->markAllDescendantsWithFloatsForLayout();
             if (!child->needsLayout())
                 child->markForPaginationRelayoutIfNeeded(layoutScope);
@@ -1742,7 +1776,11 @@ void RenderBlockFlow::deleteLineBoxTree()
 {
     if (containsFloats())
         m_floatingObjects->clearLineBoxTreePointers();
-    RenderBlock::deleteLineBoxTree();
+
+    m_lineBoxes.deleteLineBoxTree();
+
+    if (AXObjectCache* cache = document().existingAXObjectCache())
+        cache->recomputeIsIgnored(this);
 }
 
 void RenderBlockFlow::markAllDescendantsWithFloatsForLayout(RenderBox* floatToRemove, bool inLayout)
@@ -1787,7 +1825,7 @@ void RenderBlockFlow::markSiblingsWithFloatsForLayout(RenderBox* floatToRemove)
     FloatingObjectSetIterator end = floatingObjectSet.end();
 
     for (RenderObject* next = nextSibling(); next; next = next->nextSibling()) {
-        if (!next->isRenderBlockFlow() || next->isFloatingOrOutOfFlowPositioned() || toRenderBlock(next)->avoidsFloats())
+        if (!next->isRenderBlockFlow() || next->isFloatingOrOutOfFlowPositioned() || toRenderBlockFlow(next)->avoidsFloats())
             continue;
 
         RenderBlockFlow* nextBlock = toRenderBlockFlow(next);
@@ -2614,8 +2652,33 @@ bool RenderBlockFlow::hitTestFloats(const HitTestRequest& request, HitTestResult
 
 void RenderBlockFlow::adjustForBorderFit(LayoutUnit x, LayoutUnit& left, LayoutUnit& right) const
 {
-    RenderBlock::adjustForBorderFit(x, left, right);
-    if (m_floatingObjects && style()->visibility() == VISIBLE) {
+    if (style()->visibility() != VISIBLE)
+        return;
+
+    // We don't deal with relative positioning. Our assumption is that you shrink to fit the lines without accounting
+    // for either overflow or translations via relative positioning.
+    if (childrenInline()) {
+        for (RootInlineBox* box = firstRootBox(); box; box = box->nextRootBox()) {
+            if (box->firstChild())
+                left = std::min(left, x + static_cast<LayoutUnit>(box->firstChild()->x()));
+            if (box->lastChild())
+                right = std::max(right, x + static_cast<LayoutUnit>(ceilf(box->lastChild()->logicalRight())));
+        }
+    } else {
+        for (RenderBox* obj = firstChildBox(); obj; obj = obj->nextSiblingBox()) {
+            if (!obj->isFloatingOrOutOfFlowPositioned()) {
+                if (obj->isRenderBlockFlow() && !obj->hasOverflowClip()) {
+                    toRenderBlockFlow(obj)->adjustForBorderFit(x + obj->x(), left, right);
+                } else if (obj->style()->visibility() == VISIBLE) {
+                    // We are a replaced element or some kind of non-block-flow object.
+                    left = std::min(left, x + obj->x());
+                    right = std::max(right, x + obj->x() + obj->width());
+                }
+            }
+        }
+    }
+
+    if (m_floatingObjects) {
         const FloatingObjectSet& floatingObjectSet = m_floatingObjects->set();
         FloatingObjectSetIterator end = floatingObjectSet.end();
         for (FloatingObjectSetIterator it = floatingObjectSet.begin(); it != end; ++it) {
@@ -2629,6 +2692,32 @@ void RenderBlockFlow::adjustForBorderFit(LayoutUnit x, LayoutUnit& left, LayoutU
             }
         }
     }
+}
+
+void RenderBlockFlow::fitBorderToLinesIfNeeded()
+{
+    if (style()->borderFit() == BorderFitBorder || hasOverrideWidth())
+        return;
+
+    // Walk any normal flow lines to snugly fit.
+    LayoutUnit left = LayoutUnit::max();
+    LayoutUnit right = LayoutUnit::min();
+    LayoutUnit oldWidth = contentWidth();
+    adjustForBorderFit(0, left, right);
+
+    // Clamp to our existing edges. We can never grow. We only shrink.
+    LayoutUnit leftEdge = borderLeft() + paddingLeft();
+    LayoutUnit rightEdge = leftEdge + oldWidth;
+    left = std::min(rightEdge, std::max(leftEdge, left));
+    right = std::max(left, std::min(rightEdge, right));
+
+    LayoutUnit newContentWidth = right - left;
+    if (newContentWidth == oldWidth)
+        return;
+
+    setOverrideLogicalContentWidth(newContentWidth);
+    layoutBlock(false);
+    clearOverrideLogicalContentWidth();
 }
 
 LayoutUnit RenderBlockFlow::logicalLeftFloatOffsetForLine(LayoutUnit logicalTop, LayoutUnit fixedOffset, LayoutUnit logicalHeight) const
@@ -2713,6 +2802,13 @@ void RenderBlockFlow::setPaginationStrut(LayoutUnit strut)
     m_rareData->m_paginationStrut = strut;
 }
 
+bool RenderBlockFlow::avoidsFloats() const
+{
+    // Floats can't intrude into our box if we have a non-auto column count or width.
+    // Note: we need to use RenderBox::avoidsFloats here since RenderBlock::avoidsFloats is always true.
+    return RenderBox::avoidsFloats() || !style()->hasAutoColumnCount() || !style()->hasAutoColumnWidth();
+}
+
 LayoutUnit RenderBlockFlow::logicalLeftSelectionOffset(RenderBlock* rootBlock, LayoutUnit position)
 {
     LayoutUnit logicalLeft = logicalLeftOffsetForLine(position, false);
@@ -2739,96 +2835,6 @@ LayoutUnit RenderBlockFlow::logicalRightSelectionOffset(RenderBlock* rootBlock, 
         cb = cb->containingBlock();
     }
     return logicalRight;
-}
-
-template <typename CharacterType>
-static inline TextRun constructTextRunInternal(RenderObject* context, const Font& font, const CharacterType* characters, int length, RenderStyle* style, TextDirection direction, TextRun::ExpansionBehavior expansion)
-{
-    ASSERT(style);
-
-    TextDirection textDirection = direction;
-    bool directionalOverride = style->rtlOrdering() == VisualOrder;
-
-    TextRun run(characters, length, 0, 0, expansion, textDirection, directionalOverride);
-    if (textRunNeedsRenderingContext(font))
-        run.setRenderingContext(SVGTextRunRenderingContext::create(context));
-
-    return run;
-}
-
-template <typename CharacterType>
-static inline TextRun constructTextRunInternal(RenderObject* context, const Font& font, const CharacterType* characters, int length, RenderStyle* style, TextDirection direction, TextRun::ExpansionBehavior expansion, TextRunFlags flags)
-{
-    ASSERT(style);
-
-    TextDirection textDirection = direction;
-    bool directionalOverride = style->rtlOrdering() == VisualOrder;
-    if (flags != DefaultTextRunFlags) {
-        if (flags & RespectDirection)
-            textDirection = style->direction();
-        if (flags & RespectDirectionOverride)
-            directionalOverride |= isOverride(style->unicodeBidi());
-    }
-
-    TextRun run(characters, length, 0, 0, expansion, textDirection, directionalOverride);
-    if (textRunNeedsRenderingContext(font))
-        run.setRenderingContext(SVGTextRunRenderingContext::create(context));
-
-    return run;
-}
-
-TextRun RenderBlockFlow::constructTextRun(RenderObject* context, const Font& font, const LChar* characters, int length, RenderStyle* style, TextDirection direction, TextRun::ExpansionBehavior expansion)
-{
-    return constructTextRunInternal(context, font, characters, length, style, direction, expansion);
-}
-
-TextRun RenderBlockFlow::constructTextRun(RenderObject* context, const Font& font, const UChar* characters, int length, RenderStyle* style, TextDirection direction, TextRun::ExpansionBehavior expansion)
-{
-    return constructTextRunInternal(context, font, characters, length, style, direction, expansion);
-}
-
-TextRun RenderBlockFlow::constructTextRun(RenderObject* context, const Font& font, const RenderText* text, RenderStyle* style, TextDirection direction, TextRun::ExpansionBehavior expansion)
-{
-    if (text->is8Bit())
-        return constructTextRunInternal(context, font, text->characters8(), text->textLength(), style, direction, expansion);
-    return constructTextRunInternal(context, font, text->characters16(), text->textLength(), style, direction, expansion);
-}
-
-TextRun RenderBlockFlow::constructTextRun(RenderObject* context, const Font& font, const RenderText* text, unsigned offset, unsigned length, RenderStyle* style, TextDirection direction, TextRun::ExpansionBehavior expansion)
-{
-    ASSERT(offset + length <= text->textLength());
-    if (text->is8Bit())
-        return constructTextRunInternal(context, font, text->characters8() + offset, length, style, direction, expansion);
-    return constructTextRunInternal(context, font, text->characters16() + offset, length, style, direction, expansion);
-}
-
-TextRun RenderBlockFlow::constructTextRun(RenderObject* context, const Font& font, const String& string, RenderStyle* style, TextDirection direction, TextRun::ExpansionBehavior expansion, TextRunFlags flags)
-{
-    unsigned length = string.length();
-    if (!length)
-        return constructTextRunInternal(context, font, static_cast<const LChar*>(0), length, style, direction, expansion, flags);
-    if (string.is8Bit())
-        return constructTextRunInternal(context, font, string.characters8(), length, style, direction, expansion, flags);
-    return constructTextRunInternal(context, font, string.characters16(), length, style, direction, expansion, flags);
-}
-
-TextRun RenderBlockFlow::constructTextRun(RenderObject* context, const Font& font, const String& string, RenderStyle* style, TextRun::ExpansionBehavior expansion, TextRunFlags flags)
-{
-    bool hasStrongDirectionality;
-    return constructTextRun(context, font, string, style,
-        determineDirectionality(string, hasStrongDirectionality),
-        expansion, flags);
-}
-
-TextRun RenderBlockFlow::constructTextRun(RenderObject* context, const Font& font, const RenderText* text, unsigned offset, unsigned length, RenderStyle* style, TextRun::ExpansionBehavior expansion)
-{
-    ASSERT(offset + length <= text->textLength());
-    TextRun run = text->is8Bit()
-        ? constructTextRunInternal(context, font, text->characters8() + offset, length, style, LTR, expansion)
-        : constructTextRunInternal(context, font, text->characters16() + offset, length, style, LTR, expansion);
-    bool hasStrongDirectionality;
-    run.setDirection(directionForRun(run, hasStrongDirectionality));
-    return run;
 }
 
 RootInlineBox* RenderBlockFlow::createRootInlineBox()
@@ -2906,4 +2912,4 @@ RenderBlockFlow::RenderBlockFlowRareData& RenderBlockFlow::ensureRareData()
     return *m_rareData;
 }
 
-} // namespace WebCore
+} // namespace blink

@@ -51,6 +51,12 @@
 ../../../core/dom/DOMError.idl
 ../../../core/dom/DOMException.idl
 ../../../core/dom/DOMImplementation.idl
+../../../core/dom/DOMMatrix.idl
+../../../core/dom/DOMMatrixReadOnly.idl
+../../../core/dom/DOMPoint.idl
+../../../core/dom/DOMPointReadOnly.idl
+../../../core/dom/DOMRect.idl
+../../../core/dom/DOMRectReadOnly.idl
 ../../../core/dom/DOMSettableTokenList.idl
 ../../../core/dom/DOMStringList.idl
 ../../../core/dom/DOMStringMap.idl
@@ -99,6 +105,7 @@
 ../../../core/events/PageTransitionEvent.idl
 ../../../core/events/PopStateEvent.idl
 ../../../core/events/ProgressEvent.idl
+../../../core/events/RelatedEvent.idl
 ../../../core/events/ResourceProgressEvent.idl
 ../../../core/events/SecurityPolicyViolationEvent.idl
 ../../../core/events/TextEvent.idl
@@ -277,6 +284,7 @@
 ../../../core/plugins/PluginArray.idl
 ../../../core/storage/Storage.idl
 ../../../core/storage/StorageEvent.idl
+../../../core/streams/ReadableStream.idl
 ../../../core/streams/Stream.idl
 ../../../core/svg/SVGAElement.idl
 ../../../core/svg/SVGAltGlyphDefElement.idl
@@ -449,7 +457,6 @@
 ../../../core/testing/Internals.idl
 ../../../core/testing/LayerRect.idl
 ../../../core/testing/LayerRectList.idl
-../../../core/testing/MallocStatistics.idl
 ../../../core/testing/PrivateScriptTest.idl
 ../../../core/testing/RefCountedScriptWrappable.idl
 ../../../core/testing/TypeConversions.idl
@@ -474,6 +481,8 @@
 ../../../core/html/canvas/CanvasPathMethods.idl
 ../../../core/html/canvas/MouseEventHitRegion.idl
 ../../../core/html/canvas/WebGLRenderingContextBase.idl
+../../../core/imagebitmap/ImageBitmapFactories.idl
+../../../core/imagebitmap/WindowImageBitmapFactories.idl
 ../../../core/page/WindowPagePopup.idl
 ../../../core/svg/SVGDocument.idl
 ../../../core/svg/SVGFilterPrimitiveStandardAttributes.idl

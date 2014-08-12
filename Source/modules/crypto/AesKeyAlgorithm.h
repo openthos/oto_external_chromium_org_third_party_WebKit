@@ -36,22 +36,22 @@
 #include "platform/heap/Handle.h"
 #include "wtf/Forward.h"
 
-namespace WebCore {
+namespace blink {
 
 class AesKeyAlgorithm : public KeyAlgorithm {
 public:
-    static AesKeyAlgorithm* create(const blink::WebCryptoKeyAlgorithm&);
+    static AesKeyAlgorithm* create(const WebCryptoKeyAlgorithm&);
 
     unsigned short length();
 
     virtual void trace(Visitor*) OVERRIDE;
 
 private:
-    explicit AesKeyAlgorithm(const blink::WebCryptoKeyAlgorithm&);
+    explicit AesKeyAlgorithm(const WebCryptoKeyAlgorithm&);
 };
 
 DEFINE_KEY_ALGORITHM_TYPE_CASTS(AesKeyAlgorithm);
 
-} // namespace WebCore
+} // namespace blink
 
 #endif

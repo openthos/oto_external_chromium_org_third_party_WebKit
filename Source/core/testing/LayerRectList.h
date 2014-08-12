@@ -37,14 +37,14 @@
 #include "wtf/Vector.h"
 #include "wtf/text/WTFString.h"
 
-namespace WebCore {
+namespace blink {
 
 class ClientRect;
 class ClientRectList;
 class LayerRect;
 class Node;
 
-class LayerRectList FINAL : public RefCountedWillBeGarbageCollected<LayerRectList> {
+class LayerRectList FINAL : public RefCountedWillBeGarbageCollected<LayerRectList>, public ScriptWrappable {
     DECLARE_EMPTY_DESTRUCTOR_WILL_BE_REMOVED(LayerRectList);
 public:
     static PassRefPtrWillBeRawPtr<LayerRectList> create()
@@ -64,6 +64,6 @@ private:
     WillBeHeapVector<RefPtrWillBeMember<LayerRect> > m_list;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // ClientRectList_h

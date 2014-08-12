@@ -30,7 +30,7 @@
 #include "core/rendering/RenderBlock.h"
 #include "core/rendering/style/GridResolvedPosition.h"
 
-namespace WebCore {
+namespace blink {
 
 struct GridCoordinate;
 struct GridSpan;
@@ -45,7 +45,6 @@ public:
 
     virtual void layoutBlock(bool relayoutChildren) OVERRIDE;
 
-    virtual bool avoidsFloats() const OVERRIDE { return true; }
     virtual bool canCollapseAnonymousBlockChild() const OVERRIDE { return false; }
 
     void dirtyGrid();
@@ -128,6 +127,8 @@ private:
     bool tracksAreWiderThanMinTrackBreadth(GridTrackSizingDirection, const Vector<GridTrack>&);
 #endif
 
+    size_t gridItemSpan(const RenderBox*, GridTrackSizingDirection);
+
     size_t gridColumnCount() const
     {
         ASSERT(!gridIsDirty());
@@ -153,6 +154,6 @@ private:
 
 DEFINE_RENDER_OBJECT_TYPE_CASTS(RenderGrid, isRenderGrid());
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // RenderGrid_h

@@ -41,7 +41,7 @@
 #include "wtf/RefCounted.h"
 #include "wtf/text/WTFString.h"
 
-namespace WebCore {
+namespace blink {
 
 class Blob;
 class ExceptionState;
@@ -106,7 +106,6 @@ private:
 
     void terminate();
     void readInternal(Blob*, FileReaderLoader::ReadType, ExceptionState&);
-    void fireErrorEvent(int httpStatusCode);
     void fireEvent(const AtomicString& type);
 
     void executePendingRead();
@@ -131,8 +130,9 @@ private:
     OwnPtr<FileReaderLoader> m_loader;
     RefPtrWillBeMember<FileError> m_error;
     double m_lastProgressNotificationTimeMS;
+    int m_asyncOperationId;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // FileReader_h

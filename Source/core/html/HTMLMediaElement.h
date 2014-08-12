@@ -33,6 +33,7 @@
 #include "core/html/track/TextTrackCue.h"
 #include "core/html/track/vtt/VTTCue.h"
 #include "platform/PODIntervalTree.h"
+#include "platform/Supplementable.h"
 #include "platform/graphics/media/MediaPlayer.h"
 #include "public/platform/WebMediaPlayerClient.h"
 #include "public/platform/WebMimeRegistry.h"
@@ -43,7 +44,7 @@ class WebInbandTextTrack;
 class WebLayer;
 }
 
-namespace WebCore {
+namespace blink {
 
 #if ENABLE(WEB_AUDIO)
 class AudioSourceProvider;
@@ -622,11 +623,6 @@ struct ValueToString<TextTrackCue*> {
     }
 };
 #endif
-
-inline bool isHTMLMediaElement(const Element& element)
-{
-    return isHTMLAudioElement(element) || isHTMLVideoElement(element);
-}
 
 inline bool isHTMLMediaElement(const HTMLElement& element)
 {

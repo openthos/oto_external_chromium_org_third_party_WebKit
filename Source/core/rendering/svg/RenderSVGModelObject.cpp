@@ -33,12 +33,13 @@
 
 #include "core/rendering/RenderLayer.h"
 #include "core/rendering/RenderView.h"
+#include "core/rendering/svg/RenderSVGContainer.h"
 #include "core/rendering/svg/RenderSVGRoot.h"
 #include "core/rendering/svg/SVGRenderSupport.h"
 #include "core/rendering/svg/SVGResourcesCache.h"
 #include "core/svg/SVGGraphicsElement.h"
 
-namespace WebCore {
+namespace blink {
 
 RenderSVGModelObject::RenderSVGModelObject(SVGElement* node)
     : RenderObject(node)
@@ -130,9 +131,16 @@ void RenderSVGModelObject::invalidateTreeIfNeeded(const PaintInvalidationState& 
     // FIXME: Should share code with RenderBox::invalidateTreeIfNeeded().
     ASSERT(!needsLayout());
 
-    if (!shouldCheckForPaintInvalidation())
+    if (!shouldCheckForPaintInvalidation(paintInvalidationState))
         return;
 
+    invalidatePaintIfNeeded(paintInvalidationState);
+
+    RenderObject::invalidateTreeIfNeeded(paintInvalidationState);
+}
+
+void RenderSVGModelObject::invalidatePaintIfNeeded(const PaintInvalidationState& paintInvalidationState)
+{
     ForceHorriblySlowRectMapping slowRectMapping(&paintInvalidationState);
 
     const LayoutRect oldPaintInvalidationRect = previousPaintInvalidationRect();
@@ -141,24 +149,13 @@ void RenderSVGModelObject::invalidateTreeIfNeeded(const PaintInvalidationState& 
     setPreviousPaintInvalidationRect(boundsRectForPaintInvalidation(&paintInvalidationState.paintInvalidationContainer(), &paintInvalidationState));
     setPreviousPositionFromPaintInvalidationContainer(RenderLayer::positionFromPaintInvalidationContainer(this, &paintInvalidationState.paintInvalidationContainer(), &paintInvalidationState));
 
-    // If an ancestor container had its transform changed, then we just
-    // need to update the RenderSVGModelObject's repaint rect above. The invalidation
-    // will be handled by the container where the transform changed. This essentially
-    // means that we prune the entire branch for performance.
-    if (!SVGRenderSupport::parentTransformDidChange(this))
-        return;
-
     // If we are set to do a full paint invalidation that means the RenderView will be
     // issue paint invalidations. We can then skip issuing of paint invalidations for the child
     // renderers as they'll be covered by the RenderView.
-    if (view()->doingFullRepaint()) {
-        RenderObject::invalidateTreeIfNeeded(paintInvalidationState);
+    if (view()->doingFullPaintInvalidation())
         return;
-    }
 
-    invalidatePaintIfNeeded(paintInvalidationState.paintInvalidationContainer(), oldPaintInvalidationRect, oldPositionFromPaintInvalidationContainer, paintInvalidationState);
-
-    RenderObject::invalidateTreeIfNeeded(paintInvalidationState);
+    RenderObject::invalidatePaintIfNeeded(paintInvalidationState.paintInvalidationContainer(), oldPaintInvalidationRect, oldPositionFromPaintInvalidationContainer, paintInvalidationState);
 }
 
-} // namespace WebCore
+} // namespace blink

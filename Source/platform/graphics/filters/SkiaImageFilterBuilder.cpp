@@ -39,15 +39,17 @@
 #include "platform/graphics/skia/SkiaUtils.h"
 #include "public/platform/WebPoint.h"
 
-namespace WebCore {
+namespace blink {
 
 SkiaImageFilterBuilder::SkiaImageFilterBuilder()
     : m_context(0)
+    , m_sourceGraphic(0)
 {
 }
 
 SkiaImageFilterBuilder::SkiaImageFilterBuilder(GraphicsContext* context)
     : m_context(context)
+    , m_sourceGraphic(0)
 {
 }
 

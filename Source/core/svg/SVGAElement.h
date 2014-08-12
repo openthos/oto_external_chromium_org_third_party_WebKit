@@ -26,7 +26,7 @@
 #include "core/svg/SVGGraphicsElement.h"
 #include "core/svg/SVGURIReference.h"
 
-namespace WebCore {
+namespace blink {
 
 class SVGAElement FINAL : public SVGGraphicsElement,
                           public SVGURIReference {
@@ -39,7 +39,6 @@ private:
 
     virtual String title() const OVERRIDE;
 
-    bool isSupportedAttribute(const QualifiedName&);
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual void svgAttributeChanged(const QualifiedName&) OVERRIDE;
 
@@ -61,6 +60,6 @@ private:
     RefPtr<SVGAnimatedString> m_svgTarget;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // SVGAElement_h

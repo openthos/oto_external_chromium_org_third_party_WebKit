@@ -5,16 +5,16 @@
 #ifndef GeoNotifier_h
 #define GeoNotifier_h
 
+#include "modules/geolocation/PositionCallback.h"
+#include "modules/geolocation/PositionErrorCallback.h"
 #include "platform/Timer.h"
 #include "platform/heap/Handle.h"
 
-namespace WebCore {
+namespace blink {
 
 class Geolocation;
 class Geoposition;
-class PositionCallback;
 class PositionError;
-class PositionErrorCallback;
 class PositionOptions;
 
 class GeoNotifier : public GarbageCollectedFinalized<GeoNotifier> {
@@ -60,6 +60,6 @@ private:
     bool m_useCachedPosition;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // GeoNotifier_h

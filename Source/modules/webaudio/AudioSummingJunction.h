@@ -30,7 +30,7 @@
 #include "wtf/HashSet.h"
 #include "wtf/Vector.h"
 
-namespace WebCore {
+namespace blink {
 
 class AudioContext;
 class AudioNodeOutput;
@@ -63,31 +63,26 @@ public:
 protected:
     explicit AudioSummingJunction(AudioContext*);
 
-    // Oilpan: m_context can be null only in the destructor because
-    // AudioSummingJunction objects are owned by AudioNodes, and AudioNodes have
-    // strong references to AudioContext.
-    // Theorically this should be a strong reference and AudioContext::
-    // m_dirtySummingJunctions should be HeapHashSet<WeakMember<
-    // AudioSummingJunction>>, but we can't do them because the map is modified
-    // in an audio rendering thread, which has no GC support. We need to remove
-    // an AudioSummingJunction from AudioContext in ~AudioSummingJunction, and
-    // this WeakMember<> makes it possible though we can't do it with Member<>.
-    RefPtrWillBeWeakMember<AudioContext> m_context;
+    RefPtrWillBeMember<AudioContext> m_context;
 
     // m_outputs contains the AudioNodeOutputs representing current connections which are not disabled.
     // The rendering code should never use this directly, but instead uses m_renderingOutputs.
+    // Oilpan: Since items are added to the hash set by the audio thread (not registered to Oilpan),
+    // we cannot use a HeapHashSet.
     HashSet<AudioNodeOutput*> m_outputs;
 
     // m_renderingOutputs is a copy of m_outputs which will never be modified during the graph rendering on the audio thread.
     // This is the list which is used by the rendering code.
     // Whenever m_outputs is modified, the context is told so it can later update m_renderingOutputs from m_outputs at a safe time.
     // Most of the time, m_renderingOutputs is identical to m_outputs.
+    // Oilpan: Since items are added to the vector by the audio thread (not registered to Oilpan),
+    // we cannot use a HeapVector.
     Vector<AudioNodeOutput*> m_renderingOutputs;
 
     // m_renderingStateNeedUpdating keeps track if m_outputs is modified.
     bool m_renderingStateNeedUpdating;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // AudioSummingJunction_h

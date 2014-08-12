@@ -78,7 +78,7 @@
 #include "platform/text/PlatformLocale.h"
 #include "wtf/MathExtras.h"
 
-namespace WebCore {
+namespace blink {
 
 using namespace HTMLNames;
 
@@ -380,11 +380,6 @@ void HTMLInputElement::endEditing()
     frame->host()->chrome().client().didEndEditingOnTextField(*this);
 }
 
-bool HTMLInputElement::shouldUseInputMethod()
-{
-    return m_inputType->shouldUseInputMethod();
-}
-
 void HTMLInputElement::handleFocusEvent(Element* oldFocusedElement, FocusType type)
 {
     m_inputTypeView->handleFocusEvent(oldFocusedElement, type);
@@ -453,7 +448,7 @@ void HTMLInputElement::updateType()
 
     if (didRespectHeightAndWidth != m_inputType->shouldRespectHeightAndWidthAttributes()) {
         ASSERT(elementData());
-        AttributeCollection attributes = this->attributes();
+        AttributeCollection attributes = attributesWithoutUpdate();
         if (const Attribute* height = attributes.find(heightAttr))
             attributeChanged(heightAttr, height->value());
         if (const Attribute* width = attributes.find(widthAttr))
@@ -1438,7 +1433,7 @@ Node::InsertionNotificationRequest HTMLInputElement::insertedInto(ContainerNode*
     if (insertionPoint->inDocument() && !form())
         addToRadioButtonGroup();
     resetListAttributeTargetObserver();
-    return InsertionDone;
+    return InsertionShouldCallDidNotifySubtreeInsertions;
 }
 
 void HTMLInputElement::removedFrom(ContainerNode* insertionPoint)
@@ -1833,7 +1828,7 @@ bool HTMLInputElement::setupDateTimeChooserParameters(DateTimeChooserParameters&
     parameters.anchorRectInRootView = document().view()->contentsToRootView(pixelSnappedBoundingBox());
     parameters.currentValue = value();
     parameters.doubleValue = m_inputType->valueAsDouble();
-    parameters.isAnchorElementRTL = computedStyle()->direction() == RTL;
+    parameters.isAnchorElementRTL = m_inputType->computedTextDirection() == RTL;
     if (HTMLDataListElement* dataList = this->dataList()) {
         RefPtrWillBeRawPtr<HTMLCollection> options = dataList->options();
         for (unsigned i = 0; HTMLOptionElement* option = toHTMLOptionElement(options->item(i)); ++i) {
@@ -1884,6 +1879,11 @@ PassRefPtr<RenderStyle> HTMLInputElement::customStyleForRenderer()
 bool HTMLInputElement::shouldDispatchFormControlChangeEvent(String& oldValue, String& newValue)
 {
     return m_inputType->shouldDispatchFormControlChangeEvent(oldValue, newValue);
+}
+
+void HTMLInputElement::didNotifySubtreeInsertionsToDocument()
+{
+    listAttributeTargetChanged();
 }
 
 } // namespace

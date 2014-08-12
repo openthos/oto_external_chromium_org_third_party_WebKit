@@ -31,7 +31,7 @@
 #include "platform/graphics/GraphicsLayerClient.h"
 #include "wtf/HashMap.h"
 
-namespace WebCore {
+namespace blink {
 
 class DocumentLifecycle;
 class GraphicsLayer;
@@ -109,7 +109,7 @@ public:
     // Repaint the appropriate layers when the given RenderLayer starts or stops being composited.
     void repaintOnCompositingChange(RenderLayer*);
 
-    void repaintCompositedLayers();
+    void fullyInvalidatePaint();
 
     RenderLayer* rootRenderLayer() const;
     GraphicsLayer* rootGraphicsLayer() const;
@@ -194,8 +194,6 @@ private:
 
     void updateIfNeeded();
 
-    void recursiveRepaintLayer(RenderLayer*);
-
     void computeCompositingRequirements(RenderLayer* ancestorLayer, RenderLayer*, OverlapMap&, struct CompositingRecursionData&, bool& descendantHas3DTransform, Vector<RenderLayer*>& unclippedDescendants, IntRect& absoluteDecendantBoundingBox);
 
     bool hasAnyAdditionalCompositedLayers(const RenderLayer* rootLayer) const;
@@ -263,6 +261,6 @@ private:
     bool m_inOverlayFullscreenVideo;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // RenderLayerCompositor_h

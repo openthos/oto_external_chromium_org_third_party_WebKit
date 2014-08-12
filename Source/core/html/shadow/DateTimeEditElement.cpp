@@ -42,7 +42,7 @@
 #include "platform/text/PlatformLocale.h"
 #include "wtf/DateMath.h"
 
-namespace WebCore {
+namespace blink {
 
 using namespace HTMLNames;
 using namespace WTF::Unicode;
@@ -662,7 +662,7 @@ bool DateTimeEditElement::isReadOnly() const
 void DateTimeEditElement::layout(const LayoutParameters& layoutParameters, const DateComponents& dateValue)
 {
     DEFINE_STATIC_LOCAL(AtomicString, fieldsWrapperPseudoId, ("-webkit-datetime-edit-fields-wrapper", AtomicString::ConstructFromLiteral));
-    if (!firstChild()) {
+    if (!hasChildren()) {
         RefPtrWillBeRawPtr<HTMLDivElement> element = HTMLDivElement::create(document());
         element->setShadowPseudoId(fieldsWrapperPseudoId);
         appendChild(element.get());
@@ -812,6 +812,6 @@ DateTimeFieldsState DateTimeEditElement::valueAsDateTimeFieldsState() const
     return dateTimeFieldsState;
 }
 
-} // namespace WebCore
+} // namespace blink
 
 #endif

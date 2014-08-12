@@ -45,9 +45,9 @@
 #include "wtf/text/WTFString.h"
 #include <stdio.h>
 
-using namespace WebCore;
+using namespace blink;
 
-namespace WebCore {
+namespace blink {
 
 const WrapperTypeInfo* npObjectTypeInfo()
 {
@@ -200,10 +200,12 @@ void disposeUnderlyingV8Object(NPObject* npObject, v8::Isolate* isolate)
     v8NpObject->rootObject = 0;
 }
 
-} // namespace WebCore
+} // namespace blink
 
 bool _NPN_Invoke(NPP npp, NPObject* npObject, NPIdentifier methodName, const NPVariant* arguments, uint32_t argumentCount, NPVariant* result)
 {
+    ScriptForbiddenScope::AllowSuperUnsafeScript thisShouldBeRemoved;
+
     if (!npObject)
         return false;
 
@@ -269,6 +271,8 @@ bool _NPN_Invoke(NPP npp, NPObject* npObject, NPIdentifier methodName, const NPV
 // FIXME: Fix it same as _NPN_Invoke (HandleScope and such).
 bool _NPN_InvokeDefault(NPP npp, NPObject* npObject, const NPVariant* arguments, uint32_t argumentCount, NPVariant* result)
 {
+    ScriptForbiddenScope::AllowSuperUnsafeScript thisShouldBeRemoved;
+
     if (!npObject)
         return false;
 
@@ -324,6 +328,8 @@ bool _NPN_Evaluate(NPP npp, NPObject* npObject, NPString* npScript, NPVariant* r
 
 bool _NPN_EvaluateHelper(NPP npp, bool popupsAllowed, NPObject* npObject, NPString* npScript, NPVariant* result)
 {
+    ScriptForbiddenScope::AllowSuperUnsafeScript thisShouldBeRemoved;
+
     VOID_TO_NPVARIANT(*result);
     if (!npObject)
         return false;
@@ -491,7 +497,7 @@ void _NPN_SetException(NPObject* npObject, const NPUTF8 *message)
     if (!npObject || !npObjectToV8NPObject(npObject)) {
         // We won't be able to find a proper scope for this exception, so just throw it.
         // This is consistent with JSC, which throws a global exception all the time.
-        throwError(v8GeneralError, message, v8::Isolate::GetCurrent());
+        V8ThrowException::throwGeneralError(message, v8::Isolate::GetCurrent());
         return;
     }
 
@@ -503,7 +509,7 @@ void _NPN_SetException(NPObject* npObject, const NPUTF8 *message)
     ScriptState::Scope scope(scriptState);
     ExceptionCatcher exceptionCatcher;
 
-    throwError(v8GeneralError, message, isolate);
+    V8ThrowException::throwGeneralError(message, isolate);
 }
 
 bool _NPN_Enumerate(NPP npp, NPObject* npObject, NPIdentifier** identifier, uint32_t* count)

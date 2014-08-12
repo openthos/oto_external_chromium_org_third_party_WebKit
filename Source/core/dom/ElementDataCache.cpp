@@ -29,7 +29,7 @@
 
 #include "core/dom/ElementData.h"
 
-namespace WebCore {
+namespace blink {
 
 DEFINE_EMPTY_DESTRUCTOR_WILL_BE_REMOVED(ElementDataCache)
 
@@ -67,7 +67,9 @@ ElementDataCache::ElementDataCache()
 
 void ElementDataCache::trace(Visitor* visitor)
 {
+#if ENABLE(OILPAN)
     visitor->trace(m_shareableElementDataCache);
+#endif
 }
 
 }

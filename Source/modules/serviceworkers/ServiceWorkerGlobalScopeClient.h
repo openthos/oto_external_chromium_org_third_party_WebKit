@@ -41,10 +41,11 @@
 #include "wtf/Noncopyable.h"
 
 namespace blink {
+class WebServiceWorkerCacheStorage;
 class WebURL;
 };
 
-namespace WebCore {
+namespace blink {
 
 class ExecutionContext;
 class Response;
@@ -57,6 +58,7 @@ public:
 
     virtual void getClients(blink::WebServiceWorkerClientsCallbacks*) = 0;
     virtual blink::WebURL scope() const = 0;
+    virtual blink::WebServiceWorkerCacheStorage* cacheStorage() const = 0;
 
     virtual void didHandleActivateEvent(int eventID, blink::WebServiceWorkerEventResult) = 0;
     virtual void didHandleInstallEvent(int installEventID, blink::WebServiceWorkerEventResult) = 0;
@@ -74,6 +76,6 @@ protected:
 
 void provideServiceWorkerGlobalScopeClientToWorker(WorkerClients*, PassOwnPtrWillBeRawPtr<ServiceWorkerGlobalScopeClient>);
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // ServiceWorkerGlobalScopeClient_h

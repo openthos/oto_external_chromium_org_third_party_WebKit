@@ -39,9 +39,10 @@
 ../../../modules/gamepad/GamepadList.idl
 ../../../modules/gamepad/WebKitGamepad.idl
 ../../../modules/gamepad/WebKitGamepadList.idl
-../../../modules/geolocation/CircularRegion.idl
+../../../modules/geofencing/CircularRegion.idl
+../../../modules/geofencing/Geofencing.idl
+../../../modules/geofencing/GeofencingRegion.idl
 ../../../modules/geolocation/Coordinates.idl
-../../../modules/geolocation/GeofencingRegion.idl
 ../../../modules/geolocation/Geolocation.idl
 ../../../modules/geolocation/Geoposition.idl
 ../../../modules/geolocation/PositionCallback.idl
@@ -101,6 +102,7 @@
 ../../../modules/quota/StorageQuotaCallback.idl
 ../../../modules/quota/StorageUsageCallback.idl
 ../../../modules/screen_orientation/ScreenOrientation.idl
+../../../modules/serviceworkers/CacheStorage.idl
 ../../../modules/serviceworkers/Client.idl
 ../../../modules/serviceworkers/FetchBodyStream.idl
 ../../../modules/serviceworkers/FetchEvent.idl
@@ -114,6 +116,7 @@
 ../../../modules/serviceworkers/ServiceWorkerClients.idl
 ../../../modules/serviceworkers/ServiceWorkerContainer.idl
 ../../../modules/serviceworkers/ServiceWorkerGlobalScope.idl
+../../../modules/serviceworkers/ServiceWorkerRegistration.idl
 ../../../modules/speech/SpeechGrammar.idl
 ../../../modules/speech/SpeechGrammarList.idl
 ../../../modules/speech/SpeechRecognition.idl
@@ -192,9 +195,8 @@
 ../../../modules/filesystem/WindowFileSystem.idl
 ../../../modules/filesystem/WorkerGlobalScopeFileSystem.idl
 ../../../modules/gamepad/NavigatorGamepad.idl
+../../../modules/geofencing/NavigatorGeofencing.idl
 ../../../modules/geolocation/NavigatorGeolocation.idl
-../../../modules/imagebitmap/ImageBitmapFactories.idl
-../../../modules/imagebitmap/WindowImageBitmapFactories.idl
 ../../../modules/indexeddb/WindowIndexedDatabase.idl
 ../../../modules/indexeddb/WorkerGlobalScopeIndexedDatabase.idl
 ../../../modules/mediasource/HTMLVideoElementMediaSource.idl

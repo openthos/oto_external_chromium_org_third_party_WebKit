@@ -73,7 +73,7 @@
 
 using blink::WebLocalizedString;
 
-namespace WebCore {
+namespace blink {
 
 using namespace HTMLNames;
 
@@ -749,7 +749,7 @@ bool AXRenderObject::computeAccessibilityIsIgnored() const
 
     // Don't ignore generic focusable elements like <div tabindex=0>
     // unless they're completely empty, with no children.
-    if (isGenericFocusableElement() && node->firstChild())
+    if (isGenericFocusableElement() && node->hasChildren())
         return false;
 
     if (!ariaAccessibilityDescription().isEmpty())
@@ -1991,7 +1991,7 @@ RenderObject* AXRenderObject::renderParentObject() const
     return parent;
 }
 
-bool AXRenderObject::isDescendantOfElementType(const QualifiedName& tagName) const
+bool AXRenderObject::isDescendantOfElementType(const HTMLQualifiedName& tagName) const
 {
     for (RenderObject* parent = m_renderer->parent(); parent; parent = parent->parent()) {
         if (parent->node() && parent->node()->hasTagName(tagName))
@@ -2320,4 +2320,4 @@ LayoutRect AXRenderObject::computeElementRect() const
     return result;
 }
 
-} // namespace WebCore
+} // namespace blink

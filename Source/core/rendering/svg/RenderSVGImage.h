@@ -26,7 +26,7 @@
 
 #include "core/rendering/svg/RenderSVGModelObject.h"
 
-namespace WebCore {
+namespace blink {
 
 class RenderImageResource;
 class SVGImageElement;
@@ -55,7 +55,7 @@ private:
     virtual FloatRect strokeBoundingBox() const OVERRIDE { return m_objectBoundingBox; }
     virtual FloatRect paintInvalidationRectInLocalCoordinates() const OVERRIDE { return m_repaintBoundingBox; }
 
-    virtual void addFocusRingRects(Vector<IntRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) OVERRIDE;
+    virtual void addFocusRingRects(Vector<IntRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) const OVERRIDE;
 
     virtual void imageChanged(WrappedImagePtr, const IntRect* = 0) OVERRIDE;
 
@@ -80,6 +80,6 @@ private:
 
 DEFINE_RENDER_OBJECT_TYPE_CASTS(RenderSVGImage, isSVGImage());
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // RenderSVGImage_h

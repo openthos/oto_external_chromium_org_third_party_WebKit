@@ -44,7 +44,7 @@
 #include "platform/RuntimeEnabledFeatures.h"
 #include "public/platform/Platform.h"
 
-namespace WebCore {
+namespace blink {
 
 static const int defaultFontSize = 10;
 static const char defaultFontFamily[] = "sans-serif";
@@ -451,7 +451,7 @@ ScriptPromise FontFaceSet::load(ScriptState* scriptState, const String& fontStri
     if (!resolveFontStyle(fontString, font)) {
         RefPtr<ScriptPromiseResolver> resolver = ScriptPromiseResolver::create(scriptState);
         ScriptPromise promise = resolver->promise();
-        resolver->reject(DOMError::create(SyntaxError, "Could not resolve '" + fontString + "' as a font."));
+        resolver->reject(DOMException::create(SyntaxError, "Could not resolve '" + fontString + "' as a font."));
         return promise;
     }
 
@@ -533,6 +533,7 @@ bool FontFaceSet::resolveFontStyle(const String& fontString, Font& font)
     // Now map the font property longhands into the style.
     CSSPropertyValue properties[] = {
         CSSPropertyValue(CSSPropertyFontFamily, *parsedStyle),
+        CSSPropertyValue(CSSPropertyFontStretch, *parsedStyle),
         CSSPropertyValue(CSSPropertyFontStyle, *parsedStyle),
         CSSPropertyValue(CSSPropertyFontVariant, *parsedStyle),
         CSSPropertyValue(CSSPropertyFontWeight, *parsedStyle),
@@ -603,4 +604,4 @@ void FontFaceSet::trace(Visitor* visitor)
 }
 #endif
 
-} // namespace WebCore
+} // namespace blink

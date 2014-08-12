@@ -44,9 +44,8 @@
 #include "public/web/WebViewClient.h"
 #include "web/WebDevToolsAgentImpl.h"
 #include "web/WebViewImpl.h"
-#include "wtf/Vector.h"
 
-using namespace WebCore;
+using namespace blink;
 
 namespace blink {
 
@@ -72,7 +71,7 @@ void InspectorClientImpl::hideHighlight()
         agent->hideHighlight();
 }
 
-void InspectorClientImpl::sendMessageToFrontend(PassRefPtr<WebCore::JSONObject> message)
+void InspectorClientImpl::sendMessageToFrontend(PassRefPtr<blink::JSONObject> message)
 {
     if (WebDevToolsAgentImpl* agent = devToolsAgent())
         agent->sendMessageToFrontend(message);

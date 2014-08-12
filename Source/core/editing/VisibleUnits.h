@@ -29,8 +29,11 @@
 #include "core/editing/EditingBoundary.h"
 #include "platform/text/TextDirection.h"
 
-namespace WebCore {
+namespace blink {
 
+class LayoutRect;
+class PositionWithAffinity;
+class RenderObject;
 class Node;
 class VisiblePosition;
 
@@ -93,6 +96,9 @@ VisiblePosition startOfEditableContent(const VisiblePosition&);
 VisiblePosition endOfEditableContent(const VisiblePosition&);
 bool isEndOfEditableOrNonEditableContent(const VisiblePosition&);
 
-} // namespace WebCore
+// Rect is local to the returned renderer
+LayoutRect localCaretRectOfPosition(const PositionWithAffinity&, RenderObject*&);
+
+} // namespace blink
 
 #endif // VisibleUnits_h

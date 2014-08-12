@@ -70,14 +70,14 @@ using blink::WebVector;
 
 namespace {
 
-WebLayer* toWebLayer(WebCore::GraphicsLayer* layer)
+WebLayer* toWebLayer(blink::GraphicsLayer* layer)
 {
     return layer ? layer->platformLayer() : 0;
 }
 
 } // namespace
 
-namespace WebCore {
+namespace blink {
 
 PassOwnPtr<ScrollingCoordinator> ScrollingCoordinator::create(Page* page)
 {
@@ -96,15 +96,6 @@ ScrollingCoordinator::ScrollingCoordinator(Page* page)
 
 ScrollingCoordinator::~ScrollingCoordinator()
 {
-}
-
-bool ScrollingCoordinator::touchHitTestingEnabled() const
-{
-    if (!m_page->mainFrame()->isLocalFrame())
-        return false;
-    RenderView* contentRenderer = m_page->deprecatedLocalMainFrame()->contentRenderer();
-    Settings* settings = m_page->mainFrame()->settings();
-    return RuntimeEnabledFeatures::touchEnabled() && settings->compositorTouchHitTesting() && contentRenderer && contentRenderer->usesCompositing();
 }
 
 void ScrollingCoordinator::setShouldHandleScrollGestureOnMainThreadRegion(const Region& region)
@@ -526,7 +517,7 @@ void ScrollingCoordinator::updateTouchEventTargetRectsIfNeeded()
 {
     TRACE_EVENT0("input", "ScrollingCoordinator::updateTouchEventTargetRectsIfNeeded");
 
-    if (!touchHitTestingEnabled())
+    if (!RuntimeEnabledFeatures::touchEnabled())
         return;
 
     LayerHitTestRects touchEventTargetRects;
@@ -590,7 +581,7 @@ void ScrollingCoordinator::setTouchEventTargetRects(LayerHitTestRects& layerRect
 
 void ScrollingCoordinator::touchEventTargetRectsDidChange()
 {
-    if (!touchHitTestingEnabled())
+    if (!RuntimeEnabledFeatures::touchEnabled())
         return;
 
     // Wait until after layout to update.
@@ -822,7 +813,7 @@ static void accumulateDocumentTouchEventTargetRects(LayerHitTestRects& rects, co
 void ScrollingCoordinator::computeTouchEventTargetRects(LayerHitTestRects& rects)
 {
     TRACE_EVENT0("input", "ScrollingCoordinator::computeTouchEventTargetRects");
-    ASSERT(touchHitTestingEnabled());
+    ASSERT(RuntimeEnabledFeatures::touchEnabled());
 
     Document* document = m_page->deprecatedLocalMainFrame()->document();
     if (!document || !document->view())
@@ -965,4 +956,4 @@ bool ScrollingCoordinator::frameViewIsDirty() const
     return false;
 }
 
-} // namespace WebCore
+} // namespace blink

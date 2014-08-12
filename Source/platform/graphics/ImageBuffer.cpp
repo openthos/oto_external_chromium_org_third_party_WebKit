@@ -52,14 +52,16 @@
 #include "public/platform/WebExternalTextureMailbox.h"
 #include "public/platform/WebGraphicsContext3D.h"
 #include "public/platform/WebGraphicsContext3DProvider.h"
+#include "third_party/skia/include/core/SkPicture.h"
 #include "third_party/skia/include/effects/SkTableColorFilter.h"
 #include "wtf/MathExtras.h"
+#include "wtf/Vector.h"
 #include "wtf/text/Base64.h"
 #include "wtf/text/WTFString.h"
 
 using namespace std;
 
-namespace WebCore {
+namespace blink {
 
 PassOwnPtr<ImageBuffer> ImageBuffer::create(PassOwnPtr<ImageBufferSurface> surface)
 {
@@ -80,12 +82,12 @@ ImageBuffer::ImageBuffer(PassOwnPtr<ImageBufferSurface> surface)
     : m_surface(surface)
     , m_client(0)
 {
-    m_surface->setImageBuffer(this);
     if (m_surface->canvas()) {
         m_context = adoptPtr(new GraphicsContext(m_surface->canvas()));
         m_context->setCertainlyOpaque(m_surface->opacityMode() == Opaque);
         m_context->setAccelerated(m_surface->isAccelerated());
     }
+    m_surface->setImageBuffer(this);
 }
 
 ImageBuffer::~ImageBuffer()
@@ -96,20 +98,35 @@ GraphicsContext* ImageBuffer::context() const
 {
     if (!isSurfaceValid())
         return 0;
-    m_surface->willUse();
     ASSERT(m_context.get());
     return m_context.get();
 }
 
 const SkBitmap& ImageBuffer::bitmap() const
 {
-    m_surface->willUse();
     return m_surface->bitmap();
 }
 
 bool ImageBuffer::isSurfaceValid() const
 {
     return m_surface->isValid();
+}
+
+bool ImageBuffer::isDirty()
+{
+    return m_client ? m_client->isDirty() : false;
+}
+
+void ImageBuffer::didFinalizeFrame()
+{
+    if (m_client)
+        m_client->didFinalizeFrame();
+}
+
+void ImageBuffer::finalizeFrame()
+{
+    m_surface->finalizeFrame();
+    didFinalizeFrame();
 }
 
 bool ImageBuffer::restoreSurface() const
@@ -121,12 +138,6 @@ void ImageBuffer::notifySurfaceInvalid()
 {
     if (m_client)
         m_client->notifySurfaceInvalid();
-}
-
-void ImageBuffer::didPresent()
-{
-    if (m_client)
-        m_client->didPresent();
 }
 
 static SkBitmap deepSkBitmapCopy(const SkBitmap& bitmap)
@@ -236,12 +247,18 @@ bool ImageBuffer::copyRenderingResultsFromDrawingBuffer(DrawingBuffer* drawingBu
         GL_UNSIGNED_BYTE, 0, true, false, fromFrontBuffer);
 }
 
-void ImageBuffer::draw(GraphicsContext* context, const FloatRect& destRect, const FloatRect* srcPtr, CompositeOperator op)
+void ImageBuffer::draw(GraphicsContext* context, const FloatRect& destRect, const FloatRect* srcPtr, CompositeOperator op, WebBlendMode blendMode)
 {
     if (!isSurfaceValid())
         return;
 
     FloatRect srcRect = srcPtr ? *srcPtr : FloatRect(FloatPoint(), size());
+    RefPtr<SkPicture> picture = m_surface->getPicture();
+    if (picture) {
+        context->drawPicture(picture.release(), destRect, srcRect, op, blendMode);
+        return;
+    }
+
     SkBitmap bitmap = m_surface->bitmap();
     // For ImageBufferSurface that enables cachedBitmap, Use the cached Bitmap for CPU side usage
     // if it is available, otherwise generate and use it.
@@ -252,7 +269,7 @@ void ImageBuffer::draw(GraphicsContext* context, const FloatRect& destRect, cons
 
     RefPtr<Image> image = BitmapImage::create(NativeImageSkia::create(drawNeedsCopy(m_context.get(), context) ? deepSkBitmapCopy(bitmap) : bitmap));
 
-    context->drawImage(image.get(), destRect, srcRect, op, blink::WebBlendModeNormal, DoNotRespectImageOrientation);
+    context->drawImage(image.get(), destRect, srcRect, op, blendMode, DoNotRespectImageOrientation);
 }
 
 void ImageBuffer::flush()
@@ -421,4 +438,4 @@ String ImageDataToDataURL(const ImageDataBuffer& imageData, const String& mimeTy
     return "data:" + mimeType + ";base64," + base64Data;
 }
 
-} // namespace WebCore
+} // namespace blink

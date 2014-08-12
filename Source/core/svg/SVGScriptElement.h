@@ -28,7 +28,7 @@
 #include "core/svg/SVGElement.h"
 #include "core/svg/SVGURIReference.h"
 
-namespace WebCore {
+namespace blink {
 
 class ScriptLoader;
 
@@ -47,6 +47,7 @@ public:
 
 private:
     SVGScriptElement(Document&, bool wasInsertedByParser, bool alreadyStarted);
+    virtual ~SVGScriptElement();
 
     bool isSupportedAttribute(const QualifiedName&);
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
@@ -83,6 +84,6 @@ private:
     OwnPtr<ScriptLoader> m_loader;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif

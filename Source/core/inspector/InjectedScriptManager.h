@@ -36,19 +36,21 @@
 #include "wtf/text/WTFString.h"
 #include <v8.h>
 
-namespace WebCore {
+namespace blink {
 
 class LocalDOMWindow;
 class InjectedScript;
 class InjectedScriptHost;
 class ScriptValue;
 
-class InjectedScriptManager {
-    WTF_MAKE_NONCOPYABLE(InjectedScriptManager); WTF_MAKE_FAST_ALLOCATED;
+class InjectedScriptManager : public NoBaseWillBeGarbageCollectedFinalized<InjectedScriptManager> {
+    WTF_MAKE_NONCOPYABLE(InjectedScriptManager);
+    WTF_MAKE_FAST_ALLOCATED_WILL_BE_REMOVED;
 public:
-    static PassOwnPtr<InjectedScriptManager> createForPage();
-    static PassOwnPtr<InjectedScriptManager> createForWorker();
+    static PassOwnPtrWillBeRawPtr<InjectedScriptManager> createForPage();
+    static PassOwnPtrWillBeRawPtr<InjectedScriptManager> createForWorker();
     ~InjectedScriptManager();
+    void trace(Visitor*);
 
     void disconnect();
 
@@ -79,12 +81,12 @@ private:
     int m_nextInjectedScriptId;
     typedef HashMap<int, InjectedScript> IdToInjectedScriptMap;
     IdToInjectedScriptMap m_idToInjectedScript;
-    RefPtr<InjectedScriptHost> m_injectedScriptHost;
+    RefPtrWillBeMember<InjectedScriptHost> m_injectedScriptHost;
     InspectedStateAccessCheck m_inspectedStateAccessCheck;
     typedef HashMap<RefPtr<ScriptState>, int> ScriptStateToId;
     ScriptStateToId m_scriptStateToId;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // !defined(InjectedScriptManager_h)

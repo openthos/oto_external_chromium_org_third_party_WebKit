@@ -34,7 +34,7 @@
 #include "platform/graphics/Canvas2DLayerBridge.h"
 #include "platform/graphics/ImageBufferSurface.h"
 
-namespace WebCore {
+namespace blink {
 
 // This shim necessary because ImageBufferSurfaces are not allowed to be RefCounted
 class Canvas2DImageBufferSurface FINAL : public ImageBufferSurface {
@@ -53,7 +53,7 @@ public:
     }
 
     // ImageBufferSurface implementation
-    virtual void willUse() OVERRIDE { m_layerBridge->willUse(); }
+    virtual void finalizeFrame() OVERRIDE { m_layerBridge->finalizeFrame(); }
     virtual void willReadback() OVERRIDE { m_layerBridge->willReadback(); }
     virtual SkCanvas* canvas() const OVERRIDE { return m_layerBridge->canvas(); }
     virtual bool isValid() const OVERRIDE { return m_layerBridge && m_layerBridge->checkSurfaceValid(); }

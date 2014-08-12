@@ -28,7 +28,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/dom/ActiveDOMObject.cpp \
 	third_party/WebKit/Source/core/dom/AddConsoleMessageTask.cpp \
 	third_party/WebKit/Source/core/dom/Attr.cpp \
-	third_party/WebKit/Source/core/dom/AttributeCollection.cpp \
 	third_party/WebKit/Source/core/dom/CDATASection.cpp \
 	third_party/WebKit/Source/core/dom/CSSSelectorWatch.cpp \
 	third_party/WebKit/Source/core/dom/CharacterData.cpp \
@@ -46,6 +45,12 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/dom/DOMError.cpp \
 	third_party/WebKit/Source/core/dom/DOMException.cpp \
 	third_party/WebKit/Source/core/dom/DOMImplementation.cpp \
+	third_party/WebKit/Source/core/dom/DOMMatrix.cpp \
+	third_party/WebKit/Source/core/dom/DOMMatrixReadOnly.cpp \
+	third_party/WebKit/Source/core/dom/DOMPoint.cpp \
+	third_party/WebKit/Source/core/dom/DOMPointReadOnly.cpp \
+	third_party/WebKit/Source/core/dom/DOMRect.cpp \
+	third_party/WebKit/Source/core/dom/DOMRectReadOnly.cpp \
 	third_party/WebKit/Source/core/dom/DOMSettableTokenList.cpp \
 	third_party/WebKit/Source/core/dom/DOMStringList.cpp \
 	third_party/WebKit/Source/core/dom/DOMStringMap.cpp \
@@ -197,6 +202,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/events/PageTransitionEvent.cpp \
 	third_party/WebKit/Source/core/events/PopStateEvent.cpp \
 	third_party/WebKit/Source/core/events/ProgressEvent.cpp \
+	third_party/WebKit/Source/core/events/RelatedEvent.cpp \
 	third_party/WebKit/Source/core/events/ResourceProgressEvent.cpp \
 	third_party/WebKit/Source/core/events/ScopedEventQueue.cpp \
 	third_party/WebKit/Source/core/events/TextEvent.cpp \
@@ -257,7 +263,6 @@ MY_DEFS_Debug := \
 	'-DSYSTEM_NATIVELY_SIGNALS_MEMORY_PRESSURE' \
 	'-DENABLE_EGLIMAGE=1' \
 	'-DCLD_VERSION=1' \
-	'-DCLD_DATA_FROM_STATIC' \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
@@ -275,6 +280,7 @@ MY_DEFS_Debug := \
 	'-DENABLE_WEB_AUDIO=1' \
 	'-DENABLE_OPENTYPE_VERTICAL=1' \
 	'-DU_USING_ICU_NAMESPACE=0' \
+	'-DU_ENABLE_DYLOAD=0' \
 	'-DSK_ENABLE_INST_COUNT=0' \
 	'-DSK_SUPPORT_GPU=1' \
 	'-DGR_GL_CUSTOM_SETUP_HEADER="GrGLConfig_chrome.h"' \
@@ -322,8 +328,8 @@ LOCAL_C_INCLUDES_Debug := \
 	$(gyp_shared_intermediate_dir)/blink \
 	$(LOCAL_PATH)/third_party/openmax_dl \
 	$(LOCAL_PATH)/third_party/angle/include \
-	$(PWD)/external/icu4c/common \
-	$(PWD)/external/icu4c/i18n \
+	$(PWD)/external/icu/icu4c/source/common \
+	$(PWD)/external/icu/icu4c/source/i18n \
 	$(LOCAL_PATH)/third_party/WebKit \
 	$(LOCAL_PATH)/third_party/skia/src/core \
 	$(LOCAL_PATH)/third_party/skia/include/core \
@@ -414,7 +420,6 @@ MY_DEFS_Release := \
 	'-DSYSTEM_NATIVELY_SIGNALS_MEMORY_PRESSURE' \
 	'-DENABLE_EGLIMAGE=1' \
 	'-DCLD_VERSION=1' \
-	'-DCLD_DATA_FROM_STATIC' \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
@@ -432,6 +437,7 @@ MY_DEFS_Release := \
 	'-DENABLE_WEB_AUDIO=1' \
 	'-DENABLE_OPENTYPE_VERTICAL=1' \
 	'-DU_USING_ICU_NAMESPACE=0' \
+	'-DU_ENABLE_DYLOAD=0' \
 	'-DSK_ENABLE_INST_COUNT=0' \
 	'-DSK_SUPPORT_GPU=1' \
 	'-DGR_GL_CUSTOM_SETUP_HEADER="GrGLConfig_chrome.h"' \
@@ -480,8 +486,8 @@ LOCAL_C_INCLUDES_Release := \
 	$(gyp_shared_intermediate_dir)/blink \
 	$(LOCAL_PATH)/third_party/openmax_dl \
 	$(LOCAL_PATH)/third_party/angle/include \
-	$(PWD)/external/icu4c/common \
-	$(PWD)/external/icu4c/i18n \
+	$(PWD)/external/icu/icu4c/source/common \
+	$(PWD)/external/icu/icu4c/source/i18n \
 	$(LOCAL_PATH)/third_party/WebKit \
 	$(LOCAL_PATH)/third_party/skia/src/core \
 	$(LOCAL_PATH)/third_party/skia/include/core \

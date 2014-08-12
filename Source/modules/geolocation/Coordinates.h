@@ -30,14 +30,15 @@
 #include "modules/EventModules.h"
 #include "platform/heap/Handle.h"
 
-namespace WebCore {
+namespace blink {
 
-class Coordinates : public GarbageCollectedFinalized<Coordinates>, public ScriptWrappable {
+class Coordinates : public GarbageCollected<Coordinates>, public ScriptWrappable {
 public:
     static Coordinates* create(double latitude, double longitude, bool providesAltitude, double altitude, double accuracy, bool providesAltitudeAccuracy, double altitudeAccuracy, bool providesHeading, double heading, bool providesSpeed, double speed)
     {
         return new Coordinates(latitude, longitude, providesAltitude, altitude, accuracy, providesAltitudeAccuracy, altitudeAccuracy, providesHeading, heading, providesSpeed, speed);
     }
+
     void trace(Visitor*) { }
 
     double latitude() const { return m_latitude; }
@@ -79,6 +80,6 @@ private:
     bool m_canProvideSpeed;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // Coordinates_h

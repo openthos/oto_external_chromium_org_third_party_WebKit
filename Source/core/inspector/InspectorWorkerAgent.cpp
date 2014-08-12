@@ -42,7 +42,7 @@
 #include "wtf/PassOwnPtr.h"
 #include "wtf/RefPtr.h"
 
-namespace WebCore {
+namespace blink {
 
 namespace WorkerAgentState {
 static const char workerInspectionEnabled[] = "workerInspectionEnabled";
@@ -105,9 +105,9 @@ private:
 
 int InspectorWorkerAgent::WorkerFrontendChannel::s_nextId = 1;
 
-PassOwnPtr<InspectorWorkerAgent> InspectorWorkerAgent::create()
+PassOwnPtrWillBeRawPtr<InspectorWorkerAgent> InspectorWorkerAgent::create()
 {
-    return adoptPtr(new InspectorWorkerAgent());
+    return adoptPtrWillBeNoop(new InspectorWorkerAgent());
 }
 
 InspectorWorkerAgent::InspectorWorkerAgent()
@@ -118,7 +118,9 @@ InspectorWorkerAgent::InspectorWorkerAgent()
 
 InspectorWorkerAgent::~InspectorWorkerAgent()
 {
+#if !ENABLE(OILPAN)
     m_instrumentingAgents->setInspectorWorkerAgent(0);
+#endif
 }
 
 void InspectorWorkerAgent::init()
@@ -249,4 +251,4 @@ void InspectorWorkerAgent::createWorkerFrontendChannel(WorkerGlobalScopeProxy* w
     m_inspectorFrontend->worker()->workerCreated(channel->id(), url, autoconnectToWorkers);
 }
 
-} // namespace WebCore
+} // namespace blink

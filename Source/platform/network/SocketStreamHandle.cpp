@@ -41,7 +41,7 @@
 #include "public/platform/WebSocketStreamHandle.h"
 #include "wtf/PassOwnPtr.h"
 
-namespace WebCore {
+namespace blink {
 
 static const unsigned bufferSize = 100 * 1024 * 1024;
 
@@ -233,8 +233,6 @@ void SocketStreamHandle::close()
 
 void SocketStreamHandle::disconnect()
 {
-    RefPtrWillBeRawPtr<SocketStreamHandle> protect(this); // closeInternal calls the client, which may make the handle get deallocated immediately.
-
     closeInternal();
     m_state = Closed;
 }
@@ -291,4 +289,4 @@ void SocketStreamHandle::trace(Visitor* visitor)
     visitor->trace(m_internal);
 }
 
-} // namespace WebCore
+} // namespace blink

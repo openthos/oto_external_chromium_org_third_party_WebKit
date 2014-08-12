@@ -46,6 +46,8 @@ public:
 
     BLINK_EXPORT static void enableDatabase(bool);
 
+    BLINK_EXPORT static void enableDisplayList2dCanvas(bool);
+
     BLINK_EXPORT static void enableEncryptedMedia(bool);
     BLINK_EXPORT static bool isEncryptedMediaEnabled();
 
@@ -57,8 +59,6 @@ public:
     BLINK_EXPORT static void enableExperimentalCanvasFeatures(bool);
 
     BLINK_EXPORT static void enableFastMobileScrolling(bool);
-
-    BLINK_EXPORT static void enableFastTextAutosizing(bool);
 
     BLINK_EXPORT static void enableFileSystem(bool);
 
@@ -80,6 +80,10 @@ public:
 
     BLINK_EXPORT static void enableNavigatorContentUtils(bool);
 
+    BLINK_EXPORT static void enableNavigationTransitions(bool);
+
+    BLINK_EXPORT static void enableNetworkInformation(bool);
+
     BLINK_EXPORT static void enableOrientationEvent(bool);
 
     BLINK_EXPORT static void enablePagePopup(bool);
@@ -87,6 +91,8 @@ public:
     BLINK_EXPORT static void enablePeerConnection(bool);
 
     BLINK_EXPORT static void enableRequestAutocomplete(bool);
+
+    BLINK_EXPORT static void enableScreenOrientation(bool);
 
     BLINK_EXPORT static void enableScriptedSpeech(bool);
 

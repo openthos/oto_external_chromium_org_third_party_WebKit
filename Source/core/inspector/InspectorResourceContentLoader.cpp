@@ -21,7 +21,7 @@
 #include "core/page/Page.h"
 #include "public/platform/WebURLRequest.h"
 
-namespace WebCore {
+namespace blink {
 
 class InspectorResourceContentLoader::ResourceClient FINAL : private RawResourceClient, private StyleSheetResourceClient {
 public:
@@ -118,9 +118,9 @@ void InspectorResourceContentLoader::start()
             }
         }
 
-        Vector<CSSStyleSheet*> styleSheets;
+        WillBeHeapVector<RawPtrWillBeMember<CSSStyleSheet> > styleSheets;
         InspectorCSSAgent::collectAllDocumentStyleSheets(document, styleSheets);
-        for (Vector<CSSStyleSheet*>::const_iterator stylesheetIt = styleSheets.begin(); stylesheetIt != styleSheets.end(); ++stylesheetIt) {
+        for (WillBeHeapVector<RawPtrWillBeMember<CSSStyleSheet> >::const_iterator stylesheetIt = styleSheets.begin(); stylesheetIt != styleSheets.end(); ++stylesheetIt) {
             CSSStyleSheet* styleSheet = *stylesheetIt;
             if (styleSheet->isInline() || !styleSheet->contents()->loadCompleted())
                 continue;
@@ -190,4 +190,4 @@ void InspectorResourceContentLoader::resourceFinished(ResourceClient* client)
     checkDone();
 }
 
-} // namespace WebCore
+} // namespace blink

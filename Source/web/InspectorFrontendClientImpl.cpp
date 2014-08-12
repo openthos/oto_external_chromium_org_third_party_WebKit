@@ -42,7 +42,7 @@
 #include "web/WebDevToolsFrontendImpl.h"
 #include "wtf/text/WTFString.h"
 
-using namespace WebCore;
+using namespace blink;
 
 namespace blink {
 
@@ -54,8 +54,22 @@ InspectorFrontendClientImpl::InspectorFrontendClientImpl(Page* frontendPage, Web
 
 InspectorFrontendClientImpl::~InspectorFrontendClientImpl()
 {
-    if (m_frontendHost)
+    ASSERT(!m_frontendHost);
+}
+
+void InspectorFrontendClientImpl::trace(Visitor* visitor)
+{
+    visitor->trace(m_frontendPage);
+    visitor->trace(m_frontendHost);
+    InspectorFrontendClient::trace(visitor);
+}
+
+void InspectorFrontendClientImpl::dispose()
+{
+    if (m_frontendHost) {
         m_frontendHost->disconnectClient();
+        m_frontendHost = nullptr;
+    }
     m_client = 0;
 }
 

@@ -31,13 +31,13 @@
 #include "wtf/PassRefPtr.h"
 #include "wtf/text/WTFString.h"
 
-namespace WebCore {
+namespace blink {
 
 class WebGLShader FINAL : public WebGLSharedObject, public ScriptWrappable {
 public:
     virtual ~WebGLShader();
 
-    static PassRefPtr<WebGLShader> create(WebGLRenderingContextBase*, GLenum);
+    static PassRefPtrWillBeRawPtr<WebGLShader> create(WebGLRenderingContextBase*, GLenum);
 
     GLenum type() const { return m_type; }
     const String& source() const { return m_source; }
@@ -55,6 +55,6 @@ private:
     String m_source;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // WebGLShader_h

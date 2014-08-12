@@ -28,6 +28,7 @@
 #include "core/dom/TreeScope.h"
 
 #include "core/HTMLNames.h"
+#include "core/css/resolver/ScopedStyleResolver.h"
 #include "core/dom/ContainerNode.h"
 #include "core/dom/Document.h"
 #include "core/dom/Element.h"
@@ -51,7 +52,7 @@
 #include "core/rendering/RenderView.h"
 #include "wtf/Vector.h"
 
-namespace WebCore {
+namespace blink {
 
 using namespace HTMLNames;
 
@@ -143,6 +144,19 @@ void TreeScope::setParentTreeScope(TreeScope& newParentScope)
 #endif
     m_parentTreeScope = &newParentScope;
     setDocument(newParentScope.document());
+}
+
+ScopedStyleResolver& TreeScope::ensureScopedStyleResolver()
+{
+    RELEASE_ASSERT(this);
+    if (!m_scopedStyleResolver)
+        m_scopedStyleResolver = ScopedStyleResolver::create(*this);
+    return *m_scopedStyleResolver;
+}
+
+void TreeScope::clearScopedStyleResolver()
+{
+    m_scopedStyleResolver.clear();
 }
 
 Element* TreeScope::getElementById(const AtomicString& elementId) const
@@ -405,7 +419,7 @@ unsigned short TreeScope::comparePosition(const TreeScope& otherScope) const
             Node* shadowHost1 = child1->rootNode().parentOrShadowHostNode();
             Node* shadowHost2 = child2->rootNode().parentOrShadowHostNode();
             if (shadowHost1 != shadowHost2)
-                return shadowHost1->compareDocumentPositionInternal(shadowHost2, Node::TreatShadowTreesAsDisconnected);
+                return shadowHost1->compareDocumentPosition(shadowHost2, Node::TreatShadowTreesAsDisconnected);
 
             for (const ShadowRoot* child = toShadowRoot(child2->rootNode()).olderShadowRoot(); child; child = child->olderShadowRoot())
                 if (child == child1)
@@ -547,6 +561,7 @@ void TreeScope::trace(Visitor* visitor)
     visitor->trace(m_elementsById);
     visitor->trace(m_imageMapsByName);
     visitor->trace(m_labelsByForAttribute);
+    visitor->trace(m_scopedStyleResolver);
 }
 
-} // namespace WebCore
+} // namespace blink

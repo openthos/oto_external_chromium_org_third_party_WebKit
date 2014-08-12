@@ -13,7 +13,7 @@
 #include "platform/network/ResourceRequest.h"
 #include "public/platform/WebServiceWorkerRequest.h"
 
-namespace WebCore {
+namespace blink {
 
 PassRefPtrWillBeRawPtr<FetchRequestData> FetchRequestData::create()
 {
@@ -24,9 +24,9 @@ PassRefPtrWillBeRawPtr<FetchRequestData> FetchRequestData::create(ExecutionConte
 {
     RefPtrWillBeRawPtr<FetchRequestData> request = FetchRequestData::create();
     if (context->isDocument())
-        request->m_referrer.setClient(WebCore::Referrer(context->url().strippedForUseAsReferrer(), toDocument(context)->referrerPolicy()));
+        request->m_referrer.setClient(blink::Referrer(context->url().strippedForUseAsReferrer(), toDocument(context)->referrerPolicy()));
     else
-        request->m_referrer.setClient(WebCore::Referrer(context->url().strippedForUseAsReferrer(), ReferrerPolicyDefault));
+        request->m_referrer.setClient(blink::Referrer(context->url().strippedForUseAsReferrer(), ReferrerPolicyDefault));
     return request.release();
 }
 
@@ -57,13 +57,31 @@ PassRefPtrWillBeRawPtr<FetchRequestData> FetchRequestData::createRestrictedCopy(
     // FIXME: Support body.
     request->m_origin = origin;
     if (context->isDocument())
-        request->m_referrer.setClient(WebCore::Referrer(context->url().strippedForUseAsReferrer(), toDocument(context)->referrerPolicy()));
+        request->m_referrer.setClient(blink::Referrer(context->url().strippedForUseAsReferrer(), toDocument(context)->referrerPolicy()));
     else
-        request->m_referrer.setClient(WebCore::Referrer(context->url().strippedForUseAsReferrer(), ReferrerPolicyDefault));
+        request->m_referrer.setClient(blink::Referrer(context->url().strippedForUseAsReferrer(), ReferrerPolicyDefault));
     request->m_context = ConnectContext;
     request->m_mode = m_mode;
     request->m_credentials = m_credentials;
     // "2. Return |r|."
+    return request.release();
+}
+
+PassRefPtrWillBeRawPtr<FetchRequestData> FetchRequestData::createCopy() const
+{
+    RefPtrWillBeRawPtr<FetchRequestData> request = FetchRequestData::create();
+    request->m_url = m_url;
+    request->m_method = m_method;
+    request->m_headerList = m_headerList->createCopy();
+    request->m_unsafeRequestFlag = m_unsafeRequestFlag;
+    // FIXME: Support body.
+    request->m_origin = m_origin;
+    request->m_sameOriginDataURLFlag = m_sameOriginDataURLFlag;
+    request->m_context = m_context;
+    request->m_referrer = m_referrer;
+    request->m_mode = m_mode;
+    request->m_credentials = m_credentials;
+    request->m_responseTainting = m_responseTainting;
     return request.release();
 }
 
@@ -88,4 +106,4 @@ void FetchRequestData::trace(Visitor* visitor)
     visitor->trace(m_headerList);
 }
 
-} // namespace WebCore
+} // namespace blink

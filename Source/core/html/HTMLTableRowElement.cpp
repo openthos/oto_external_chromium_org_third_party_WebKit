@@ -29,12 +29,13 @@
 #include "core/HTMLNames.h"
 #include "core/dom/ElementTraversal.h"
 #include "core/dom/ExceptionCode.h"
+#include "core/dom/NodeListsNodeData.h"
 #include "core/html/HTMLCollection.h"
 #include "core/html/HTMLTableCellElement.h"
 #include "core/html/HTMLTableElement.h"
 #include "core/html/HTMLTableSectionElement.h"
 
-namespace WebCore {
+namespace blink {
 
 using namespace HTMLNames;
 
@@ -80,7 +81,7 @@ int HTMLTableRowElement::rowIndex() const
         }
     }
 
-    for (Element* child = ElementTraversal::firstWithin(*table); child; child = ElementTraversal::nextSibling(*child)) {
+    for (HTMLElement* child = Traversal<HTMLElement>::firstChild(*table); child; child = Traversal<HTMLElement>::nextSibling(*child)) {
         if (child->hasTagName(tbodyTag)) {
             HTMLTableSectionElement* section = toHTMLTableSectionElement(child);
             for (HTMLTableRowElement* row = Traversal<HTMLTableRowElement>::firstChild(*section); row; row = Traversal<HTMLTableRowElement>::nextSibling(*row)) {
@@ -155,7 +156,7 @@ void HTMLTableRowElement::deleteCell(int index, ExceptionState& exceptionState)
 
 PassRefPtrWillBeRawPtr<HTMLCollection> HTMLTableRowElement::cells()
 {
-    return ensureCachedHTMLCollection(TRCells);
+    return ensureCachedCollection<HTMLCollection>(TRCells);
 }
 
 }

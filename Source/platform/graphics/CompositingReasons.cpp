@@ -7,7 +7,7 @@
 
 #include "wtf/StdLibExtras.h"
 
-namespace WebCore {
+namespace blink {
 
 const CompositingReasonStringMap kCompositingReasonStringMap[] = {
     { CompositingReasonNone,
@@ -37,9 +37,6 @@ const CompositingReasonStringMap kCompositingReasonStringMap[] = {
     { CompositingReasonTransitionProperty,
         "transitionProperty",
         "Has an acceleratable transition property (active or inactive)" },
-    { CompositingReasonFilters,
-        "filters",
-        "Has an accelerated filter" },
     { CompositingReasonPositionFixed,
         "positionFixed",
         "Is fixed position" },
@@ -191,4 +188,4 @@ const CompositingReasonStringMap kCompositingReasonStringMap[] = {
 
 size_t kNumberOfCompositingReasons = WTF_ARRAY_LENGTH(kCompositingReasonStringMap);
 
-} // namespace WebCore
+} // namespace blink

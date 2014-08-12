@@ -21,6 +21,7 @@
 #ifndef CSSValue_h
 #define CSSValue_h
 
+#include "bindings/core/v8/ScriptWrappable.h"
 #include "core/dom/ExceptionCode.h"
 #include "platform/heap/Handle.h"
 #include "platform/weborigin/KURL.h"
@@ -29,7 +30,7 @@
 #include "wtf/RefCounted.h"
 #include "wtf/RefPtr.h"
 
-namespace WebCore {
+namespace blink {
 
 class ExceptionState;
 class StyleSheetContents;
@@ -41,7 +42,7 @@ enum CSSTextFormattingFlags { QuoteCSSStringIfNeeded, AlwaysQuoteCSSString };
 // They should be handled by separate wrapper classes.
 
 // Please don't expose more CSSValue types to the web.
-class CSSValue : public RefCountedWillBeGarbageCollectedFinalized<CSSValue> {
+class CSSValue : public RefCountedWillBeGarbageCollectedFinalized<CSSValue>, public ScriptWrappableBase {
 public:
     enum Type {
         CSS_INHERIT = 0,
@@ -257,6 +258,6 @@ inline bool compareCSSValuePtr(const Member<CSSValueType>& first, const Member<C
 #define DEFINE_CSS_VALUE_TYPE_CASTS(thisType, predicate) \
     DEFINE_TYPE_CASTS(thisType, CSSValue, value, value->predicate, value.predicate)
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // CSSValue_h

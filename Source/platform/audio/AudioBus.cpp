@@ -44,7 +44,7 @@
 #include <math.h>
 #include <algorithm>
 
-namespace WebCore {
+namespace blink {
 
 using namespace VectorMath;
 
@@ -674,6 +674,6 @@ PassRefPtr<AudioBus> createBusFromInMemoryAudioFile(const void* data, size_t dat
     return AudioBus::createBySampleRateConverting(audioBus.get(), mixToMono, sampleRate);
 }
 
-} // WebCore
+} // namespace blink
 
 #endif // ENABLE(WEB_AUDIO)

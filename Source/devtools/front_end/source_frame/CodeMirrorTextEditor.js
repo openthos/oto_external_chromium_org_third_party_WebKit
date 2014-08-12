@@ -248,6 +248,7 @@ CodeMirror.commands.smartNewlineAndIndent = function(codeMirror)
             replacements.push("\n" + indent.substring(0, Math.min(cur.ch, indent.length)));
         }
         codeMirror.replaceSelections(replacements);
+        codeMirror._codeMirrorTextEditor._onAutoAppendedSpaces();
     }
 }
 
@@ -325,6 +326,25 @@ WebInspector.CodeMirrorTextEditor.MaximumNumberOfWhitespacesPerSingleSpan = 16;
 WebInspector.CodeMirrorTextEditor.MaxEditableTextSize = 1024 * 1024 * 10;
 
 WebInspector.CodeMirrorTextEditor.prototype = {
+    _onAutoAppendedSpaces: function()
+    {
+        this._autoAppendedSpaces = this._autoAppendedSpaces || [];
+        for (var i = 0; i < this._autoAppendedSpaces.length; ++i) {
+            var position = this._autoAppendedSpaces[i].resolve();
+            if (!position)
+                continue;
+            var line = this.line(position.lineNumber);
+            if (line.length === position.columnNumber && WebInspector.TextUtils.lineIndent(line).length === line.length)
+                this._codeMirror.replaceRange("", new CodeMirror.Pos(position.lineNumber, 0), new CodeMirror.Pos(position.lineNumber, position.columnNumber));
+        }
+        this._autoAppendedSpaces = [];
+        var selections = this.selections();
+        for (var i = 0; i < selections.length; ++i) {
+            var selection = selections[i];
+            this._autoAppendedSpaces.push(this.textEditorPositionHandle(selection.startLine, selection.startColumn));
+        }
+    },
+
     /**
      * @param {number} lineNumber
      * @param {number} lineLength
@@ -1102,7 +1122,7 @@ WebInspector.CodeMirrorTextEditor.prototype = {
         var scrollLeft = this._codeMirror.doc.scrollLeft;
         var scrollTop = this._codeMirror.doc.scrollTop;
         var width = parentElement.offsetWidth;
-        var height = parentElement.offsetHeight;
+        var height = parentElement.offsetHeight - this.element.offsetTop;
         this._codeMirror.setSize(width, height);
         this._updatePaddingBottom(width, height);
         this._codeMirror.scrollTo(scrollLeft, scrollTop);
@@ -1701,8 +1721,10 @@ WebInspector.CodeMirrorTextEditor.BlockIndentController.prototype = {
             allSelectionsAreCollapsedBlocks = isCollapsedBlock;
         }
         codeMirror.replaceSelections(replacements);
-        if (!allSelectionsAreCollapsedBlocks)
+        if (!allSelectionsAreCollapsedBlocks) {
+            codeMirror._codeMirrorTextEditor._onAutoAppendedSpaces();
             return;
+        }
         selections = codeMirror.listSelections();
         var updatedSelections = [];
         for (var i = 0; i < selections.length; ++i) {
@@ -1715,6 +1737,7 @@ WebInspector.CodeMirrorTextEditor.BlockIndentController.prototype = {
             });
         }
         codeMirror.setSelections(updatedSelections);
+        codeMirror._codeMirrorTextEditor._onAutoAppendedSpaces();
     },
 
     /**
@@ -2021,7 +2044,7 @@ WebInspector.CodeMirrorTextEditor.AutocompleteController.prototype = {
         for (var changeIndex = 0; changeIndex < changes.length; ++changeIndex) {
             var changeObject = changes[changeIndex];
             singleCharInput = (changeObject.origin === "+input" && changeObject.text.length === 1 && changeObject.text[0].length === 1) ||
-                (changeObject.origin === "+delete" && changeObject.removed.length === 1 && changeObject.removed[0].length === 1);
+                (this._suggestBox && changeObject.origin === "+delete" && changeObject.removed.length === 1 && changeObject.removed[0].length === 1);
 
             var editInfo = this._textEditor._changeObjectToEditOperation(changeObject);
             for (var i = editInfo.newRange.startLine; i <= editInfo.newRange.endLine; ++i)

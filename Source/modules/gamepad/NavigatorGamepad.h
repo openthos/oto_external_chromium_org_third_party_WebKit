@@ -28,7 +28,7 @@
 
 #include "core/frame/DOMWindowLifecycleObserver.h"
 #include "core/frame/DOMWindowProperty.h"
-#include "core/frame/DeviceEventControllerBase.h"
+#include "core/frame/PlatformEventController.h"
 #include "platform/AsyncMethodRunner.h"
 #include "platform/Supplementable.h"
 #include "platform/heap/Handle.h"
@@ -39,7 +39,7 @@ class WebGamepad;
 class WebGamepads;
 }
 
-namespace WebCore {
+namespace blink {
 
 class Document;
 class Gamepad;
@@ -47,7 +47,7 @@ class GamepadList;
 class Navigator;
 class WebKitGamepadList;
 
-class NavigatorGamepad FINAL : public NoBaseWillBeGarbageCollectedFinalized<NavigatorGamepad>, public WillBeHeapSupplement<Navigator>, public DOMWindowProperty, public DeviceEventControllerBase, public DOMWindowLifecycleObserver {
+class NavigatorGamepad FINAL : public NoBaseWillBeGarbageCollectedFinalized<NavigatorGamepad>, public WillBeHeapSupplement<Navigator>, public DOMWindowProperty, public PlatformEventController, public DOMWindowLifecycleObserver {
     WILL_BE_USING_GARBAGE_COLLECTED_MIXIN(NavigatorGamepad);
 public:
     static NavigatorGamepad* from(Document&);
@@ -76,7 +76,7 @@ private:
     virtual void willDestroyGlobalObjectInFrame() OVERRIDE;
     virtual void willDetachGlobalObjectFromFrame() OVERRIDE;
 
-    // DeviceEventControllerBase
+    // PlatformEventController
     virtual void registerWithDispatcher() OVERRIDE;
     virtual void unregisterWithDispatcher() OVERRIDE;
     virtual bool hasLastData() OVERRIDE;
@@ -94,6 +94,6 @@ private:
     AsyncMethodRunner<NavigatorGamepad> m_dispatchOneEventRunner;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // NavigatorGamepad_h

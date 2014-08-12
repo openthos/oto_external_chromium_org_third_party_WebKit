@@ -26,7 +26,7 @@
 #include "core/html/FormAssociatedElement.h"
 #include "core/html/HTMLPlugInElement.h"
 
-namespace WebCore {
+namespace blink {
 
 class HTMLFormElement;
 
@@ -102,7 +102,6 @@ private:
     // so that we can better share code between <object> and <embed>.
     void parametersForPlugin(Vector<String>& paramNames, Vector<String>& paramValues, String& url, String& serviceType);
 
-    bool shouldAllowQuickTimeClassIdQuirk();
     bool hasValidClassId();
 
     void reloadPluginOnAttributeChange(const QualifiedName&);

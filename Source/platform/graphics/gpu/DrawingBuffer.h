@@ -53,7 +53,7 @@ class WebGraphicsContext3D;
 class WebLayer;
 }
 
-namespace WebCore {
+namespace blink {
 class Extensions3DUtil;
 class ImageData;
 class ImageBuffer;
@@ -154,7 +154,7 @@ public:
 
     // WebExternalTextureLayerClient implementation.
     virtual bool prepareMailbox(blink::WebExternalTextureMailbox*, blink::WebExternalBitmap*) OVERRIDE;
-    virtual void mailboxReleased(const blink::WebExternalTextureMailbox&) OVERRIDE;
+    virtual void mailboxReleased(const blink::WebExternalTextureMailbox&, bool lostResource = false) OVERRIDE;
 
     // Destroys the TEXTURE_2D binding for the owned context
     bool copyToPlatformTexture(blink::WebGraphicsContext3D*, Platform3DObject texture, GLenum internalFormat,
@@ -300,6 +300,6 @@ private:
     Vector<uint8_t> m_scanline;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // DrawingBuffer_h

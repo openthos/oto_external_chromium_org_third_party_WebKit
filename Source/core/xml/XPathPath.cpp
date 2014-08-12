@@ -29,11 +29,12 @@
 #include "core/xml/XPathPath.h"
 
 #include "core/dom/Document.h"
+#include "core/dom/NodeTraversal.h"
 #include "core/xml/XPathPredicate.h"
 #include "core/xml/XPathStep.h"
 #include "core/xml/XPathValue.h"
 
-namespace WebCore {
+namespace blink {
 namespace XPath {
 
 Filter::Filter(PassOwnPtrWillBeRawPtr<Expression> expr, WillBeHeapVector<OwnPtrWillBeMember<Predicate> >& predicates)
@@ -120,7 +121,7 @@ Value LocationPath::evaluate(EvaluationContext& evaluationContext) const
         if (context->inDocument())
             context = context->ownerDocument();
         else
-            context = &context->highestAncestorOrSelf();
+            context = &NodeTraversal::highestAncestorOrSelf(*context);
     }
 
     OwnPtrWillBeRawPtr<NodeSet> nodes(NodeSet::create());

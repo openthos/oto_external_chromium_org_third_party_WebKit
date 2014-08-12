@@ -41,7 +41,7 @@
 #include "public/platform/WebRTCPeerConnectionHandler.h"
 #include "public/platform/WebRTCPeerConnectionHandlerClient.h"
 
-namespace WebCore {
+namespace blink {
 
 class ExceptionState;
 class MediaStreamTrack;
@@ -149,8 +149,8 @@ public:
 private:
     RTCPeerConnection(ExecutionContext*, PassRefPtr<RTCConfiguration>, blink::WebMediaConstraints, ExceptionState&);
 
-    static PassRefPtr<RTCConfiguration> parseConfiguration(const Dictionary& configuration, ExceptionState&);
-    static PassRefPtr<RTCOfferOptions> parseOfferOptions(const Dictionary& options);
+    static PassRefPtr<RTCConfiguration> parseConfiguration(const Dictionary&, ExceptionState&);
+    static PassRefPtr<RTCOfferOptions> parseOfferOptions(const Dictionary&, ExceptionState&);
 
     void scheduleDispatchEvent(PassRefPtrWillBeRawPtr<Event>);
     void dispatchScheduledEvent();
@@ -178,6 +178,6 @@ private:
     bool m_closed;
 };
 
-} // namespace WebCore
+} // namespace blink
 
 #endif // RTCPeerConnection_h

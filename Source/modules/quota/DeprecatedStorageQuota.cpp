@@ -44,7 +44,7 @@
 #include "public/platform/WebStorageQuotaCallbacks.h"
 #include "public/platform/WebStorageQuotaType.h"
 
-namespace WebCore {
+namespace blink {
 
 DeprecatedStorageQuota::DeprecatedStorageQuota(Type type)
     : m_type(type)
@@ -94,8 +94,4 @@ void DeprecatedStorageQuota::requestQuota(ExecutionContext* executionContext, un
     client->requestQuota(executionContext, storageType, newQuotaInBytes, successCallback, errorCallback);
 }
 
-DeprecatedStorageQuota::~DeprecatedStorageQuota()
-{
-}
-
-} // namespace WebCore
+} // namespace blink

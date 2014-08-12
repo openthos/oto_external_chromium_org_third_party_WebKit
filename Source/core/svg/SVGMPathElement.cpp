@@ -27,7 +27,7 @@
 #include "core/svg/SVGDocumentExtensions.h"
 #include "core/svg/SVGPathElement.h"
 
-namespace WebCore {
+namespace blink {
 
 inline SVGMPathElement::SVGMPathElement(Document& document)
     : SVGElement(SVGNames::mpathTag, document)
@@ -62,7 +62,7 @@ void SVGMPathElement::buildPendingResource()
             document().accessSVGExtensions().addPendingResource(id, this);
             ASSERT(hasPendingResources());
         }
-    } else if (target->isSVGElement()) {
+    } else if (isSVGPathElement(target)) {
         // Register us with the target in the dependencies map. Any change of hrefElement
         // that leads to relayout/repainting now informs us, so we can react to it.
         addReferenceTo(toSVGElement(target));
@@ -149,4 +149,4 @@ void SVGMPathElement::notifyParentOfPathChange(ContainerNode* parent)
         toSVGAnimateMotionElement(parent)->updateAnimationPath();
 }
 
-} // namespace WebCore
+} // namespace blink

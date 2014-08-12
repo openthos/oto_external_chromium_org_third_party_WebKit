@@ -74,17 +74,17 @@ const double progressAnimationNumFrames = 256;
 
 @interface WebCoreRenderThemeNotificationObserver : NSObject
 {
-    WebCore::RenderTheme *_theme;
+    blink::RenderTheme *_theme;
 }
 
-- (id)initWithTheme:(WebCore::RenderTheme *)theme;
+- (id)initWithTheme:(blink::RenderTheme *)theme;
 - (void)systemColorsDidChange:(NSNotification *)notification;
 
 @end
 
 @implementation WebCoreRenderThemeNotificationObserver
 
-- (id)initWithTheme:(WebCore::RenderTheme *)theme
+- (id)initWithTheme:(blink::RenderTheme *)theme
 {
     if (!(self = [super init]))
         return nil;
@@ -147,7 +147,7 @@ void _NSDrawCarbonThemeBezel(NSRect frame, BOOL enabled, BOOL flipped);
 void _NSDrawCarbonThemeListBox(NSRect frame, BOOL enabled, BOOL flipped, BOOL always_yes);
 }
 
-namespace WebCore {
+namespace blink {
 
 using namespace HTMLNames;
 
@@ -1763,7 +1763,11 @@ String RenderThemeChromiumMac::fileListNameForWidth(Locale& locale, const FileLi
     if (fileList->isEmpty()) {
         strToTruncate = locale.queryString(blink::WebLocalizedString::FileButtonNoFileSelectedLabel);
     } else if (fileList->length() == 1) {
-        strToTruncate = [[NSFileManager defaultManager] displayNameAtPath:(fileList->item(0)->path())];
+        File* file = fileList->item(0);
+        if (file->userVisibility() == File::IsUserVisible)
+            strToTruncate = [[NSFileManager defaultManager] displayNameAtPath:(fileList->item(0)->path())];
+        else
+            strToTruncate = file->name();
     } else {
         // FIXME: Localization of fileList->length().
         return StringTruncator::rightTruncate(locale.queryString(blink::WebLocalizedString::MultipleFileUploadText, String::number(fileList->length())), width, font);
@@ -1910,4 +1914,4 @@ bool RenderThemeChromiumMac::shouldUseFallbackTheme(RenderStyle* style) const
     return false;
 }
 
-} // namespace WebCore
+} // namespace blink

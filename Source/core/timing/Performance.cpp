@@ -41,7 +41,7 @@
 #include "platform/weborigin/SecurityOrigin.h"
 #include "wtf/CurrentTime.h"
 
-namespace WebCore {
+namespace blink {
 
 static const size_t defaultResourceTimingBufferSize = 150;
 
@@ -214,7 +214,9 @@ void Performance::addResourceTiming(const ResourceTimingInfo& info, Document* in
     const Vector<ResourceResponse>& redirectChain = info.redirectChain();
     bool allowRedirectDetails = allowsTimingRedirect(redirectChain, finalResponse, initiatorDocument);
 
-    if (!allowRedirectDetails) {
+    // ServiceWorker doesn't support TimingInfo.
+    // FIXME: Implement ServiceWorkerURLRequestJob::GetLoadTimingInfo().
+    if (!allowRedirectDetails && !finalResponse.wasFetchedViaServiceWorker()) {
         ResourceLoadTiming* finalTiming = finalResponse.resourceLoadTiming();
         ASSERT(finalTiming);
         if (finalTiming)
@@ -284,4 +286,4 @@ void Performance::trace(Visitor* visitor)
     EventTargetWithInlineData::trace(visitor);
 }
 
-} // namespace WebCore
+} // namespace blink

@@ -7,7 +7,7 @@
 
 #include "bindings/core/v8/V8Binding.h"
 
-namespace WebCore {
+namespace blink {
 
 ModuleProxy& ModuleProxy::moduleProxy()
 {
@@ -48,4 +48,4 @@ void ModuleProxy::registerDidLeaveScriptContextForRecursionScope(void (*didLeave
     m_didLeaveScriptContextForRecursionScope = didLeaveScriptContext;
 }
 
-} // WebCore
+} // namespace blink

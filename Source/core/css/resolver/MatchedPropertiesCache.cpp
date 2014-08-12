@@ -33,7 +33,7 @@
 #include "core/css/resolver/StyleResolverState.h"
 #include "core/rendering/style/RenderStyle.h"
 
-namespace WebCore {
+namespace blink {
 
 #if ENABLE(OILPAN)
 bool CachedMatchedPropertiesHashTraits::traceInCollection(Visitor* visitor, Member<CachedMatchedProperties>& cachedProperties, WTF::ShouldWeakPointersBeMarkedStrongly strongify)
@@ -41,7 +41,7 @@ bool CachedMatchedPropertiesHashTraits::traceInCollection(Visitor* visitor, Memb
     // Only honor the cache's weakness semantics if the collection is traced
     // with WeakPointersActWeak. Otherwise just trace the cachedProperties
     // strongly, ie. call trace on it.
-    if (strongify == WTF::WeakPointersActWeak) {
+    if (cachedProperties && strongify == WTF::WeakPointersActWeak) {
         // A given cache entry is only kept alive if none of the MatchedProperties
         // in the CachedMatchedProperties value contain a dead "properties" field.
         // If there is a dead field the entire cache entry is removed.
@@ -202,7 +202,9 @@ bool MatchedPropertiesCache::isCacheable(const Element* element, const RenderSty
 
 void MatchedPropertiesCache::trace(Visitor* visitor)
 {
+#if ENABLE(OILPAN)
     visitor->trace(m_cache);
+#endif
 }
 
 }

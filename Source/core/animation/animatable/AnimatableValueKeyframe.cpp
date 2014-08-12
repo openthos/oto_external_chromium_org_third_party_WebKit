@@ -5,9 +5,9 @@
 #include "config.h"
 #include "core/animation/animatable/AnimatableValueKeyframe.h"
 
-#include "core/animation/interpolation/LegacyStyleInterpolation.h"
+#include "core/animation/LegacyStyleInterpolation.h"
 
-namespace WebCore {
+namespace blink {
 
 AnimatableValueKeyframe::AnimatableValueKeyframe(const AnimatableValueKeyframe& copyFrom)
     : Keyframe(copyFrom.m_offset, copyFrom.m_composite, copyFrom.m_easing)
@@ -38,7 +38,9 @@ PassOwnPtrWillBeRawPtr<Keyframe::PropertySpecificKeyframe> AnimatableValueKeyfra
 
 void AnimatableValueKeyframe::trace(Visitor* visitor)
 {
+#if ENABLE(OILPAN)
     visitor->trace(m_propertyValues);
+#endif
     Keyframe::trace(visitor);
 }
 
