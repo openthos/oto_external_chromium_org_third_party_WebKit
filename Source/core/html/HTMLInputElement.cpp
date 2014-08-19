@@ -50,6 +50,7 @@
 #include "core/events/ScopedEventQueue.h"
 #include "core/events/TouchEvent.h"
 #include "core/fileapi/FileList.h"
+#include "core/frame/EventHandlerRegistry.h"
 #include "core/frame/FrameHost.h"
 #include "core/frame/FrameView.h"
 #include "core/frame/LocalFrame.h"
@@ -175,8 +176,8 @@ HTMLInputElement::~HTMLInputElement()
     // We should unregister it to avoid accessing a deleted object.
     if (isRadioButton())
         document().formController().radioButtonGroupScope().removeButton(this);
-    if (m_hasTouchEventHandler)
-        document().didRemoveTouchEventHandler(this);
+    if (m_hasTouchEventHandler && document().frameHost())
+        document().frameHost()->eventHandlerRegistry().didRemoveEventHandler(*this, EventHandlerRegistry::TouchEvent);
 #endif
 }
 
@@ -422,10 +423,14 @@ void HTMLInputElement::updateType()
 
     bool hasTouchEventHandler = m_inputTypeView->hasTouchEventHandler();
     if (hasTouchEventHandler != m_hasTouchEventHandler) {
-        if (hasTouchEventHandler)
-            document().didAddTouchEventHandler(this);
-        else
-            document().didRemoveTouchEventHandler(this);
+        // If the Document is being or has been stopped, don't register any handlers.
+        if (document().frameHost() && document().lifecycle().state() < DocumentLifecycle::Stopping) {
+            EventHandlerRegistry& registry = document().frameHost()->eventHandlerRegistry();
+            if (hasTouchEventHandler)
+                registry.didAddEventHandler(*this, EventHandlerRegistry::TouchEvent);
+            else
+                registry.didRemoveEventHandler(*this, EventHandlerRegistry::TouchEvent);
+        }
         m_hasTouchEventHandler = hasTouchEventHandler;
     }
 
@@ -439,9 +444,12 @@ void HTMLInputElement::updateType()
     }
     if (!didStoreValue && willStoreValue) {
         AtomicString valueString = fastGetAttribute(valueAttr);
+        m_inputType->warnIfValueIsInvalid(valueString);
         m_valueIfDirty = sanitizeValue(valueString);
-    } else
+    } else {
+        m_inputType->warnIfValueIsInvalid(hasDirtyValue() ? m_valueIfDirty : fastGetAttribute(valueAttr).string());
         updateValueIfNeeded();
+    }
 
     m_needsToUpdateViewValue = true;
     m_inputTypeView->updateView();
@@ -655,6 +663,7 @@ void HTMLInputElement::parseAttribute(const QualifiedName& name, const AtomicStr
         m_needsToUpdateViewValue = true;
         setNeedsValidityCheck();
         m_valueAttributeWasUpdatedAfterParsing = !m_parsingInProgress;
+        m_inputType->warnIfValueIsInvalid(value);
         m_inputTypeView->valueAttributeChanged();
     } else if (name == checkedAttr) {
         // Another radio button in the same group might be checked by state
@@ -996,6 +1005,7 @@ void HTMLInputElement::setValue(const String& value, ExceptionState& exceptionSt
 
 void HTMLInputElement::setValue(const String& value, TextFieldEventBehavior eventBehavior)
 {
+    m_inputType->warnIfValueIsInvalid(value);
     if (!m_inputType->canSetValue(value))
         return;
 
@@ -1452,11 +1462,6 @@ void HTMLInputElement::didMoveToNewDocument(Document& oldDocument)
 
     if (isRadioButton())
         oldDocument.formController().radioButtonGroupScope().removeButton(this);
-    if (m_hasTouchEventHandler)
-        oldDocument.didRemoveTouchEventHandler(this);
-
-    if (m_hasTouchEventHandler)
-        document().didAddTouchEventHandler(this);
 
     HTMLTextFormControlElement::didMoveToNewDocument(oldDocument);
 }

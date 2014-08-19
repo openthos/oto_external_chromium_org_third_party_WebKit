@@ -6,7 +6,6 @@
 #define WebScrollOffsetAnimationCurve_h
 
 #include "WebAnimationCurve.h"
-
 #include "WebFloatPoint.h"
 
 namespace blink {

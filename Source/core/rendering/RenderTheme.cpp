@@ -66,16 +66,16 @@ namespace blink {
 
 using namespace HTMLNames;
 
-static blink::WebFallbackThemeEngine::State getWebFallbackThemeState(const RenderTheme* theme, const RenderObject* o)
+static WebFallbackThemeEngine::State getWebFallbackThemeState(const RenderTheme* theme, const RenderObject* o)
 {
     if (!theme->isEnabled(o))
-        return blink::WebFallbackThemeEngine::StateDisabled;
+        return WebFallbackThemeEngine::StateDisabled;
     if (theme->isPressed(o))
-        return blink::WebFallbackThemeEngine::StatePressed;
+        return WebFallbackThemeEngine::StatePressed;
     if (theme->isHovered(o))
-        return blink::WebFallbackThemeEngine::StateHover;
+        return WebFallbackThemeEngine::StateHover;
 
-    return blink::WebFallbackThemeEngine::StateNormal;
+    return WebFallbackThemeEngine::StateNormal;
 }
 
 RenderTheme::RenderTheme()
@@ -229,14 +229,6 @@ void RenderTheme::adjustStyle(RenderStyle* style, Element* e, const CachedUAStyl
 
 bool RenderTheme::paint(RenderObject* o, const PaintInfo& paintInfo, const IntRect& r)
 {
-    // If painting is disabled, but we aren't updating control tints, then just bail.
-    // If we are updating control tints, just schedule a repaint if the theme supports tinting
-    // for that control.
-    if (paintInfo.context->updatingControlTints()) {
-        if (controlSupportsTints(o))
-            o->paintInvalidationForWholeRenderer();
-        return false;
-    }
     ControlPart part = o->style()->appearance();
 
     if (shouldUseFallbackTheme(o->style()))
@@ -417,6 +409,10 @@ String RenderTheme::extraDefaultStyleSheet()
         runtimeCSS.appendLiteral("dialog:not([open]) { display: none; }");
         runtimeCSS.appendLiteral("dialog { position: absolute; left: 0; right: 0; width: -webkit-fit-content; height: -webkit-fit-content; margin: auto; border: solid; padding: 1em; background: white; color: black;}");
         runtimeCSS.appendLiteral("dialog::backdrop { position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: rgba(0,0,0,0.1); }");
+    }
+
+    if (RuntimeEnabledFeatures::contextMenuEnabled()) {
+        runtimeCSS.appendLiteral("menu[type=\"popup\" i] { display: none; }");
     }
 
     return runtimeCSS.toString();
@@ -1065,12 +1061,12 @@ String RenderTheme::fileListNameForWidth(Locale& locale, const FileList* fileLis
 
     String string;
     if (fileList->isEmpty()) {
-        string = locale.queryString(blink::WebLocalizedString::FileButtonNoFileSelectedLabel);
+        string = locale.queryString(WebLocalizedString::FileButtonNoFileSelectedLabel);
     } else if (fileList->length() == 1) {
         string = fileList->item(0)->name();
     } else {
         // FIXME: Localization of fileList->length().
-        return StringTruncator::rightTruncate(locale.queryString(blink::WebLocalizedString::MultipleFileUploadText, String::number(fileList->length())), width, font);
+        return StringTruncator::rightTruncate(locale.queryString(WebLocalizedString::MultipleFileUploadText, String::number(fileList->length())), width, font);
     }
 
     return StringTruncator::centerTruncate(string, width, font);
@@ -1135,10 +1131,8 @@ void RenderTheme::setSizeIfAuto(RenderStyle* style, const IntSize& size)
 
 bool RenderTheme::paintCheckboxUsingFallbackTheme(RenderObject* o, const PaintInfo& i, const IntRect& r)
 {
-    if (i.context->paintingDisabled())
-        return false;
-    blink::WebFallbackThemeEngine::ExtraParams extraParams;
-    blink::WebCanvas* canvas = i.context->canvas();
+    WebFallbackThemeEngine::ExtraParams extraParams;
+    WebCanvas* canvas = i.context->canvas();
     extraParams.button.checked = isChecked(o);
     extraParams.button.indeterminate = isIndeterminate(o);
 
@@ -1153,7 +1147,7 @@ bool RenderTheme::paintCheckboxUsingFallbackTheme(RenderObject* o, const PaintIn
         i.context->translate(-unzoomedRect.x(), -unzoomedRect.y());
     }
 
-    blink::Platform::current()->fallbackThemeEngine()->paint(canvas, blink::WebFallbackThemeEngine::PartCheckbox, getWebFallbackThemeState(this, o), blink::WebRect(unzoomedRect), &extraParams);
+    Platform::current()->fallbackThemeEngine()->paint(canvas, WebFallbackThemeEngine::PartCheckbox, getWebFallbackThemeState(this, o), WebRect(unzoomedRect), &extraParams);
     return false;
 }
 
@@ -1163,7 +1157,7 @@ void RenderTheme::adjustCheckboxStyleUsingFallbackTheme(RenderStyle* style, Elem
     if (!style->width().isIntrinsicOrAuto() && !style->height().isAuto())
         return;
 
-    IntSize size = blink::Platform::current()->fallbackThemeEngine()->getSize(blink::WebFallbackThemeEngine::PartCheckbox);
+    IntSize size = Platform::current()->fallbackThemeEngine()->getSize(WebFallbackThemeEngine::PartCheckbox);
     float zoomLevel = style->effectiveZoom();
     size.setWidth(size.width() * zoomLevel);
     size.setHeight(size.height() * zoomLevel);
@@ -1179,10 +1173,8 @@ void RenderTheme::adjustCheckboxStyleUsingFallbackTheme(RenderStyle* style, Elem
 
 bool RenderTheme::paintRadioUsingFallbackTheme(RenderObject* o, const PaintInfo& i, const IntRect& r)
 {
-    if (i.context->paintingDisabled())
-        return false;
-    blink::WebFallbackThemeEngine::ExtraParams extraParams;
-    blink::WebCanvas* canvas = i.context->canvas();
+    WebFallbackThemeEngine::ExtraParams extraParams;
+    WebCanvas* canvas = i.context->canvas();
     extraParams.button.checked = isChecked(o);
     extraParams.button.indeterminate = isIndeterminate(o);
 
@@ -1197,7 +1189,7 @@ bool RenderTheme::paintRadioUsingFallbackTheme(RenderObject* o, const PaintInfo&
         i.context->translate(-unzoomedRect.x(), -unzoomedRect.y());
     }
 
-    blink::Platform::current()->fallbackThemeEngine()->paint(canvas, blink::WebFallbackThemeEngine::PartRadio, getWebFallbackThemeState(this, o), blink::WebRect(unzoomedRect), &extraParams);
+    Platform::current()->fallbackThemeEngine()->paint(canvas, WebFallbackThemeEngine::PartRadio, getWebFallbackThemeState(this, o), WebRect(unzoomedRect), &extraParams);
     return false;
 }
 
@@ -1207,7 +1199,7 @@ void RenderTheme::adjustRadioStyleUsingFallbackTheme(RenderStyle* style, Element
     if (!style->width().isIntrinsicOrAuto() && !style->height().isAuto())
         return;
 
-    IntSize size = blink::Platform::current()->fallbackThemeEngine()->getSize(blink::WebFallbackThemeEngine::PartRadio);
+    IntSize size = Platform::current()->fallbackThemeEngine()->getSize(WebFallbackThemeEngine::PartRadio);
     float zoomLevel = style->effectiveZoom();
     size.setWidth(size.width() * zoomLevel);
     size.setHeight(size.height() * zoomLevel);

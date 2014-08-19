@@ -118,7 +118,7 @@ function bind(func, thisObject, var_args)
      */
     function bound(var_args)
     {
-        return func.apply(thisObject, concat(args, slice(arguments)));
+        return InjectedScriptHost.callFunction(func, thisObject, concat(args, slice(arguments)));
     }
     bound.toString = function()
     {
@@ -151,12 +151,8 @@ function isArrayLike(obj)
             return false;
         if (typeof obj.splice === "function")
             return isFinite(obj.length);
-        var str = Object.prototype.toString.call(obj);
-        if (str === "[object Array]" ||
-            str === "[object Arguments]" ||
-            str === "[object HTMLCollection]" ||
-            str === "[object NodeList]" ||
-            str === "[object DOMTokenList]")
+        var str = InjectedScriptHost.callFunction(Object.prototype.toString, obj);
+        if (str === "[object Arguments]")
             return isFinite(obj.length);
     } catch (e) {
     }
@@ -377,7 +373,7 @@ InjectedScript.prototype = {
     dispatch: function(methodName, args)
     {
         var argsArray = InjectedScriptHost.eval("(" + args + ")");
-        var result = this[methodName].apply(this, argsArray);
+        var result = InjectedScriptHost.callFunction(this[methodName], this, argsArray);
         if (typeof result === "undefined") {
             inspectedWindow.console.error("Web Inspector error: InjectedScript.%s returns undefined", methodName);
             result = null;
@@ -518,7 +514,7 @@ InjectedScript.prototype = {
 
                 try {
                     propertyProcessed[property] = true;
-                    var descriptor = nullifyObjectProto(InjectedScriptHost.suppressWarningsAndCall(Object, Object.getOwnPropertyDescriptor, o, property));
+                    var descriptor = nullifyObjectProto(InjectedScriptHost.suppressWarningsAndCallFunction(Object.getOwnPropertyDescriptor, Object, [o, property]));
                     if (descriptor) {
                         if (accessorPropertiesOnly && !("get" in descriptor || "set" in descriptor))
                             continue;
@@ -580,7 +576,7 @@ InjectedScript.prototype = {
      */
     evaluate: function(expression, objectGroup, injectCommandLineAPI, returnByValue, generatePreview)
     {
-        return this._evaluateAndWrap(InjectedScriptHost.evaluateWithExceptionDetails, InjectedScriptHost, expression, objectGroup, false, injectCommandLineAPI, returnByValue, generatePreview);
+        return this._evaluateAndWrap(null, null, expression, objectGroup, false, injectCommandLineAPI, returnByValue, generatePreview);
     },
 
     /**
@@ -616,7 +612,7 @@ InjectedScript.prototype = {
                 return "Given expression does not evaluate to a function";
 
             return { wasThrown: false,
-                     result: this._wrapObject(func.apply(object, resolvedArgs), objectGroup, returnByValue),
+                     result: this._wrapObject(InjectedScriptHost.callFunction(func, object, resolvedArgs), objectGroup, returnByValue),
                      __proto__: null };
         } catch (e) {
             return this._createThrownValue(e, objectGroup, false);
@@ -653,8 +649,8 @@ InjectedScript.prototype = {
     },
 
     /**
-     * @param {!Function} evalFunction
-     * @param {!Object} object
+     * @param {?function(string):*} evalFunction
+     * @param {?Object} object
      * @param {string} expression
      * @param {string} objectGroup
      * @param {boolean} isEvalOnCallFrame
@@ -694,8 +690,8 @@ InjectedScript.prototype = {
     },
 
     /**
-     * @param {!Function} evalFunction
-     * @param {!Object} object
+     * @param {?function(string):*} evalFunction
+     * @param {?Object} object
      * @param {string} objectGroup
      * @param {string} expression
      * @param {boolean} isEvalOnCallFrame
@@ -733,7 +729,7 @@ InjectedScript.prototype = {
 
             if (prefix)
                 expression = prefix + "\n" + expression + "\n" + suffix;
-            var wrappedResult = evalFunction.call(object, expression);
+            var wrappedResult = evalFunction ? InjectedScriptHost.callFunction(evalFunction, object, [expression]) : InjectedScriptHost.evaluateWithExceptionDetails(expression);
             if (objectGroup === "console" && !wrappedResult.exceptionDetails)
                 this._lastResult = wrappedResult.result;
             return wrappedResult;
@@ -783,7 +779,7 @@ InjectedScript.prototype = {
         if (!callFrame)
             return "Could not find call frame with given id";
         if (parsedCallFrameId["asyncOrdinal"])
-            return this._evaluateAndWrap(InjectedScriptHost.evaluateWithExceptionDetails, InjectedScriptHost, expression, objectGroup, false, injectCommandLineAPI, returnByValue, generatePreview, callFrame.scopeChain);
+            return this._evaluateAndWrap(null, null, expression, objectGroup, false, injectCommandLineAPI, returnByValue, generatePreview, callFrame.scopeChain);
         return this._evaluateAndWrap(callFrame.evaluateWithExceptionDetails, callFrame, expression, objectGroup, true, injectCommandLineAPI, returnByValue, generatePreview);
     },
 
@@ -946,7 +942,7 @@ InjectedScript.prototype = {
             inspectedWindow.console.error("Web Inspector error: A function was expected for module %s evaluation", name);
             return null;
         }
-        var module = moduleFunction.call(inspectedWindow, InjectedScriptHost, inspectedWindow, injectedScriptId, this);
+        var module = InjectedScriptHost.callFunction(moduleFunction, inspectedWindow, [InjectedScriptHost, inspectedWindow, injectedScriptId, this]);
         this._modules[name] = module;
         return module;
     },
@@ -981,9 +977,6 @@ InjectedScript.prototype = {
 
         if (this.isPrimitiveValue(obj))
             return null;
-
-        if (this._isHTMLAllCollection(obj))
-            return "array";
 
         var preciseType = InjectedScriptHost.type(obj);
         if (preciseType)
@@ -1041,7 +1034,7 @@ InjectedScript.prototype = {
 
         if (isSymbol(obj)) {
             try {
-                return Symbol.prototype.toString.call(obj) || "Symbol";
+                return InjectedScriptHost.callFunction(Symbol.prototype.toString, obj) || "Symbol";
             } catch (e) {
                 return "Symbol";
             }
@@ -1504,7 +1497,7 @@ CommandLineAPIImpl.prototype = {
      */
     dir: function(var_args)
     {
-        return inspectedWindow.console.dir.apply(inspectedWindow.console, arguments)
+        return InjectedScriptHost.callFunction(inspectedWindow.console.dir, inspectedWindow.console, slice(arguments));
     },
 
     /**
@@ -1512,7 +1505,7 @@ CommandLineAPIImpl.prototype = {
      */
     dirxml: function(var_args)
     {
-        return inspectedWindow.console.dirxml.apply(inspectedWindow.console, arguments)
+        return InjectedScriptHost.callFunction(inspectedWindow.console.dirxml, inspectedWindow.console, slice(arguments));
     },
 
     /**
@@ -1539,7 +1532,7 @@ CommandLineAPIImpl.prototype = {
      */
     profile: function(opt_title)
     {
-        return inspectedWindow.console.profile.apply(inspectedWindow.console, arguments)
+        return InjectedScriptHost.callFunction(inspectedWindow.console.profile, inspectedWindow.console, slice(arguments));
     },
 
     /**
@@ -1547,7 +1540,7 @@ CommandLineAPIImpl.prototype = {
      */
     profileEnd: function(opt_title)
     {
-        return inspectedWindow.console.profileEnd.apply(inspectedWindow.console, arguments)
+        return InjectedScriptHost.callFunction(inspectedWindow.console.profileEnd, inspectedWindow.console, slice(arguments));
     },
 
     /**
@@ -1658,7 +1651,7 @@ CommandLineAPIImpl.prototype = {
 
     table: function(data, opt_columns)
     {
-        inspectedWindow.console.table.apply(inspectedWindow.console, arguments);
+        InjectedScriptHost.callFunction(inspectedWindow.console.table, inspectedWindow.console, slice(arguments));
     },
 
     /**

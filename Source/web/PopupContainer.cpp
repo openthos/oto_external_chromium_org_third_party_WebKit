@@ -55,8 +55,6 @@
 #include "web/WebViewImpl.h"
 #include <limits>
 
-using namespace blink;
-
 namespace blink {
 
 static const int borderSize = 1;
@@ -493,10 +491,7 @@ void PopupContainer::getPopupMenuInfo(WebPopupMenuInfo* info)
 
         outputItem.label = inputItem.label;
         outputItem.enabled = inputItem.enabled;
-        if (inputItem.textDirection == blink::RTL)
-            outputItem.textDirection = WebTextDirectionRightToLeft;
-        else
-            outputItem.textDirection = WebTextDirectionLeftToRight;
+        outputItem.textDirection = toWebTextDirection(inputItem.textDirection);
         outputItem.hasTextDirectionOverride = inputItem.hasTextDirectionOverride;
 
         switch (inputItem.type) {

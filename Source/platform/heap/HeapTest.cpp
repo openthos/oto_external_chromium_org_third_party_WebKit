@@ -264,16 +264,6 @@ public:
         m_count++;
     }
 
-    virtual void markConservatively(HeapObjectHeader* header) OVERRIDE
-    {
-        ASSERT_NOT_REACHED();
-    }
-
-    virtual void markConservatively(FinalizedHeapObjectHeader* header) OVERRIDE
-    {
-        ASSERT_NOT_REACHED();
-    }
-
     virtual void registerWeakMembers(const void*, const void*, WeakPointerCallback) OVERRIDE { }
     virtual void registerWeakTable(const void*, EphemeronCallback, EphemeronCallback) OVERRIDE { }
 #if ENABLE(ASSERT)
@@ -636,17 +626,17 @@ private:
 
 int SimpleFinalizedObject::s_destructorCalls = 0;
 
-class TestTypedHeapClass : public GarbageCollected<TestTypedHeapClass> {
+class Node : public GarbageCollected<Node> {
 public:
-    static TestTypedHeapClass* create()
+    static Node* create()
     {
-        return new TestTypedHeapClass();
+        return new Node();
     }
 
     void trace(Visitor*) { }
 
 private:
-    TestTypedHeapClass() { }
+    Node() { }
 };
 
 class Bar : public GarbageCollectedFinalized<Bar> {
@@ -1696,7 +1686,7 @@ TEST(HeapTest, TypedHeapSanity)
 {
     // We use TraceCounter for allocating an object on the general heap.
     Persistent<TraceCounter> generalHeapObject = TraceCounter::create();
-    Persistent<TestTypedHeapClass> typedHeapObject = TestTypedHeapClass::create();
+    Persistent<Node> typedHeapObject = Node::create();
     EXPECT_NE(pageHeaderFromObject(generalHeapObject.get()),
         pageHeaderFromObject(typedHeapObject.get()));
 }
@@ -1924,7 +1914,7 @@ TEST(HeapTest, LargeObjects)
         Persistent<LargeObject> object = LargeObject::create();
         EXPECT_TRUE(ThreadState::current()->contains(object));
         EXPECT_TRUE(ThreadState::current()->contains(reinterpret_cast<char*>(object.get()) + sizeof(LargeObject) - 1));
-#if ENABLE(GC_TRACING)
+#if ENABLE(GC_PROFILE_MARKING)
         const GCInfo* info = ThreadState::current()->findGCInfo(reinterpret_cast<Address>(object.get()));
         EXPECT_NE(reinterpret_cast<const GCInfo*>(0), info);
         EXPECT_EQ(info, ThreadState::current()->findGCInfo(reinterpret_cast<Address>(object.get()) + sizeof(LargeObject) - 1));
@@ -4225,6 +4215,24 @@ TEST(HeapTest, MapWithCustomWeaknessHandling2)
     EXPECT_EQ(livingInt, i1->value.second);
 }
 
+static void addElementsToWeakMap(HeapHashMap<int, WeakMember<IntWrapper> >* map)
+{
+    // Key cannot be zero in hashmap.
+    for (int i = 1; i < 11; i++)
+        map->add(i, IntWrapper::create(i));
+}
+
+// crbug.com/402426
+// If it doesn't assert a concurrent modification to the map, then it's passing.
+TEST(HeapTest, RegressNullIsStrongified)
+{
+    Persistent<HeapHashMap<int, WeakMember<IntWrapper> > > map = new HeapHashMap<int, WeakMember<IntWrapper> >();
+    addElementsToWeakMap(map);
+    HeapHashMap<int, WeakMember<IntWrapper> >::AddResult result = map->add(800, nullptr);
+    Heap::collectGarbage(ThreadState::HeapPointersOnStack);
+    result.storedValue->value = IntWrapper::create(42);
+}
+
 TEST(HeapTest, Bind)
 {
     Closure closure = bind(&Bar::trace, Bar::create(), static_cast<Visitor*>(0));
@@ -4831,12 +4839,19 @@ TEST(HeapTest, ObjectDeadBit)
     DeadBitTester::test();
 }
 
+static bool allocateAndReturnBool()
+{
+    Heap::collectGarbage(ThreadState::HeapPointersOnStack);
+    return true;
+}
+
 class MixinWithGarbageCollectionInConstructor : public GarbageCollectedMixin {
 public:
-    MixinWithGarbageCollectionInConstructor()
+    MixinWithGarbageCollectionInConstructor() : m_dummy(allocateAndReturnBool())
     {
-        Heap::collectGarbage(ThreadState::HeapPointersOnStack);
     }
+private:
+    bool m_dummy;
 };
 
 class ClassWithGarbageCollectingMixinConstructor
@@ -4975,12 +4990,13 @@ TEST(HeapTest, RecursiveMutex)
 }
 
 template<typename T>
-class TraceIfNeededTester : public GarbageCollected<TraceIfNeededTester<T> > {
+class TraceIfNeededTester : public GarbageCollectedFinalized<TraceIfNeededTester<T> > {
 public:
     static TraceIfNeededTester<T>* create() { return new TraceIfNeededTester<T>(); }
     static TraceIfNeededTester<T>* create(const T& obj) { return new TraceIfNeededTester<T>(obj); }
     void trace(Visitor* visitor) { TraceIfNeeded<T>::trace(visitor, &m_obj); }
     T& obj() { return m_obj; }
+    ~TraceIfNeededTester() { }
 private:
     TraceIfNeededTester() { }
     explicit TraceIfNeededTester(const T& obj) : m_obj(obj) { }
@@ -5028,6 +5044,26 @@ TEST(HeapTest, TraceIfNeeded)
         m_vec->trace(&visitor);
         EXPECT_EQ(2u, visitor.count());
     }
+}
+
+class PartObjectWithVirtualMethod {
+public:
+    virtual void trace(Visitor*) { }
+};
+
+class ObjectWithVirtualPartObject : public GarbageCollected<ObjectWithVirtualPartObject> {
+public:
+    ObjectWithVirtualPartObject() : m_dummy(allocateAndReturnBool()) { }
+    void trace(Visitor* visitor) { visitor->trace(m_part); }
+private:
+    bool m_dummy;
+    PartObjectWithVirtualMethod m_part;
+};
+
+TEST(HeapTest, PartObjectWithVirtualMethod)
+{
+    ObjectWithVirtualPartObject* object = new ObjectWithVirtualPartObject();
+    EXPECT_TRUE(object);
 }
 
 } // namespace blink

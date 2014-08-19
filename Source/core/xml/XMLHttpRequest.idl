@@ -33,14 +33,14 @@ enum XMLHttpRequestResponseType {
     "document",
     "json",
     "text",
-    "stream"
+    "legacystream"
 };
 
 [
     WillBeGarbageCollected,
     ActiveDOMObject,
     CustomConstructor(optional XMLHttpRequestOptions options),
-    Exposed=Window&DedicatedWorker&SharedWorker
+    Exposed=(Window,DedicatedWorker,SharedWorker)
 ] interface XMLHttpRequest : XMLHttpRequestEventTarget {
     // event handler attributes
     attribute EventHandler onreadystatechange;

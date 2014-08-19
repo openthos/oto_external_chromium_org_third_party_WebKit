@@ -1063,8 +1063,19 @@ RenderListMarker::RenderListMarker(RenderListItem* item)
 
 RenderListMarker::~RenderListMarker()
 {
+}
+
+void RenderListMarker::destroy()
+{
     if (m_image)
         m_image->removeClient(this);
+    RenderBox::destroy();
+}
+
+void RenderListMarker::trace(Visitor* visitor)
+{
+    visitor->trace(m_listItem);
+    RenderBox::trace(visitor);
 }
 
 RenderListMarker* RenderListMarker::createAnonymous(RenderListItem* item)
@@ -1670,6 +1681,27 @@ int RenderListMarker::baselinePosition(FontBaseline baselineType, bool firstLine
     if (!isImage())
         return m_listItem->baselinePosition(baselineType, firstLine, direction, PositionOfInteriorLineBoxes);
     return RenderBox::baselinePosition(baselineType, firstLine, direction, linePositionMode);
+}
+
+String RenderListMarker::suffix() const
+{
+    EListStyleType type = style()->listStyleType();
+    const UChar suffix = listMarkerSuffix(type, m_listItem->value());
+
+    if (suffix == ' ')
+        return String(" ");
+
+    // If the suffix is not ' ', an extra space is needed
+    UChar data[2];
+    if (style()->isLeftToRightDirection()) {
+        data[0] = suffix;
+        data[1] = ' ';
+    } else {
+        data[0] = ' ';
+        data[1] = suffix;
+    }
+
+    return String(data, 2);
 }
 
 bool RenderListMarker::isInside() const

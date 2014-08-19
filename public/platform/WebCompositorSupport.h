@@ -52,15 +52,13 @@ class WebLayer;
 class WebScrollbarLayer;
 class WebScrollbarThemeGeometry;
 class WebScrollOffsetAnimationCurve;
-class WebSolidColorLayer;
-class WebThread;
 class WebTransformAnimationCurve;
 class WebTransformOperations;
 
 class WebCompositorSupport {
 public:
     // Creates an output surface for the compositor backed by a 3d context.
-    virtual WebCompositorOutputSurface* createOutputSurfaceFor3D(blink::WebGraphicsContext3D*) { return 0; }
+    virtual WebCompositorOutputSurface* createOutputSurfaceFor3D(WebGraphicsContext3D*) { return 0; }
 
     // Creates an output surface for the compositor backed by a software device.
     virtual WebCompositorOutputSurface* createOutputSurfaceForSoftware() { return 0; }
@@ -76,9 +74,6 @@ public:
     virtual WebImageLayer* createImageLayer() { return 0; }
 
     virtual WebNinePatchLayer* createNinePatchLayer() { return 0; }
-
-    // TODO(dshwang): This isn't used anymore.
-    virtual WebSolidColorLayer* createSolidColorLayer() { return 0; }
 
     // The ownership of the WebScrollbarThemeGeometry pointer is passed to Chromium.
     virtual WebScrollbarLayer* createScrollbarLayer(WebScrollbar*, WebScrollbarThemePainter, WebScrollbarThemeGeometry*) { return 0; }

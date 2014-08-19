@@ -145,7 +145,7 @@ const int showTreeCharacterOffset = 39;
 #endif
 
 // Base class for all rendering tree objects.
-class RenderObject : public ImageResourceClient {
+class RenderObject : public NoBaseWillBeGarbageCollectedFinalized<RenderObject>, public ImageResourceClient {
     friend class RenderBlock;
     friend class RenderBlockFlow;
     friend class RenderLayerReflectionInfo; // For setParent
@@ -157,6 +157,7 @@ public:
     // marked as anonymous in the constructor.
     explicit RenderObject(Node*);
     virtual ~RenderObject();
+    virtual void trace(Visitor*);
 
     virtual const char* renderName() const = 0;
 
@@ -343,9 +344,11 @@ public:
     static RenderObject* createObject(Element*, RenderStyle*);
     static unsigned instanceCount() { return s_instanceCount; }
 
+#if !ENABLE(OILPAN)
     // RenderObjects are allocated out of the rendering partition.
     void* operator new(size_t);
     void operator delete(void*);
+#endif
 
 public:
     bool isPseudoElement() const { return node() && node()->isPseudoElement(); }
@@ -627,7 +630,7 @@ public:
 
     Node* node() const
     {
-        return isAnonymous() ? 0 : m_node;
+        return isAnonymous() ? 0 : m_node.get();
     }
 
     Node* nonPseudoNode() const
@@ -636,7 +639,7 @@ public:
     }
 
     // FIXME: Why does RenderWidget need this?
-    void clearNode() { m_node = 0; }
+    void clearNode() { m_node = nullptr; }
 
     // Returns the styled node that caused the generation of this renderer.
     // This is the same as node() except for renderers of :before and :after
@@ -653,6 +656,7 @@ public:
     // If paintInvalidationContainer and paintInvalidationContainerSkipped are not null, on return *paintInvalidationContainerSkipped
     // is true if the renderer returned is an ancestor of paintInvalidationContainer.
     RenderObject* container(const RenderLayerModelObject* paintInvalidationContainer = 0, bool* paintInvalidationContainerSkipped = 0) const;
+    RenderBlock* containerForFixedPosition(const RenderLayerModelObject* paintInvalidationContainer = 0, bool* paintInvalidationContainerSkipped = 0) const;
 
     virtual RenderObject* hoverAncestor() const { return parent(); }
 
@@ -731,7 +735,7 @@ public:
     void collectAnnotatedRegions(Vector<AnnotatedRegionValue>&);
 
     CompositingState compositingState() const;
-    virtual CompositingReasons additionalCompositingReasons(CompositingTriggerFlags) const;
+    virtual CompositingReasons additionalCompositingReasons() const;
 
     bool hitTest(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestFilter = HitTestAll);
     virtual void updateHitTestResult(HitTestResult&, const LayoutPoint&);
@@ -1053,7 +1057,13 @@ public:
     // layoutDidGetCalled indicates whether this render object was re-laid-out
     // since the last call to setLayoutDidGetCalled(false) on this object.
     bool layoutDidGetCalled() const { return m_bitfields.layoutDidGetCalled(); }
-    void setLayoutDidGetCalled(bool b) { m_bitfields.setLayoutDidGetCalled(b); }
+    void setLayoutDidGetCalled(bool b)
+    {
+        m_bitfields.setLayoutDidGetCalled(b);
+
+        if (b)
+            markContainingBlockChainForPaintInvalidation();
+    }
 
     bool mayNeedPaintInvalidation() const { return m_bitfields.mayNeedPaintInvalidation(); }
     void setMayNeedPaintInvalidation(bool b)
@@ -1152,8 +1162,6 @@ protected:
 private:
     const RenderLayerModelObject* enclosingCompositedContainer() const;
 
-    RenderBlock* containerForFixedPosition(const RenderLayerModelObject* paintInvalidationContainer = 0, bool* paintInvalidationContainerSkipped = 0) const;
-
     RenderFlowThread* locateFlowThreadContainingBlock() const;
     void removeFromRenderFlowThread();
     void removeFromRenderFlowThreadRecursive(RenderFlowThread*);
@@ -1182,15 +1190,20 @@ private:
 
     RefPtr<RenderStyle> m_style;
 
-    Node* m_node;
+    RawPtrWillBeMember<Node> m_node;
 
-    RenderObject* m_parent;
-    RenderObject* m_previous;
-    RenderObject* m_next;
+    RawPtrWillBeMember<RenderObject> m_parent;
+    RawPtrWillBeMember<RenderObject> m_previous;
+    RawPtrWillBeMember<RenderObject> m_next;
 
 #if ENABLE(ASSERT)
     unsigned m_hasAXObject             : 1;
     unsigned m_setNeedsLayoutForbidden : 1;
+#if ENABLE(OILPAN)
+protected:
+    unsigned m_didCallDestroy          : 1;
+private:
+#endif
 #endif
 
 #define ADD_BOOLEAN_BITFIELD(name, Name) \

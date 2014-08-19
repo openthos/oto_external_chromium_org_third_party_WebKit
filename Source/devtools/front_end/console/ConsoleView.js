@@ -89,7 +89,6 @@ WebInspector.ConsoleView = function(hideContextSelector)
     this._messagesElement.id = "console-messages";
     this._messagesElement.classList.add("monospace");
     this._messagesElement.addEventListener("click", this._messagesClicked.bind(this), true);
-    this._scrolledToBottom = true;
 
     this._viewportThrottler = new WebInspector.Throttler(50);
 
@@ -282,14 +281,16 @@ WebInspector.ConsoleView.prototype = {
      */
     _titleFor: function(executionContext)
     {
-        var result = executionContext.name;
-        if (executionContext.isMainWorldContext && executionContext.frameId) {
-            var frame = executionContext.target().resourceTreeModel.frameForId(executionContext.frameId);
-            result =  frame ? frame.displayName() : result;
-        }
-
-        if (!executionContext.isMainWorldContext)
-            result = "\u00a0\u00a0\u00a0\u00a0" + result;
+        var result;
+        if (executionContext.isMainWorldContext) {
+            if (executionContext.frameId) {
+                var frame = executionContext.target().resourceTreeModel.frameForId(executionContext.frameId);
+                result =  frame ? frame.displayName() : executionContext.name;
+            } else {
+                result = WebInspector.displayNameForURL(executionContext.name)
+            }
+        } else
+            result = "\u00a0\u00a0\u00a0\u00a0" + executionContext.name;
 
         var maxLength = 50;
         return result.trimMiddle(maxLength);
@@ -415,16 +416,10 @@ WebInspector.ConsoleView.prototype = {
         this._prompt.moveCaretToEndOfPrompt();
     },
 
-    storeScrollPositions: function()
-    {
-        WebInspector.View.prototype.storeScrollPositions.call(this);
-        this._scrolledToBottom = this._messagesElement.isScrolledToBottom();
-    },
-
     restoreScrollPositions: function()
     {
-        if (this._scrolledToBottom)
-            this._immediatelyScrollIntoView();
+        if (this._viewport.scrolledToBottom())
+            this._immediatelyScrollToBottom();
         else
             WebInspector.View.prototype.restoreScrollPositions.call(this);
     },
@@ -433,7 +428,8 @@ WebInspector.ConsoleView.prototype = {
     {
         this._scheduleViewportRefresh();
         this._prompt.hideSuggestBox();
-        this.restoreScrollPositions();
+        if (this._viewport.scrolledToBottom())
+            this._immediatelyScrollToBottom();
     },
 
     _scheduleViewportRefresh: function()
@@ -450,7 +446,7 @@ WebInspector.ConsoleView.prototype = {
         this._viewportThrottler.schedule(invalidateViewport.bind(this));
     },
 
-    _immediatelyScrollIntoView: function()
+    _immediatelyScrollToBottom: function()
     {
         // This will scroll viewport and trigger its refresh.
         this._promptElement.scrollIntoView(true);
@@ -568,7 +564,6 @@ WebInspector.ConsoleView.prototype = {
     {
         this._clearCurrentSearchResultHighlight();
         this._consoleMessages = [];
-        this._scrolledToBottom = true;
         this._updateMessageList();
 
         if (this._searchRegex)
@@ -1015,8 +1010,13 @@ WebInspector.ConsoleViewFilter.prototype = {
         if (!message.target())
             return true;
 
-        if (!this._view._showAllMessagesCheckbox.checked() && executionContext && (message.target() !== executionContext.target() || message.executionContextId !== executionContext.id))
-            return false;
+        if (!this._view._showAllMessagesCheckbox.checked() && executionContext) {
+            if (message.target() !== executionContext.target())
+                return false;
+            if (message.executionContextId  && message.executionContextId !== executionContext.id) {
+                return false;
+            }
+        }
 
         if (viewMessage.consoleMessage().isGroupMessage())
             return true;

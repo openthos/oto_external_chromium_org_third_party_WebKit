@@ -85,8 +85,8 @@ RenderLayerScrollableArea::RenderLayerScrollableArea(RenderLayer& layer)
     , m_nextTopmostScrollChild(0)
     , m_topmostScrollChild(0)
     , m_needsCompositedScrolling(false)
-    , m_scrollCorner(0)
-    , m_resizer(0)
+    , m_scrollCorner(nullptr)
+    , m_resizer(nullptr)
 {
     ScrollableArea::setConstrainsScrollingToContentEdge(false);
 
@@ -355,11 +355,14 @@ void RenderLayerScrollableArea::setScrollOffset(const IntPoint& newScrollOffset)
     // FIXME(361045): remove InspectorInstrumentation calls once DevTools Timeline migrates to tracing.
     InspectorInstrumentation::willScrollLayer(&box());
 
+    const RenderLayerModelObject* repaintContainer = box().containerForPaintInvalidation();
+
     // Update the positions of our child layers (if needed as only fixed layers should be impacted by a scroll).
     // We don't update compositing layers, because we need to do a deep update from the compositing ancestor.
     if (!frameView->isInPerformLayout()) {
         // If we're in the middle of layout, we'll just update layers once layout has finished.
-        layer()->updateLayerPositionsAfterOverflowScroll();
+        layer()->clipper().clearClipRectsIncludingDescendants();
+        box().setPreviousPaintInvalidationRect(box().boundsRectForPaintInvalidation(repaintContainer));
         // Update regions, scrolling may change the clip of a particular region.
         frameView->updateAnnotatedRegions();
         // FIXME: We shouldn't call updateWidgetPositions() here since it might tear down the render tree,
@@ -369,7 +372,6 @@ void RenderLayerScrollableArea::setScrollOffset(const IntPoint& newScrollOffset)
         updateCompositingLayersAfterScroll();
     }
 
-    const RenderLayerModelObject* repaintContainer = box().containerForPaintInvalidation();
     // The caret rect needs to be invalidated after scrolling
     frame->selection().setCaretRectNeedsUpdate();
 
@@ -386,7 +388,8 @@ void RenderLayerScrollableArea::setScrollOffset(const IntPoint& newScrollOffset)
         bool onlyScrolledCompositedLayers = scrollsOverflow()
             && !layer()->hasVisibleNonLayerContent()
             && !layer()->hasNonCompositedChild()
-            && !layer()->hasBlockSelectionGapBounds();
+            && !layer()->hasBlockSelectionGapBounds()
+            && box().style()->backgroundLayers().attachment() != LocalBackgroundAttachment;
 
         if (usesCompositedScrolling() || onlyScrolledCompositedLayers)
             requiresRepaint = false;
@@ -648,7 +651,13 @@ void RenderLayerScrollableArea::updateAfterLayout()
         }
     }
 
-    updateScrollableAreaSet(hasScrollableHorizontalOverflow() || hasScrollableVerticalOverflow());
+    bool hasOverflow = hasScrollableHorizontalOverflow() || hasScrollableVerticalOverflow();
+    updateScrollableAreaSet(hasOverflow);
+
+    if (hasOverflow) {
+        DisableCompositingQueryAsserts disabler;
+        positionOverflowControls(IntSize());
+    }
 }
 
 bool RenderLayerScrollableArea::hasHorizontalOverflow() const
@@ -977,7 +986,7 @@ void RenderLayerScrollableArea::updateScrollCornerStyle()
         m_scrollCorner->setStyle(corner.release());
     } else if (m_scrollCorner) {
         m_scrollCorner->destroy();
-        m_scrollCorner = 0;
+        m_scrollCorner = nullptr;
     }
 }
 
@@ -1049,11 +1058,6 @@ void RenderLayerScrollableArea::paintScrollCorner(GraphicsContext* context, cons
     absRect.moveBy(paintOffset);
     if (!absRect.intersects(damageRect))
         return;
-
-    if (context->updatingControlTints()) {
-        updateScrollCornerStyle();
-        return;
-    }
 
     if (m_scrollCorner) {
         m_scrollCorner->paintIntoRect(context, paintOffset, absRect);
@@ -1163,11 +1167,6 @@ void RenderLayerScrollableArea::paintResizer(GraphicsContext* context, const Int
     if (!absRect.intersects(damageRect))
         return;
 
-    if (context->updatingControlTints()) {
-        updateResizerStyle();
-        return;
-    }
-
     if (m_resizer) {
         m_resizer->paintIntoRect(context, paintOffset, absRect);
         return;
@@ -1245,7 +1244,7 @@ void RenderLayerScrollableArea::updateResizerStyle()
         m_resizer->setStyle(resizer.release());
     } else if (m_resizer) {
         m_resizer->destroy();
-        m_resizer = 0;
+        m_resizer = nullptr;
     }
 }
 

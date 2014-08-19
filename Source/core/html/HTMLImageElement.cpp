@@ -41,6 +41,7 @@
 #include "core/html/canvas/CanvasRenderingContext.h"
 #include "core/html/parser/HTMLParserIdioms.h"
 #include "core/html/parser/HTMLSrcsetParser.h"
+#include "core/inspector/ConsoleMessage.h"
 #include "core/rendering/RenderImage.h"
 #include "platform/MIMETypeRegistry.h"
 #include "platform/RuntimeEnabledFeatures.h"
@@ -282,6 +283,8 @@ ImageCandidate HTMLImageElement::findBestFitImageFromPictureParent()
             continue;
 
         HTMLSourceElement* source = toHTMLSourceElement(child);
+        if (!source->fastGetAttribute(srcAttr).isNull())
+            UseCounter::countDeprecation(document(), UseCounter::PictureSourceSrc);
         String srcset = source->fastGetAttribute(srcsetAttr);
         if (srcset.isEmpty())
             continue;
@@ -346,6 +349,8 @@ Node::InsertionNotificationRequest HTMLImageElement::insertedInto(ContainerNode*
 {
     if (!m_formWasSetByParser || NodeTraversal::highestAncestorOrSelf(*insertionPoint) != NodeTraversal::highestAncestorOrSelf(*m_form.get()))
         resetFormOwner();
+    if (m_listener)
+        document().mediaQueryMatcher().addViewportListener(m_listener.get());
 
     bool imageWasModified = false;
     if (RuntimeEnabledFeatures::pictureEnabled()) {
@@ -368,6 +373,8 @@ void HTMLImageElement::removedFrom(ContainerNode* insertionPoint)
 {
     if (!m_form || NodeTraversal::highestAncestorOrSelf(*m_form.get()) != NodeTraversal::highestAncestorOrSelf(*this))
         resetFormOwner();
+    if (m_listener)
+        document().mediaQueryMatcher().removeViewportListener(m_listener.get());
     HTMLElement::removedFrom(insertionPoint);
 }
 

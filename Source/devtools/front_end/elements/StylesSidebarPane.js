@@ -47,7 +47,7 @@ WebInspector.StylesSidebarPane = function(computedStylePane, setPseudoClassCallb
     addButton.className = "pane-title-button add";
     addButton.id = "add-style-button-test-id";
     addButton.title = WebInspector.UIString("New Style Rule");
-    addButton.addEventListener("click", this._createNewRule.bind(this), false);
+    addButton.addEventListener("click", this._createNewRuleInViaInspectorStyleSheet.bind(this), false);
     this.titleElement.appendChild(addButton);
 
     this._computedStylePane = computedStylePane;
@@ -77,16 +77,9 @@ WebInspector.StylesSidebarPane = function(computedStylePane, setPseudoClassCallb
 // FIXME: find a way of generating this mapping or getting it from combination of RenderStyleConstants and CSSSelector.cpp at
 // runtime.
 WebInspector.StylesSidebarPane.PseudoIdNames = [
-    "", "first-line", "first-letter", "before", "after", "selection", "", "-webkit-scrollbar", "-webkit-file-upload-button",
-    "-webkit-input-placeholder", "-webkit-slider-thumb", "-webkit-search-cancel-button", "-webkit-search-decoration",
-    "-webkit-search-results-decoration", "-webkit-search-results-button", "-webkit-media-controls-panel",
-    "-webkit-media-controls-play-button", "-webkit-media-controls-mute-button", "-webkit-media-controls-timeline",
-    "-webkit-media-controls-timeline-container", "-webkit-media-controls-volume-slider",
-    "-webkit-media-controls-volume-slider-container", "-webkit-media-controls-current-time-display",
-    "-webkit-media-controls-time-remaining-display", "-webkit-media-controls-fullscreen-button",
-    "-webkit-media-controls-toggle-closed-captions-button", "-webkit-media-controls-status-display", "-webkit-scrollbar-thumb",
-    "-webkit-scrollbar-button", "-webkit-scrollbar-track", "-webkit-scrollbar-track-piece", "-webkit-scrollbar-corner",
-    "-webkit-resizer", "-webkit-inner-spin-button", "-webkit-outer-spin-button"
+    "", "first-line", "first-letter", "before", "after", "backdrop", "selection", "", "-webkit-scrollbar",
+    "-webkit-scrollbar-thumb", "-webkit-scrollbar-button", "-webkit-scrollbar-track", "-webkit-scrollbar-track-piece",
+    "-webkit-scrollbar-corner", "-webkit-resizer"
 ];
 
 WebInspector.StylesSidebarPane._colorRegex = /((?:rgb|hsl)a?\([^)]+\)|#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}|\b\w+\b(?!-))/g;
@@ -524,7 +517,7 @@ WebInspector.StylesSidebarPane.prototype = {
             // Add rules in reverse order to match the cascade order.
             for (var j = pseudoElementCSSRules.rules.length - 1; j >= 0; --j) {
                 var rule = pseudoElementCSSRules.rules[j];
-                styleRules.push({ style: rule.style, selectorText: rule.selectorText, media: rule.media, sourceURL: rule.resourceURL(), rule: rule, editable: !!(rule.style && rule.style.styleSheetId) });
+                styleRules.push({ style: rule.style, selectorText: rule.selectorText, media: rule.media, rule: rule, editable: !!(rule.style && rule.style.styleSheetId) });
             }
             usedProperties = {};
             this._markUsedProperties(styleRules, usedProperties);
@@ -594,7 +587,7 @@ WebInspector.StylesSidebarPane.prototype = {
                 addedAttributesStyle = true;
                 addAttributesStyle();
             }
-            styleRules.push({ style: rule.style, selectorText: rule.selectorText, media: rule.media, sourceURL: rule.resourceURL(), rule: rule, editable: !!(rule.style && rule.style.styleSheetId) });
+            styleRules.push({ style: rule.style, selectorText: rule.selectorText, media: rule.media, rule: rule, editable: !!(rule.style && rule.style.styleSheetId) });
         }
 
         if (!addedAttributesStyle)
@@ -634,7 +627,7 @@ WebInspector.StylesSidebarPane.prototype = {
                     insertInheritedNodeSeparator(parentNode);
                     separatorInserted = true;
                 }
-                styleRules.push({ style: rule.style, selectorText: rule.selectorText, media: rule.media, sourceURL: rule.resourceURL(), rule: rule, isInherited: true, parentNode: parentNode, editable: !!(rule.style && rule.style.styleSheetId) });
+                styleRules.push({ style: rule.style, selectorText: rule.selectorText, media: rule.media, rule: rule, isInherited: true, parentNode: parentNode, editable: !!(rule.style && rule.style.styleSheetId) });
             }
             parentNode = parentNode.parentNode;
         }
@@ -790,26 +783,54 @@ WebInspector.StylesSidebarPane.prototype = {
         }
     },
 
-    _createNewRule: function(event)
+    /**
+     * @param {?Event} event
+     */
+    _createNewRuleInViaInspectorStyleSheet: function(event)
     {
         event.consume();
-        this.expand();
-        this.addBlankSection().startEditingSelector();
+        var cssModel = this._target.cssModel;
+        cssModel.requestViaInspectorStylesheet(this._node, viaInspectorCallback.bind(this));
+
+        /**
+         * @param {?WebInspector.CSSStyleSheetHeader} styleSheetHeader
+         * @this {WebInspector.StylesSidebarPane}
+         */
+        function viaInspectorCallback(styleSheetHeader)
+        {
+            if (!styleSheetHeader)
+                return;
+            styleSheetHeader.requestContent(onViaInspectorContent.bind(this, styleSheetHeader.id));
+        }
+
+        /**
+         * @param {string} styleSheetId
+         * @param {string} text
+         * @this {WebInspector.StylesSidebarPane}
+         */
+        function onViaInspectorContent(styleSheetId, text)
+        {
+            var lines = text.split("\n");
+            var range = WebInspector.TextRange.createFromLocation(lines.length - 1, lines[lines.length - 1].length);
+            this._addBlankSection(this.sections[0][1], styleSheetId, range);
+        }
     },
 
     /**
-     * @return {!WebInspector.BlankStylePropertiesSection}
+     * @param {!WebInspector.StylePropertiesSection} insertAfterSection
+     * @param {string} styleSheetId
+     * @param {!WebInspector.TextRange} ruleLocation
      */
-    addBlankSection: function()
+    _addBlankSection: function(insertAfterSection, styleSheetId, ruleLocation)
     {
-        var blankSection = new WebInspector.BlankStylePropertiesSection(this, this._node ? WebInspector.DOMPresentationUtils.simpleSelector(this._node) : "");
+        this.expand();
+        var blankSection = new WebInspector.BlankStylePropertiesSection(this, this._node ? WebInspector.DOMPresentationUtils.simpleSelector(this._node) : "", styleSheetId, ruleLocation, insertAfterSection.rule);
 
-        var elementStyleSection = this.sections[0][1];
-        this._sectionsContainer.insertBefore(blankSection.element, elementStyleSection.element.nextSibling);
+        this._sectionsContainer.insertBefore(blankSection.element, insertAfterSection.element.nextSibling);
 
-        this.sections[0].splice(2, 0, blankSection);
-
-        return blankSection;
+        var index = this.sections[0].indexOf(insertAfterSection);
+        this.sections[0].splice(index + 1, 0, blankSection);
+        blankSection.startEditingSelector();
     },
 
     removeSection: function(section)
@@ -1108,6 +1129,12 @@ WebInspector.StylePropertiesSection = function(parentPane, styleRule, editable, 
     closeBrace.textContent = "}";
     this.element.appendChild(closeBrace);
 
+    if (this.editable && this.rule) {
+        var newRuleButton = closeBrace.createChild("div", "sidebar-pane-button-new-rule");
+        newRuleButton.title = WebInspector.UIString("Insert Style Rule");
+        newRuleButton.addEventListener("click", this._onNewRuleClick.bind(this), false);
+    }
+
     this._selectorElement.addEventListener("click", this._handleSelectorClick.bind(this), false);
     this.element.addEventListener("mousedown", this._handleEmptySpaceMouseDown.bind(this), false);
     this.element.addEventListener("click", this._handleEmptySpaceClick.bind(this), false);
@@ -1146,6 +1173,16 @@ WebInspector.StylePropertiesSection = function(parentPane, styleRule, editable, 
 }
 
 WebInspector.StylePropertiesSection.prototype = {
+    /**
+     * @param {?Event} event
+     */
+    _onNewRuleClick: function(event)
+    {
+        event.consume();
+        var range = WebInspector.TextRange.createFromLocation(this.rule.style.range.endLine, this.rule.style.range.endColumn + 1);
+        this._parentPane._addBlankSection(this, this.rule.styleSheetId, range);
+    },
+
     /**
      * @param {!WebInspector.CSSRule} editedRule
      * @param {!WebInspector.TextRange} oldRange
@@ -1487,7 +1524,12 @@ WebInspector.StylePropertiesSection.prototype = {
         return item;
     },
 
-    _createRuleOriginNode: function()
+    /**
+     * @param {?WebInspector.CSSRule} rule
+     * @param {!WebInspector.TextRange=} ruleLocation
+     * @return {!Node}
+     */
+    _createRuleOriginNode: function(rule, ruleLocation)
     {
         /**
          * @param {string} url
@@ -1502,22 +1544,38 @@ WebInspector.StylePropertiesSection.prototype = {
             return link;
         }
 
-        if (this.styleRule.sourceURL) {
-            var firstMatchingIndex = this.styleRule.rule.matchingSelectors && this.rule.matchingSelectors.length ? this.rule.matchingSelectors[0] : 0;
-            var matchingSelectorLocation = new WebInspector.CSSLocation(this._parentPane._target, this.rule.styleSheetId, this.styleRule.sourceURL, this.rule.lineNumberInSource(firstMatchingIndex), this.rule.columnNumberInSource(firstMatchingIndex));
-            return this._parentPane._linkifier.linkifyCSSLocation(matchingSelectorLocation) || linkifyUncopyable(this.styleRule.sourceURL, this.rule.lineNumberInSource());
-        }
-
-        if (!this.rule)
+        if (!rule)
             return document.createTextNode("");
 
-        if (this.rule.isUserAgent)
+        if (!ruleLocation) {
+            var firstMatchingIndex = rule.matchingSelectors && rule.matchingSelectors.length ? rule.matchingSelectors[0] : 0;
+            ruleLocation = rule.selectors[firstMatchingIndex].range;
+        }
+
+        var sourceURL = rule.resourceURL();
+        if (sourceURL && ruleLocation && rule.styleSheetId) {
+            var styleSheetHeader = this._parentPane._target.cssModel.styleSheetHeaderForId(rule.styleSheetId);
+            var lineNumber = styleSheetHeader.lineNumberInSource(ruleLocation.startLine);
+            var columnNumber = styleSheetHeader.columnNumberInSource(ruleLocation.startLine, ruleLocation.startColumn);
+            var matchingSelectorLocation = new WebInspector.CSSLocation(this._parentPane._target, rule.styleSheetId, sourceURL, lineNumber, columnNumber);
+            return this._parentPane._linkifier.linkifyCSSLocation(matchingSelectorLocation) || linkifyUncopyable(sourceURL, 0);
+        }
+
+        if (rule.isUserAgent)
             return document.createTextNode(WebInspector.UIString("user agent stylesheet"));
-        if (this.rule.isUser)
+        if (rule.isUser)
             return document.createTextNode(WebInspector.UIString("user stylesheet"));
-        if (this.rule.isViaInspector)
-            return document.createTextNode(WebInspector.UIString("via inspector"));
+        if (rule.isViaInspector)
+            return this._createRuleViaInspectorOriginNode();
         return document.createTextNode("");
+    },
+
+    /**
+     * @return {!Node}
+     */
+    _createRuleViaInspectorOriginNode: function()
+    {
+        return document.createTextNode(WebInspector.UIString("via inspector"));
     },
 
     _handleEmptySpaceMouseDown: function()
@@ -1552,6 +1610,7 @@ WebInspector.StylePropertiesSection.prototype = {
             var rawLocation = new WebInspector.CSSLocation(target, this.rule.styleSheetId, this.rule.sourceURL, this.rule.lineNumberInSource(index), this.rule.columnNumberInSource(index));
             var uiLocation = WebInspector.cssWorkspaceBinding.rawLocationToUILocation(rawLocation);
             WebInspector.Revealer.reveal(uiLocation);
+            event.consume(true);
             return;
         }
         this._startEditingOnMouseEvent();
@@ -1648,7 +1707,7 @@ WebInspector.StylePropertiesSection.prototype = {
 
             var oldSelectorRange = this.rule.selectorRange;
             this.rule = newRule;
-            this.styleRule = { section: this, style: newRule.style, selectorText: newRule.selectorText, media: newRule.media, sourceURL: newRule.resourceURL(), rule: newRule };
+            this.styleRule = { section: this, style: newRule.style, selectorText: newRule.selectorText, media: newRule.media, rule: newRule };
 
             this._parentPane.update(selectedNode);
             this._parentPane._styleSheetRuleEdited(this.rule, oldSelectorRange, this.rule.selectorRange);
@@ -1673,7 +1732,7 @@ WebInspector.StylePropertiesSection.prototype = {
     _updateRuleOrigin: function()
     {
         this._selectorRefElement.removeChildren();
-        this._selectorRefElement.appendChild(this._createRuleOriginNode());
+        this._selectorRefElement.appendChild(this._createRuleOriginNode(this.rule));
     },
 
     _editingSelectorEnded: function()
@@ -1810,7 +1869,7 @@ WebInspector.ComputedStylePropertiesSection.prototype = {
                     fragment.appendChild(document.createTextNode(" - " + property.value + " "));
                     var subtitle = fragment.createChild("span");
                     subtitle.style.float = "right";
-                    subtitle.appendChild(section._createRuleOriginNode());
+                    subtitle.appendChild(section._createRuleOriginNode(section.rule));
                     var childElement = new TreeElement(fragment, null, false);
                     treeElement.appendChild(childElement);
                     if (property.inactive || section.isPropertyOverloaded(property.name))
@@ -1840,14 +1899,46 @@ WebInspector.ComputedStylePropertiesSection.prototype = {
  * @extends {WebInspector.StylePropertiesSection}
  * @param {!WebInspector.StylesSidebarPane} stylesPane
  * @param {string} defaultSelectorText
+ * @param {string} styleSheetId
+ * @param {!WebInspector.TextRange} ruleLocation
+ * @param {!WebInspector.CSSRule=} insertAfterRule
  */
-WebInspector.BlankStylePropertiesSection = function(stylesPane, defaultSelectorText)
+WebInspector.BlankStylePropertiesSection = function(stylesPane, defaultSelectorText, styleSheetId, ruleLocation, insertAfterRule)
 {
-    WebInspector.StylePropertiesSection.call(this, stylesPane, {selectorText: defaultSelectorText, rule: {isViaInspector: true}}, true, false);
+    var styleSheetHeader = WebInspector.cssModel.styleSheetHeaderForId(styleSheetId);
+    WebInspector.StylePropertiesSection.call(this, stylesPane, { selectorText: defaultSelectorText }, true, false);
+    this._ruleLocation = ruleLocation;
+    this._styleSheetId = styleSheetId;
+    this._selectorRefElement.removeChildren();
+    if (insertAfterRule) {
+        this._selectorRefElement.appendChild(this._createRuleOriginNode(insertAfterRule, this._actualRuleLocation()));
+        this._createMediaList(insertAfterRule);
+    } else {
+        this._selectorRefElement.appendChild(this._createRuleViaInspectorOriginNode());
+    }
     this.element.classList.add("blank-section");
 }
 
 WebInspector.BlankStylePropertiesSection.prototype = {
+    /**
+     * @return {!WebInspector.TextRange}
+     */
+    _actualRuleLocation: function()
+    {
+        var prefix = this._rulePrefix();
+        var lines = prefix.split("\n");
+        var editRange = new WebInspector.TextRange(0, 0, lines.length - 1, lines.peekLast().length);
+        return this._ruleLocation.rebaseAfterTextEdit(WebInspector.TextRange.createFromLocation(0, 0), editRange);
+    },
+
+    /**
+     * @return {string}
+     */
+    _rulePrefix: function()
+    {
+        return this._ruleLocation.startLine === 0 && this._ruleLocation.startColumn === 0 ? "" : "\n\n";
+    },
+
     get isBlank()
     {
         return !this._normal;
@@ -1873,13 +1964,19 @@ WebInspector.BlankStylePropertiesSection.prototype = {
         function successCallback(newRule)
         {
             var doesSelectorAffectSelectedNode = newRule.matchingSelectors.length > 0;
-            var styleRule = { section: this, style: newRule.style, selectorText: newRule.selectorText, sourceURL: newRule.resourceURL(), rule: newRule };
-            this.makeNormal(styleRule);
+            var styleRule = { media: newRule.media, section: this, style: newRule.style, selectorText: newRule.selectorText, rule: newRule };
+            this._makeNormal(styleRule);
 
             if (!doesSelectorAffectSelectedNode) {
                 this.noAffect = true;
                 this.element.classList.add("no-affect");
             }
+
+            var ruleTextLines = ruleText.split("\n");
+            var startLine = this._ruleLocation.startLine;
+            var startColumn = this._ruleLocation.startColumn;
+            var newRange = new WebInspector.TextRange(startLine, startColumn, startLine + ruleTextLines.length - 1, startColumn + ruleTextLines[ruleTextLines.length - 1].length);
+            this._parentPane._styleSheetRuleEdited(newRule, this._ruleLocation, newRange);
 
             this._updateRuleOrigin();
             this.expand();
@@ -1896,20 +1993,8 @@ WebInspector.BlankStylePropertiesSection.prototype = {
         this._parentPane._userOperation = true;
 
         var cssModel = this._parentPane._target.cssModel;
-        cssModel.requestViaInspectorStylesheet(this._parentPane._node, viaInspectorCallback.bind(this));
-
-        /**
-         * @this {WebInspector.BlankStylePropertiesSection}
-         * @param {?WebInspector.CSSStyleSheetHeader} styleSheetHeader
-         */
-        function viaInspectorCallback(styleSheetHeader)
-        {
-            if (!styleSheetHeader) {
-                this.editingSelectorCancelled();
-                return;
-            }
-            cssModel.addRule(styleSheetHeader.id, this._parentPane._node, newContent, successCallback.bind(this), this.editingSelectorCancelled.bind(this));
-        }
+        var ruleText = this._rulePrefix() + newContent + " {}";
+        cssModel.addRule(this._styleSheetId, this._parentPane._node, ruleText, this._ruleLocation, successCallback.bind(this), this.editingSelectorCancelled.bind(this));
     },
 
     editingSelectorCancelled: function()
@@ -1924,7 +2009,7 @@ WebInspector.BlankStylePropertiesSection.prototype = {
         this._parentPane.removeSection(this);
     },
 
-    makeNormal: function(styleRule)
+    _makeNormal: function(styleRule)
     {
         this.element.classList.remove("blank-section");
         this.styleRule = styleRule;
@@ -2128,8 +2213,8 @@ WebInspector.StylePropertyTreeElementBase.prototype = {
                 hrefUrl = match[1];
             var container = document.createDocumentFragment();
             container.appendChild(document.createTextNode("url("));
-            if (this._styleRule.sourceURL)
-                hrefUrl = WebInspector.ParsedURL.completeURL(this._styleRule.sourceURL, hrefUrl);
+            if (this._styleRule.rule && this._styleRule.rule.resourceURL())
+                hrefUrl = WebInspector.ParsedURL.completeURL(this._styleRule.rule.resourceURL(), hrefUrl);
             else if (this.node())
                 hrefUrl = this.node().resolveURL(hrefUrl);
             var hasResource = hrefUrl && !!WebInspector.resourceForURL(hrefUrl);

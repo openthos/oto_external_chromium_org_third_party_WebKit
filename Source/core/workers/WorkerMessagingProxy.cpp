@@ -33,7 +33,10 @@
 #include "core/dom/Document.h"
 #include "core/events/ErrorEvent.h"
 #include "core/events/MessageEvent.h"
+#include "core/frame/Console.h"
+#include "core/frame/FrameConsole.h"
 #include "core/frame/LocalDOMWindow.h"
+#include "core/frame/LocalFrame.h"
 #include "core/frame/csp/ContentSecurityPolicy.h"
 #include "core/inspector/InspectorInstrumentation.h"
 #include "core/inspector/ScriptCallStack.h"
@@ -48,6 +51,7 @@
 #include "core/workers/WorkerObjectProxy.h"
 #include "core/workers/WorkerThreadStartupData.h"
 #include "platform/NotImplemented.h"
+#include "platform/TraceEvent.h"
 #include "platform/heap/Handle.h"
 #include "wtf/Functional.h"
 #include "wtf/MainThread.h"
@@ -176,7 +180,16 @@ void WorkerMessagingProxy::reportConsoleMessage(MessageSource source, MessageLev
 {
     if (m_askedToTerminate)
         return;
-    m_executionContext->addConsoleMessage(source, level, message, sourceURL, lineNumber);
+    // FIXME: In case of nested workers, this should go directly to the root Document context.
+    ASSERT(m_executionContext->isDocument());
+    Document* document = toDocument(m_executionContext.get());
+    LocalFrame* frame = document->frame();
+    if (!frame)
+        return;
+
+    RefPtrWillBeRawPtr<ConsoleMessage> consoleMessage = ConsoleMessage::create(source, level, message, sourceURL, lineNumber);
+    consoleMessage->setWorkerId(this);
+    frame->console().addMessage(consoleMessage.release());
 }
 
 void WorkerMessagingProxy::workerThreadCreated(PassRefPtr<DedicatedWorkerThread> workerThread)
@@ -210,7 +223,7 @@ void WorkerMessagingProxy::workerObjectDestroyedInternal(ExecutionContext*, Work
     if (proxy->m_workerThread)
         proxy->terminateWorkerGlobalScope();
     else
-        proxy->workerGlobalScopeDestroyed();
+        proxy->workerThreadTerminated();
 }
 
 static void connectToWorkerGlobalScopeInspectorTask(ExecutionContext* context, bool)
@@ -253,15 +266,29 @@ void WorkerMessagingProxy::sendMessageToInspector(const String& message)
     m_workerThread->interruptAndDispatchInspectorCommands();
 }
 
-void WorkerMessagingProxy::workerGlobalScopeDestroyed()
+static void dispatchWriteTimelineStartedEvent(ExecutionContext* context, const String& sessionId)
+{
+    TRACE_EVENT_INSTANT1(TRACE_DISABLED_BY_DEFAULT("devtools.timeline"), "TracingStartedInWorker", "sessionId", sessionId.utf8());
+}
+
+void WorkerMessagingProxy::writeTimelineStartedEvent(const String& sessionId)
+{
+    if (m_askedToTerminate)
+        return;
+    OwnPtr<ExecutionContextTask> task = createCrossThreadTask(dispatchWriteTimelineStartedEvent, String(sessionId));
+    if (m_workerThread)
+        m_workerThread->postTask(task.release());
+    else
+        m_queuedEarlyTasks.append(task.release());
+}
+
+void WorkerMessagingProxy::workerThreadTerminated()
 {
     // This method is always the last to be performed, so the proxy is not needed for communication
     // in either side any more. However, the Worker object may still exist, and it assumes that the proxy exists, too.
     m_askedToTerminate = true;
     m_workerThread = nullptr;
-
-    InspectorInstrumentation::workerGlobalScopeTerminated(m_executionContext.get(), this);
-
+    terminateInternally();
     if (m_mayBeDestroyed)
         delete this;
 }
@@ -275,7 +302,7 @@ void WorkerMessagingProxy::terminateWorkerGlobalScope()
     if (m_workerThread)
         m_workerThread->stop();
 
-    InspectorInstrumentation::workerGlobalScopeTerminated(m_executionContext.get(), this);
+    terminateInternally();
 }
 
 void WorkerMessagingProxy::postMessageToPageInspector(const String& message)
@@ -301,6 +328,18 @@ void WorkerMessagingProxy::reportPendingActivity(bool hasPendingActivity)
 bool WorkerMessagingProxy::hasPendingActivity() const
 {
     return (m_unconfirmedMessageCount || m_workerThreadHadPendingActivity) && !m_askedToTerminate;
+}
+
+void WorkerMessagingProxy::terminateInternally()
+{
+    InspectorInstrumentation::workerGlobalScopeTerminated(m_executionContext.get(), this);
+
+    // FIXME: This need to be revisited when we support nested worker one day
+    ASSERT(m_executionContext->isDocument());
+    Document* document = toDocument(m_executionContext.get());
+    LocalFrame* frame = document->frame();
+    if (frame)
+        frame->console().adoptWorkerConsoleMessages(this);
 }
 
 } // namespace blink

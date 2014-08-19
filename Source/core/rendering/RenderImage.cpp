@@ -75,8 +75,13 @@ RenderImage* RenderImage::createAnonymous(Document* document)
 
 RenderImage::~RenderImage()
 {
+}
+
+void RenderImage::destroy()
+{
     ASSERT(m_imageResource);
     m_imageResource->shutdown();
+    RenderReplaced::destroy();
 }
 
 void RenderImage::setImageResource(PassOwnPtr<RenderImageResource> imageResource)
@@ -386,9 +391,6 @@ void RenderImage::paintAreaElementFocusRing(PaintInfo& paintInfo)
     if (document.printing() || !document.frame()->selection().isFocusedAndActive())
         return;
 
-    if (paintInfo.context->paintingDisabled() && !paintInfo.context->updatingControlTints())
-        return;
-
     Element* focusedElement = document.focusedElement();
     if (!isHTMLAreaElement(focusedElement))
         return;
@@ -554,8 +556,12 @@ void RenderImage::updateAltText()
 
 void RenderImage::layout()
 {
+    LayoutRect oldContentRect = replacedContentRect();
     RenderReplaced::layout();
-    updateInnerContentRect();
+    if (replacedContentRect() != oldContentRect) {
+        setShouldDoFullPaintInvalidation(true);
+        updateInnerContentRect();
+    }
 }
 
 bool RenderImage::updateImageLoadingPriorities()

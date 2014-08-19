@@ -117,7 +117,6 @@ public:
 
     void recalcOverflowAfterStyleChange();
 
-    bool hasCompositedContent() const;
     bool isEnclosedInCompositingLayer() const;
 
     void resetScrollbars();
@@ -178,7 +177,6 @@ public:
     void handleLoadCompleted();
 
     void updateAnnotatedRegions();
-    void updateControlTints();
 
     void restoreScrollbar();
 
@@ -324,7 +322,7 @@ public:
 
 protected:
     virtual void scrollContentsIfNeeded();
-    virtual bool scrollContentsFastPath(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect) OVERRIDE;
+    virtual bool scrollContentsFastPath(const IntSize& scrollDelta, const IntRect& rectToScroll) OVERRIDE;
     virtual void scrollContentsSlowPath(const IntRect& updateRect) OVERRIDE;
 
     virtual bool isVerticalDocument() const OVERRIDE;
@@ -411,11 +409,11 @@ private:
 
     LayoutSize m_size;
 
-    typedef HashSet<RefPtr<RenderEmbeddedObject> > EmbeddedObjectSet;
-    EmbeddedObjectSet m_widgetUpdateSet;
+    typedef WillBeHeapHashSet<RefPtrWillBeMember<RenderEmbeddedObject> > EmbeddedObjectSet;
+    WillBePersistentHeapHashSet<RefPtrWillBeMember<RenderEmbeddedObject> > m_widgetUpdateSet;
 
     // FIXME: These are just "children" of the FrameView and should be RefPtr<Widget> instead.
-    HashSet<RefPtr<RenderWidget> > m_widgets;
+    WillBePersistentHeapHashSet<RefPtrWillBeMember<RenderWidget> > m_widgets;
 
     RefPtr<LocalFrame> m_frame;
 
@@ -472,7 +470,7 @@ private:
     RefPtrWillBePersistent<Node> m_maintainScrollPositionAnchor;
 
     // Renderer to hold our custom scroll corner.
-    RenderScrollbarPart* m_scrollCorner;
+    RawPtrWillBePersistent<RenderScrollbarPart> m_scrollCorner;
 
     // If true, automatically resize the frame view around its content.
     bool m_shouldAutoSize;

@@ -253,6 +253,9 @@ CodePath Font::codePath(const TextRun& run) const
     if (m_fontDescription.featureSettings() && m_fontDescription.featureSettings()->size() > 0 && m_fontDescription.letterSpacing() == 0)
         return ComplexPath;
 
+    if (m_fontDescription.widthVariant() != RegularWidth)
+        return ComplexPath;
+
     if (run.length() > 1 && fontDescription().typesettingFeatures())
         return ComplexPath;
 
@@ -839,4 +842,4 @@ int Font::offsetForPositionForSimpleText(const TextRun& run, float x, bool inclu
     return offset;
 }
 
-}
+} // namespace blink

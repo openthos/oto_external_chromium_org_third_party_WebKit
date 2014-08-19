@@ -112,7 +112,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/clipboard/Pasteboard.cpp \
 	third_party/WebKit/Source/core/css/BasicShapeFunctions.cpp \
 	third_party/WebKit/Source/core/css/BinaryDataFontFaceSource.cpp \
-	third_party/WebKit/Source/core/css/CSSArrayFunctionValue.cpp \
 	third_party/WebKit/Source/core/css/CSSAspectRatioValue.cpp \
 	third_party/WebKit/Source/core/css/CSSBasicShapes.cpp \
 	third_party/WebKit/Source/core/css/CSSBorderImage.cpp \
@@ -127,7 +126,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/css/CSSFilterRule.cpp \
 	third_party/WebKit/Source/core/css/CSSFilterValue.cpp \
 	third_party/WebKit/Source/core/css/CSSFontFace.cpp \
-	third_party/WebKit/Source/core/css/CSSFontFaceLoadEvent.cpp \
 	third_party/WebKit/Source/core/css/CSSFontFaceRule.cpp \
 	third_party/WebKit/Source/core/css/CSSFontFaceSource.cpp \
 	third_party/WebKit/Source/core/css/CSSFontFaceSrcValue.cpp \
@@ -153,8 +151,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/css/CSSMediaRule.cpp \
 	third_party/WebKit/Source/core/css/CSSOMUtils.cpp \
 	third_party/WebKit/Source/core/css/CSSPageRule.cpp \
-	third_party/WebKit/Source/core/css/CSSParserMode.cpp \
-	third_party/WebKit/Source/core/css/CSSParserValues.cpp \
 	third_party/WebKit/Source/core/css/CSSPrimitiveValue.cpp \
 	third_party/WebKit/Source/core/css/CSSProperty.cpp \
 	third_party/WebKit/Source/core/css/CSSPropertySourceData.cpp \
@@ -184,6 +180,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/css/FontFace.cpp \
 	third_party/WebKit/Source/core/css/FontFaceCache.cpp \
 	third_party/WebKit/Source/core/css/FontFaceSet.cpp \
+	third_party/WebKit/Source/core/css/FontFaceSetLoadEvent.cpp \
 	third_party/WebKit/Source/core/css/FontLoader.cpp \
 	third_party/WebKit/Source/core/css/FontSize.cpp \
 	third_party/WebKit/Source/core/css/LocalFontFaceSource.cpp \
@@ -222,6 +219,8 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/css/invalidation/DescendantInvalidationSet.cpp \
 	third_party/WebKit/Source/core/css/invalidation/StyleInvalidator.cpp \
 	third_party/WebKit/Source/core/css/invalidation/StyleSheetInvalidationAnalysis.cpp \
+	third_party/WebKit/Source/core/css/parser/CSSParserMode.cpp \
+	third_party/WebKit/Source/core/css/parser/CSSParserValues.cpp \
 	third_party/WebKit/Source/core/css/parser/CSSPropertyParser.cpp \
 	third_party/WebKit/Source/core/css/parser/MediaQueryBlockWatcher.cpp \
 	third_party/WebKit/Source/core/css/parser/MediaQueryInputStream.cpp \
@@ -260,6 +259,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/editing/CreateLinkCommand.cpp \
 	third_party/WebKit/Source/core/editing/DeleteFromTextNodeCommand.cpp \
 	third_party/WebKit/Source/core/editing/DeleteSelectionCommand.cpp \
+	third_party/WebKit/Source/core/editing/DOMSelection.cpp \
 	third_party/WebKit/Source/core/editing/EditCommand.cpp \
 	third_party/WebKit/Source/core/editing/EditingBehavior.cpp \
 	third_party/WebKit/Source/core/editing/EditingStyle.cpp \
@@ -381,6 +381,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/frame/csp/SourceListDirective.cpp \
 	third_party/WebKit/Source/core/imagebitmap/ImageBitmapFactories.cpp \
 	third_party/WebKit/Source/core/inspector/AsyncCallStackTracker.cpp \
+	third_party/WebKit/Source/core/inspector/ConsoleMessage.cpp \
 	third_party/WebKit/Source/core/inspector/InspectorConsoleMessage.cpp \
 	third_party/WebKit/Source/core/inspector/ContentSearchUtils.cpp \
 	third_party/WebKit/Source/core/inspector/DOMEditor.cpp \
@@ -481,7 +482,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/page/Chrome.cpp \
 	third_party/WebKit/Source/core/page/ContextMenuController.cpp \
 	third_party/WebKit/Source/core/page/CreateWindow.cpp \
-	third_party/WebKit/Source/core/page/DOMSelection.cpp \
 	third_party/WebKit/Source/core/page/DOMWindowPagePopup.cpp \
 	third_party/WebKit/Source/core/page/DragController.cpp \
 	third_party/WebKit/Source/core/page/DragData.cpp \
@@ -623,7 +623,6 @@ MY_CFLAGS_Debug := \
 
 MY_DEFS_Debug := \
 	'-DV8_DEPRECATION_WARNINGS' \
-	'-DBLINK_SCALE_FILTERS_AT_RECORD_TIME' \
 	'-D_FILE_OFFSET_BITS=64' \
 	'-DNO_TCMALLOC' \
 	'-DDISABLE_NACL' \
@@ -793,7 +792,6 @@ MY_CFLAGS_Release := \
 
 MY_DEFS_Release := \
 	'-DV8_DEPRECATION_WARNINGS' \
-	'-DBLINK_SCALE_FILTERS_AT_RECORD_TIME' \
 	'-D_FILE_OFFSET_BITS=64' \
 	'-DNO_TCMALLOC' \
 	'-DDISABLE_NACL' \

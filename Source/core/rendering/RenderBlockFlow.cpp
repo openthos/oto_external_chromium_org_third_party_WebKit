@@ -151,6 +151,11 @@ static bool inNormalFlow(RenderBox* child)
     return true;
 }
 
+void RenderBlockFlow::RenderBlockFlowRareData::trace(Visitor* visitor)
+{
+    visitor->trace(m_multiColumnFlowThread);
+}
+
 RenderBlockFlow::RenderBlockFlow(ContainerNode* node)
     : RenderBlock(node)
 {
@@ -160,6 +165,12 @@ RenderBlockFlow::RenderBlockFlow(ContainerNode* node)
 
 RenderBlockFlow::~RenderBlockFlow()
 {
+}
+
+void RenderBlockFlow::trace(Visitor* visitor)
+{
+    visitor->trace(m_rareData);
+    RenderBlock::trace(visitor);
 }
 
 RenderBlockFlow* RenderBlockFlow::createAnonymous(Document* document)
@@ -358,8 +369,16 @@ void RenderBlockFlow::layoutBlock(bool relayoutChildren)
     // we overflow or not.
     updateScrollInfoAfterLayout();
 
-    if (m_repaintLogicalTop != m_repaintLogicalBottom && (style()->visibility() == VISIBLE || enclosingLayer()->hasVisibleContent()))
-        setShouldInvalidateOverflowForPaint(true);
+    if (m_repaintLogicalTop != m_repaintLogicalBottom) {
+        bool hasVisibleContent = style()->visibility() == VISIBLE;
+        if (!hasVisibleContent) {
+            RenderLayer* layer = enclosingLayer();
+            layer->updateDescendantDependentFlags();
+            hasVisibleContent = layer->hasVisibleContent();
+        }
+        if (hasVisibleContent)
+            setShouldInvalidateOverflowForPaint(true);
+    }
 
     clearNeedsLayout();
 }
@@ -1581,7 +1600,7 @@ void RenderBlockFlow::setMustDiscardMarginBefore(bool value)
         return;
 
     if (!m_rareData)
-        m_rareData = adoptPtr(new RenderBlockFlowRareData(this));
+        m_rareData = adoptPtrWillBeNoop(new RenderBlockFlowRareData(this));
 
     m_rareData->m_discardMarginBefore = value;
 }
@@ -1597,7 +1616,7 @@ void RenderBlockFlow::setMustDiscardMarginAfter(bool value)
         return;
 
     if (!m_rareData)
-        m_rareData = adoptPtr(new RenderBlockFlowRareData(this));
+        m_rareData = adoptPtrWillBeNoop(new RenderBlockFlowRareData(this));
 
     m_rareData->m_discardMarginAfter = value;
 }
@@ -1642,7 +1661,7 @@ void RenderBlockFlow::setMaxMarginBeforeValues(LayoutUnit pos, LayoutUnit neg)
     if (!m_rareData) {
         if (pos == RenderBlockFlowRareData::positiveMarginBeforeDefault(this) && neg == RenderBlockFlowRareData::negativeMarginBeforeDefault(this))
             return;
-        m_rareData = adoptPtr(new RenderBlockFlowRareData(this));
+        m_rareData = adoptPtrWillBeNoop(new RenderBlockFlowRareData(this));
     }
     m_rareData->m_margins.setPositiveMarginBefore(pos);
     m_rareData->m_margins.setNegativeMarginBefore(neg);
@@ -1653,7 +1672,7 @@ void RenderBlockFlow::setMaxMarginAfterValues(LayoutUnit pos, LayoutUnit neg)
     if (!m_rareData) {
         if (pos == RenderBlockFlowRareData::positiveMarginAfterDefault(this) && neg == RenderBlockFlowRareData::negativeMarginAfterDefault(this))
             return;
-        m_rareData = adoptPtr(new RenderBlockFlowRareData(this));
+        m_rareData = adoptPtrWillBeNoop(new RenderBlockFlowRareData(this));
     }
     m_rareData->m_margins.setPositiveMarginAfter(pos);
     m_rareData->m_margins.setNegativeMarginAfter(neg);
@@ -2797,7 +2816,7 @@ void RenderBlockFlow::setPaginationStrut(LayoutUnit strut)
     if (!m_rareData) {
         if (!strut)
             return;
-        m_rareData = adoptPtr(new RenderBlockFlowRareData(this));
+        m_rareData = adoptPtrWillBeNoop(new RenderBlockFlowRareData(this));
     }
     m_rareData->m_paginationStrut = strut;
 }
@@ -2908,7 +2927,7 @@ RenderBlockFlow::RenderBlockFlowRareData& RenderBlockFlow::ensureRareData()
     if (m_rareData)
         return *m_rareData;
 
-    m_rareData = adoptPtr(new RenderBlockFlowRareData(this));
+    m_rareData = adoptPtrWillBeNoop(new RenderBlockFlowRareData(this));
     return *m_rareData;
 }
 

@@ -27,6 +27,7 @@
 #include "config.h"
 #include "core/css/resolver/StyleBuilderConverter.h"
 
+#include "core/css/CSSFontFeatureValue.h"
 #include "core/css/CSSFunctionValue.h"
 #include "core/css/CSSGridLineNamesValue.h"
 #include "core/css/CSSPrimitiveValueMappings.h"
@@ -88,6 +89,34 @@ AtomicString StyleBuilderConverter::convertFragmentIdentifier(StyleResolverState
     if (primitiveValue->isURI())
         return SVGURIReference::fragmentIdentifierFromIRIString(primitiveValue->getStringValue(), state.element()->treeScope());
     return nullAtom;
+}
+
+PassRefPtr<FontFeatureSettings> StyleBuilderConverter::convertFontFeatureSettings(StyleResolverState& state, CSSValue* value)
+{
+    if (value->isPrimitiveValue() && toCSSPrimitiveValue(value)->getValueID() == CSSValueNormal)
+        return FontBuilder::initialFeatureSettings();
+
+    CSSValueList* list = toCSSValueList(value);
+    RefPtr<FontFeatureSettings> settings = FontFeatureSettings::create();
+    int len = list->length();
+    for (int i = 0; i < len; ++i) {
+        CSSFontFeatureValue* feature = toCSSFontFeatureValue(list->item(i));
+        settings->append(FontFeature(feature->tag(), feature->value()));
+    }
+    return settings;
+}
+
+FontWeight StyleBuilderConverter::convertFontWeight(StyleResolverState& state, CSSValue* value)
+{
+    CSSPrimitiveValue* primitiveValue = toCSSPrimitiveValue(value);
+    switch (primitiveValue->getValueID()) {
+    case CSSValueBolder:
+        return FontDescription::bolderWeight(state.parentStyle()->fontDescription().weight());
+    case CSSValueLighter:
+        return FontDescription::lighterWeight(state.parentStyle()->fontDescription().weight());
+    default:
+        return *primitiveValue;
+    }
 }
 
 FontDescription::VariantLigatures StyleBuilderConverter::convertFontVariantLigatures(StyleResolverState&, CSSValue* value)

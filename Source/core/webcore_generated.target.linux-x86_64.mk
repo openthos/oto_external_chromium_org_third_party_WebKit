@@ -141,6 +141,8 @@ $(gyp_intermediate_dir)/StyleBuilder.cpp: $(gyp_shared_intermediate_dir)/blink/c
 	mkdir -p $(@D); cp $< $@
 $(gyp_intermediate_dir)/StyleBuilderFunctions.cpp: $(gyp_shared_intermediate_dir)/blink/core/StyleBuilderFunctions.cpp
 	mkdir -p $(@D); cp $< $@
+$(gyp_intermediate_dir)/CSSPropertyMetadata.cpp: $(gyp_shared_intermediate_dir)/blink/core/CSSPropertyMetadata.cpp
+	mkdir -p $(@D); cp $< $@
 LOCAL_GENERATED_SOURCES := \
 	$(gyp_intermediate_dir)/V8GeneratedCoreBindings01.cpp \
 	$(gyp_intermediate_dir)/V8GeneratedCoreBindings02.cpp \
@@ -196,7 +198,8 @@ LOCAL_GENERATED_SOURCES := \
 	$(gyp_intermediate_dir)/V8SVGElementWrapperFactory.cpp \
 	$(gyp_intermediate_dir)/StylePropertyShorthand.cpp \
 	$(gyp_intermediate_dir)/StyleBuilder.cpp \
-	$(gyp_intermediate_dir)/StyleBuilderFunctions.cpp
+	$(gyp_intermediate_dir)/StyleBuilderFunctions.cpp \
+	$(gyp_intermediate_dir)/CSSPropertyMetadata.cpp
 
 GYP_COPIED_SOURCE_ORIGIN_DIRS := \
 	$(gyp_shared_intermediate_dir)/blink/bindings/core/v8 \
@@ -320,8 +323,8 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/bindings/core/v8/V8StringResource.cpp \
 	third_party/WebKit/Source/bindings/core/v8/V8ThrowException.cpp \
 	third_party/WebKit/Source/bindings/core/v8/V8ValueCache.cpp \
-	third_party/WebKit/Source/bindings/core/v8/V8WindowShell.cpp \
 	third_party/WebKit/Source/bindings/core/v8/V8WorkerGlobalScopeEventListener.cpp \
+	third_party/WebKit/Source/bindings/core/v8/WindowProxy.cpp \
 	third_party/WebKit/Source/bindings/core/v8/WorkerScriptController.cpp \
 	third_party/WebKit/Source/bindings/core/v8/WorkerScriptDebugServer.cpp \
 	third_party/WebKit/Source/bindings/core/v8/npruntime.cpp
@@ -364,7 +367,6 @@ MY_CFLAGS_Debug := \
 
 MY_DEFS_Debug := \
 	'-DV8_DEPRECATION_WARNINGS' \
-	'-DBLINK_SCALE_FILTERS_AT_RECORD_TIME' \
 	'-D_FILE_OFFSET_BITS=64' \
 	'-DNO_TCMALLOC' \
 	'-DDISABLE_NACL' \
@@ -526,7 +528,6 @@ MY_CFLAGS_Release := \
 
 MY_DEFS_Release := \
 	'-DV8_DEPRECATION_WARNINGS' \
-	'-DBLINK_SCALE_FILTERS_AT_RECORD_TIME' \
 	'-D_FILE_OFFSET_BITS=64' \
 	'-DNO_TCMALLOC' \
 	'-DDISABLE_NACL' \

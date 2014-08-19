@@ -177,8 +177,12 @@
     overflow: auto;
 }
 
-.targets-toolbar {
-    padding-left: 10px;
+#targets-toolbar {
+    background: rgb(236, 236, 236);
+    border-bottom: 1px solid rgb(189, 189, 189);
+    border-top: 1px solid rgb(189, 189, 189);
+    margin-right: 0px;
+    padding-right: 6px;
     margin-top: -1px;
 }
 

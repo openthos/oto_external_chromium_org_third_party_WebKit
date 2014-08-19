@@ -50,13 +50,14 @@
 #include "third_party/skia/include/effects/SkBlurMaskFilter.h"
 #include "third_party/skia/include/effects/SkCornerPathEffect.h"
 #include "third_party/skia/include/effects/SkLumaColorFilter.h"
+#include "third_party/skia/include/effects/SkMatrixImageFilter.h"
+#include "third_party/skia/include/effects/SkPictureImageFilter.h"
 #include "third_party/skia/include/gpu/GrRenderTarget.h"
 #include "third_party/skia/include/gpu/GrTexture.h"
 #include "wtf/Assertions.h"
 #include "wtf/MathExtras.h"
 
 using namespace std;
-using blink::WebBlendMode;
 
 namespace blink {
 
@@ -127,14 +128,12 @@ GraphicsContext::GraphicsContext(SkCanvas* canvas, DisabledMode disableContextOr
     , m_deviceScaleFactor(1.0f)
     , m_regionTrackingMode(RegionTrackingDisabled)
     , m_trackTextRegion(false)
-    , m_updatingControlTints(false)
     , m_accelerated(false)
     , m_isCertainlyOpaque(true)
     , m_printing(false)
     , m_antialiasHairlineImages(false)
 {
-    if (!canvas)
-        m_disabledState |= PaintingDisabled;
+    ASSERT(canvas);
 
     // FIXME: Do some tests to determine how many states are typically used, and allocate
     // several here.
@@ -1058,7 +1057,7 @@ void GraphicsContext::drawImage(Image* image, const IntRect& r, CompositeOperato
 
 void GraphicsContext::drawImage(Image* image, const FloatRect& dest, const FloatRect& src, CompositeOperator op, RespectImageOrientationEnum shouldRespectImageOrientation)
 {
-    drawImage(image, dest, src, op, blink::WebBlendModeNormal, shouldRespectImageOrientation);
+    drawImage(image, dest, src, op, WebBlendModeNormal, shouldRespectImageOrientation);
 }
 
 void GraphicsContext::drawImage(Image* image, const FloatRect& dest)
@@ -1111,15 +1110,25 @@ void GraphicsContext::drawPicture(PassRefPtr<SkPicture> picture, const FloatRect
     if (contextDisabled() || !picture)
         return;
 
+    SkMatrix ctm = m_canvas->getTotalMatrix();
+    SkRect deviceDest;
+    ctm.mapRect(&deviceDest, dest);
+    SkRect sourceBounds = WebCoreFloatRectToSKRect(src);
+
+    RefPtr<SkPictureImageFilter> pictureFilter = adoptRef(SkPictureImageFilter::Create(picture.get(), sourceBounds));
+    SkMatrix layerScale;
+    layerScale.setScale(deviceDest.width() / src.width(), deviceDest.height() / src.height());
+    RefPtr<SkMatrixImageFilter> matrixFilter = adoptRef(SkMatrixImageFilter::Create(layerScale, SkPaint::kLow_FilterLevel, pictureFilter.get()));
     SkPaint picturePaint;
     picturePaint.setXfermode(WebCoreCompositeToSkiaComposite(op, blendMode).get());
-    SkRect skBounds = WebCoreFloatRectToSKRect(dest);
-    saveLayer(&skBounds, &picturePaint);
-    SkMatrix pictureTransform;
-    pictureTransform.setRectToRect(WebCoreFloatRectToSKRect(src), skBounds, SkMatrix::kFill_ScaleToFit);
-    m_canvas->concat(pictureTransform);
-    picture->draw(m_canvas);
-    restoreLayer();
+    picturePaint.setImageFilter(matrixFilter.get());
+    SkRect layerBounds = SkRect::MakeWH(max(deviceDest.width(), sourceBounds.width()), max(deviceDest.height(), sourceBounds.height()));
+    m_canvas->save();
+    m_canvas->resetMatrix();
+    m_canvas->translate(deviceDest.x(), deviceDest.y());
+    m_canvas->saveLayer(&layerBounds, &picturePaint);
+    m_canvas->restore();
+    m_canvas->restore();
 }
 
 void GraphicsContext::writePixels(const SkImageInfo& info, const void* pixels, size_t rowBytes, int x, int y)
@@ -1273,8 +1282,7 @@ void GraphicsContext::fillPath(const Path& pathToFill)
     SkPath& path = const_cast<SkPath&>(pathToFill.skPath());
     SkPath::FillType previousFillType = path.getFillType();
 
-    SkPath::FillType temporaryFillType =
-        immutableState()->fillRule() == RULE_EVENODD ? SkPath::kEvenOdd_FillType : SkPath::kWinding_FillType;
+    SkPath::FillType temporaryFillType = WebCoreWindRuleToSkFillType(immutableState()->fillRule());
     path.setFillType(temporaryFillType);
 
     drawPath(path, immutableState()->fillPaint());
@@ -1465,7 +1473,7 @@ void GraphicsContext::clipPath(const Path& pathToClip, WindRule clipRule)
     SkPath& path = const_cast<SkPath&>(pathToClip.skPath());
     SkPath::FillType previousFillType = path.getFillType();
 
-    SkPath::FillType temporaryFillType = clipRule == RULE_EVENODD ? SkPath::kEvenOdd_FillType : SkPath::kWinding_FillType;
+    SkPath::FillType temporaryFillType = WebCoreWindRuleToSkFillType(clipRule);
     path.setFillType(temporaryFillType);
     clipPath(path, AntiAliased);
 
@@ -1502,7 +1510,7 @@ void GraphicsContext::canvasClip(const Path& pathToClip, WindRule clipRule)
     SkPath& path = const_cast<SkPath&>(pathToClip.skPath());
     SkPath::FillType previousFillType = path.getFillType();
 
-    SkPath::FillType temporaryFillType = clipRule == RULE_EVENODD ? SkPath::kEvenOdd_FillType : SkPath::kWinding_FillType;
+    SkPath::FillType temporaryFillType = WebCoreWindRuleToSkFillType(clipRule);
     path.setFillType(temporaryFillType);
     clipPath(path);
 
@@ -1904,7 +1912,7 @@ void GraphicsContext::preparePaintForDrawRectToRect(
     const SkRect& srcRect,
     const SkRect& destRect,
     CompositeOperator compositeOp,
-    blink::WebBlendMode blendMode,
+    WebBlendMode blendMode,
     bool isLazyDecoded,
     bool isDataComplete) const
 {
@@ -1944,4 +1952,4 @@ void GraphicsContext::preparePaintForDrawRectToRect(
     paint->setFilterLevel(static_cast<SkPaint::FilterLevel>(resampling));
 }
 
-}
+} // namespace blink

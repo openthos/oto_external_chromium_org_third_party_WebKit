@@ -53,14 +53,17 @@ ReadableStream::~ReadableStream()
 {
 }
 
-bool ReadableStream::enqueue(const ChunkType& chunk)
+bool ReadableStream::enqueuePreliminaryCheck(size_t chunkSize)
 {
     if (m_state == Errored || m_state == Closed || m_isDraining)
         return false;
 
     // FIXME: Query strategy.
+    return true;
+}
 
-    m_queue.append(chunk);
+bool ReadableStream::enqueuePostAction(size_t totalQueueSize)
+{
     m_isPulling = false;
 
     // FIXME: Set needsMore correctly.
@@ -68,8 +71,7 @@ bool ReadableStream::enqueue(const ChunkType& chunk)
 
     if (m_state == Waiting) {
         m_state = Readable;
-        if (m_wait->state() == m_wait->Pending)
-            m_wait->resolve(V8UndefinedType());
+        m_wait->resolve(V8UndefinedType());
     }
 
     return needsMore;
@@ -78,8 +80,7 @@ bool ReadableStream::enqueue(const ChunkType& chunk)
 void ReadableStream::close()
 {
     if (m_state == Waiting) {
-        if (m_wait->state() == m_wait->Pending)
-            m_wait->resolve(V8UndefinedType());
+        m_wait->resolve(V8UndefinedType());
         m_closed->resolve(V8UndefinedType());
         m_state = Closed;
     } else if (m_state == Readable) {
@@ -87,41 +88,37 @@ void ReadableStream::close()
     }
 }
 
-ReadableStream::ChunkType ReadableStream::read(ExceptionState* exceptionState)
+void ReadableStream::readPreliminaryCheck(ExceptionState* exceptionState)
 {
     if (m_state == Waiting) {
         exceptionState->throwTypeError("read is called while state is waiting");
-        return ChunkType();
+        return;
     }
     if (m_state == Closed) {
         exceptionState->throwTypeError("read is called while state is closed");
-        return ChunkType();
+        return;
     }
     if (m_state == Errored) {
         exceptionState->throwDOMException(m_exception->code(), m_exception->message());
-        return ChunkType();
+        return;
     }
+}
 
+void ReadableStream::readPostAction()
+{
     ASSERT(m_state == Readable);
-    ASSERT(!m_queue.isEmpty());
-
-    ChunkType chunk = m_queue.takeFirst();
-    if (m_queue.isEmpty()) {
+    if (isQueueEmpty()) {
         if (m_isDraining) {
             m_state = Closed;
-            // FIXME: Use reset.
-            // m_wait->reset();
-            if (m_wait->state() == m_wait->Pending)
-                m_wait->resolve(V8UndefinedType());
+            m_wait->reset();
+            m_wait->resolve(V8UndefinedType());
             m_closed->resolve(V8UndefinedType());
         } else {
             m_state = Waiting;
-            // FIXME: Use reset.
-            // m_wait->reset();
+            m_wait->reset();
             callOrSchedulePull();
         }
     }
-    return chunk;
 }
 
 ScriptPromise ReadableStream::wait(ScriptState* scriptState)
@@ -143,17 +140,14 @@ ScriptPromise ReadableStream::cancel(ScriptState* scriptState, ScriptValue reaso
         return ScriptPromise::cast(scriptState, v8::Undefined(scriptState->isolate()));
 
     if (m_state == Waiting) {
-        if (m_wait->state() == m_wait->Pending)
-            m_wait->resolve(V8UndefinedType());
+        m_wait->resolve(V8UndefinedType());
     } else {
         ASSERT(m_state == Readable);
-        // FIXME: Use reset here.
-        // m_wait->reset();
-        if (m_wait->state() == m_wait->Pending)
-            m_wait->resolve(V8UndefinedType());
+        m_wait->reset();
+        m_wait->resolve(V8UndefinedType());
     }
 
-    m_queue.clear();
+    clearQueue();
     m_state = Closed;
     m_closed->resolve(V8UndefinedType());
     return m_source->cancelSource(scriptState, reason);
@@ -167,9 +161,8 @@ ScriptPromise ReadableStream::closed(ScriptState* scriptState)
 void ReadableStream::error(PassRefPtrWillBeRawPtr<DOMException> exception)
 {
     if (m_state == Readable) {
-        m_queue.clear();
-        // FIXME: Use reset here.
-        // m_wait->reset();
+        clearQueue();
+        m_wait->reset();
     }
 
     if (m_state == Waiting || m_state == Readable) {

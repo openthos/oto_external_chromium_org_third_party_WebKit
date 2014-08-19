@@ -43,7 +43,7 @@
 #include "wtf/RefPtr.h"
 #include "wtf/TypeTraits.h"
 #include "wtf/WeakPtr.h"
-#if ENABLE(GC_TRACING)
+#if ENABLE(GC_PROFILING)
 #include "wtf/text/WTFString.h"
 #endif
 
@@ -89,7 +89,7 @@ struct GCInfo {
     FinalizationCallback m_finalize;
     bool m_nonTrivialFinalizer;
     bool m_hasVTable;
-#if ENABLE(GC_TRACING)
+#if ENABLE(GC_PROFILING)
     // |m_className| is held as a reference to prevent dtor being called at exit.
     const String& m_className;
 #endif
@@ -289,6 +289,11 @@ public:
     template<typename T>
     void trace(const T& t)
     {
+        if (WTF::IsPolymorphic<T>::value) {
+            intptr_t vtable = *reinterpret_cast<const intptr_t*>(&t);
+            if (!vtable)
+                return;
+        }
         const_cast<T&>(t).trace(this);
     }
 
@@ -329,8 +334,6 @@ public:
     // Used to mark objects during conservative scanning.
     virtual void mark(HeapObjectHeader*, TraceCallback) = 0;
     virtual void mark(FinalizedHeapObjectHeader*, TraceCallback) = 0;
-    virtual void markConservatively(HeapObjectHeader*) = 0;
-    virtual void markConservatively(FinalizedHeapObjectHeader*) = 0;
 
     // If the object calls this during the regular trace callback, then the
     // WeakPointerCallback argument may be called later, when the strong roots
@@ -385,7 +388,14 @@ public:
     {
         // Check that we actually know the definition of T when tracing.
         COMPILE_ASSERT(sizeof(T), WeNeedToKnowTheDefinitionOfTheTypeWeAreTracing);
-        return !!obj && ObjectAliveTrait<T>::isAlive(this, obj);
+        // The strongification of collections relies on the fact that once a
+        // collection has been strongified, there is no way that it can contain
+        // non-live entries, so no entries will be removed. Since you can't set
+        // the mark bit on a null pointer, that means that null pointers are
+        // always 'alive'.
+        if (!obj)
+            return true;
+        return ObjectAliveTrait<T>::isAlive(this, obj);
     }
     template<typename T> inline bool isAlive(const Member<T>& member)
     {
@@ -409,7 +419,7 @@ public:
     FOR_EACH_TYPED_HEAP(DECLARE_VISITOR_METHODS)
 #undef DECLARE_VISITOR_METHODS
 
-#if ENABLE(GC_TRACING)
+#if ENABLE(GC_PROFILE_MARKING)
     void setHostInfo(void* object, const String& name)
     {
         m_hostObject = object;
@@ -419,7 +429,7 @@ public:
 
 protected:
     virtual void registerWeakCell(void**, WeakPointerCallback) = 0;
-#if ENABLE(GC_TRACING)
+#if ENABLE(GC_PROFILE_MARKING)
     void* m_hostObject;
     String m_hostName;
 #endif
@@ -589,7 +599,7 @@ private:
 #define WILL_BE_USING_GARBAGE_COLLECTED_MIXIN(TYPE)
 #endif
 
-#if ENABLE(GC_TRACING)
+#if ENABLE(GC_PROFILING)
 template<typename T>
 struct TypenameStringTrait {
     static const String& get()
@@ -609,7 +619,7 @@ struct GCInfoAtBase {
             FinalizerTrait<T>::finalize,
             FinalizerTrait<T>::nonTrivialFinalizer,
             WTF::IsPolymorphic<T>::value,
-#if ENABLE(GC_TRACING)
+#if ENABLE(GC_PROFILING)
             TypenameStringTrait<T>::get()
 #endif
         };

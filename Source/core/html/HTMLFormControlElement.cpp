@@ -33,10 +33,12 @@
 #include "core/html/HTMLLegendElement.h"
 #include "core/html/ValidityState.h"
 #include "core/frame/UseCounter.h"
+#include "core/inspector/ConsoleMessage.h"
 #include "core/page/Page.h"
 #include "core/page/ValidationMessageClient.h"
 #include "core/rendering/RenderBox.h"
 #include "core/rendering/RenderTheme.h"
+#include "platform/text/BidiTextRun.h"
 #include "wtf/Vector.h"
 
 namespace blink {
@@ -211,7 +213,7 @@ static bool shouldAutofocusOnAttach(const HTMLFormControlElement* element)
         return false;
     if (element->document().isSandboxed(SandboxAutomaticFeatures)) {
         // FIXME: This message should be moved off the console once a solution to https://bugs.webkit.org/show_bug.cgi?id=103274 exists.
-        element->document().addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, "Blocked autofocusing on a form control because the form's frame is sandboxed and the 'allow-scripts' permission is not set.");
+        element->document().addConsoleMessage(ConsoleMessage::create(SecurityMessageSource, ErrorMessageLevel, "Blocked autofocusing on a form control because the form's frame is sandboxed and the 'allow-scripts' permission is not set."));
         return false;
     }
 
@@ -405,6 +407,15 @@ void HTMLFormControlElement::setNeedsWillValidateCheck()
         hideVisibleValidationMessage();
 }
 
+void HTMLFormControlElement::findCustomValidationMessageTextDirection(const String& message, TextDirection &messageDir, String& subMessage, TextDirection &subMessageDir)
+{
+    bool hasStrongDirection;
+    subMessage = fastGetAttribute(titleAttr);
+    messageDir = determineDirectionality(message, hasStrongDirection);
+    if (!subMessage.isEmpty())
+        subMessageDir = renderer()->style()->direction();
+}
+
 void HTMLFormControlElement::updateVisibleValidationMessage()
 {
     Page* page = document().page();
@@ -416,10 +427,14 @@ void HTMLFormControlElement::updateVisibleValidationMessage()
 
     m_hasValidationMessage = true;
     ValidationMessageClient* client = &page->validationMessageClient();
+    TextDirection messageDir = LTR;
+    TextDirection subMessageDir = LTR;
+    String subMessage = String();
     if (message.isEmpty())
         client->hideValidationMessage(*this);
     else
-        client->showValidationMessage(*this, message);
+        findCustomValidationMessageTextDirection(message, messageDir, subMessage, subMessageDir);
+    client->showValidationMessage(*this, message, messageDir, subMessage, subMessageDir);
 }
 
 void HTMLFormControlElement::hideVisibleValidationMessage()

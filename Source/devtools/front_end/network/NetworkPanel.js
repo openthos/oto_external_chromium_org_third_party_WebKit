@@ -28,18 +28,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-importScript("HAREntry.js");
-importScript("RequestView.js");
-importScript("NetworkItemView.js");
-importScript("RequestCookiesView.js");
-importScript("RequestHeadersView.js");
-importScript("RequestHTMLView.js");
-importScript("RequestJSONView.js");
-importScript("RequestPreviewView.js");
-importScript("RequestResponseView.js");
-importScript("RequestTimingView.js");
-importScript("ResourceWebSocketFrameView.js");
-
 /**
  * @constructor
  * @implements {WebInspector.Searchable}
@@ -78,13 +66,13 @@ WebInspector.NetworkLogView = function(filterBar, coulmnsVisibilitySetting)
 
     this._allowPopover = true;
 
+    /** @type {number} */
+    this._rowHeight = 0;
+
     this._addFilters();
     this._resetSuggestionBuilder();
     this._initializeView();
     this._recordButton.toggled = true;
-
-    /** @type {number} */
-    this._rowHeight = 0;
 
     WebInspector.targetManager.observeTargets(this);
     WebInspector.targetManager.addModelListener(WebInspector.NetworkManager, WebInspector.NetworkManager.EventTypes.RequestStarted, this._onRequestStarted, this);
@@ -203,7 +191,7 @@ WebInspector.NetworkLogView.prototype = {
 
         this._setCalculator(new WebInspector.NetworkTransferTimeCalculator());
 
-        this.switchToDetailedView();
+        this.switchViewMode(true);
     },
 
     /**
@@ -946,25 +934,25 @@ WebInspector.NetworkLogView.prototype = {
             this._appendRequest(requestsToPick[i]);
     },
 
-    switchToDetailedView: function()
+    /**
+     * @param {boolean} detailed
+     */
+    switchViewMode: function(detailed)
     {
-        if (!this._dataGrid)
+        if (this._detailedMode === detailed)
             return;
-        if (this._dataGrid.selectedNode)
-            this._dataGrid.selectedNode.selected = false;
+        this._detailedMode = detailed;
 
-        this.element.classList.remove("brief-mode");
-        this._detailedMode = true;
-        this._updateColumns();
-    },
+        if (detailed) {
+            if (this._dataGrid.selectedNode)
+                this._dataGrid.selectedNode.selected = false;
+        } else {
+            this._removeAllNodeHighlights();
+            this._popoverHelper.hidePopover();
+        }
 
-    switchToBriefView: function()
-    {
-        this.element.classList.add("brief-mode");
-        this._removeAllNodeHighlights();
-        this._detailedMode = false;
+        this.element.classList.toggle("brief-mode", !detailed);
         this._updateColumns();
-        this._popoverHelper.hidePopover();
     },
 
     _toggleLargerRequests: function()
@@ -1034,7 +1022,7 @@ WebInspector.NetworkLogView.prototype = {
      */
     _generateScriptInitiatedPopoverContent: function(request)
     {
-        var framesTable = document.createElement("table");
+        var framesTable = document.createElementWithClass("table", "network-stack-trace");
 
         /**
          * @param {!Array.<!ConsoleAgent.CallFrame>} stackTrace
@@ -1340,10 +1328,10 @@ WebInspector.NetworkLogView.prototype = {
         var pathMatched = request.path().match(regExp);
         if (!nameMatched && pathMatched && !this._largerRequestsButton.toggled)
             this._toggleLargerRequests();
+        if (reveal)
+            WebInspector.Revealer.reveal(request);
         var highlightedSubstringChanges = node._highlightMatchedSubstring(regExp);
         this._highlightedSubstringChanges.push(highlightedSubstringChanges);
-        if (reveal)
-            WebInspector.Revealer.reveal(node);
 
         this._currentMatchedRequestNode = node;
         this._currentMatchedRequestIndex = n;
@@ -1518,7 +1506,6 @@ WebInspector.NetworkLogView.prototype = {
 
         var node = this._nodesByRequestId.get(request.requestId);
         if (node) {
-            this._dataGrid.element.focus();
             node.reveal();
             this._highlightNode(node);
         }
@@ -1527,7 +1514,7 @@ WebInspector.NetworkLogView.prototype = {
     _removeAllNodeHighlights: function()
     {
         if (this._highlightedNode) {
-            this._highlightedNode.element.classList.remove("highlighted-row");
+            this._highlightedNode.element().classList.remove("highlighted-row");
             delete this._highlightedNode;
         }
     },
@@ -1537,7 +1524,7 @@ WebInspector.NetworkLogView.prototype = {
      */
     _highlightNode: function(node)
     {
-        WebInspector.runCSSAnimationOnce(node.element, "highlighted-row");
+        WebInspector.runCSSAnimationOnce(node.element(), "highlighted-row");
         this._highlightedNode = node;
     },
 
@@ -2017,7 +2004,7 @@ WebInspector.NetworkPanel.prototype = {
             this._splitView.hideMain();
         }
 
-        this._networkLogView.switchToDetailedView();
+        this._networkLogView.switchViewMode(true);
         this._networkLogView.setAllowPopover(true);
         this._networkLogView._allowRequestSelection = false;
     },
@@ -2032,7 +2019,7 @@ WebInspector.NetworkPanel.prototype = {
         this._splitView.showBoth();
         this._networkLogView.setAllowPopover(false);
         this._networkLogView._allowRequestSelection = true;
-        this._networkLogView.switchToBriefView();
+        this._networkLogView.switchViewMode(false);
     },
 
     /**
@@ -2143,8 +2130,9 @@ WebInspector.NetworkPanel.RequestRevealer = function()
 WebInspector.NetworkPanel.RequestRevealer.prototype = {
     /**
      * @param {!Object} request
+     * @param {number=} lineNumber
      */
-    reveal: function(request)
+    reveal: function(request, lineNumber)
     {
         if (request instanceof WebInspector.NetworkRequest) {
             var panel = /** @type {?WebInspector.NetworkPanel} */ (WebInspector.inspectorView.showPanel("network"));
@@ -2531,15 +2519,7 @@ WebInspector.NetworkDataGridNode.prototype = {
         this._nameCell = null;
         this._timelineCell = null;
 
-        var element = this._element;
-        element.classList.toggle("network-error-row", this._isFailed());
-        element.classList.toggle("resource-cached", this._request.cached);
-        var typeClassName = "network-type-" + this._request.type.name();
-        if (!element.classList.contains(typeClassName)) {
-            element.removeMatchingStyleClasses("network-type-\\w+");
-            element.classList.add(typeClassName);
-        }
-
+        this._element.classList.toggle("network-error-row", this._isFailed());
         WebInspector.SortableDataGridNode.prototype.createCells.call(this);
 
         this.refreshGraph(this._parentView.calculator());
@@ -2615,8 +2595,10 @@ WebInspector.NetworkDataGridNode.prototype = {
      */
     _highlightMatchedSubstring: function(regexp)
     {
+        // Ensure element is created.
+        this.element();
         var domChanges = [];
-        var matchInfo = this._element.textContent.match(regexp);
+        var matchInfo = this._nameCell.textContent.match(regexp);
         if (matchInfo)
             WebInspector.highlightSearchResult(this._nameCell, matchInfo.index, matchInfo[0].length, domChanges);
         return domChanges;
@@ -2642,28 +2624,24 @@ WebInspector.NetworkDataGridNode.prototype = {
 
         cell.className = "network-graph-side";
 
-        this._barAreaElement = document.createElement("div");
-        //    this._barAreaElement.className = "network-graph-bar-area hidden";
-        this._barAreaElement.className = "network-graph-bar-area";
+        this._barAreaElement = cell.createChild("div", "network-graph-bar-area");
         this._barAreaElement.request = this._request;
-        cell.appendChild(this._barAreaElement);
 
-        this._barLeftElement = document.createElement("div");
-        this._barLeftElement.className = "network-graph-bar waiting";
-        this._barAreaElement.appendChild(this._barLeftElement);
+        var type = this._request.type.name();
+        var cached = this._request.cached;
 
-        this._barRightElement = document.createElement("div");
-        this._barRightElement.className = "network-graph-bar";
-        this._barAreaElement.appendChild(this._barRightElement);
+        this._barLeftElement = this._barAreaElement.createChild("div", "network-graph-bar");
+        this._barLeftElement.classList.add(type, "waiting");
+        this._barLeftElement.classList.toggle("cached", cached);
 
+        this._barRightElement = this._barAreaElement.createChild("div", "network-graph-bar");
+        this._barRightElement.classList.add(type);
+        this._barRightElement.classList.toggle("cached", cached);
 
-        this._labelLeftElement = document.createElement("div");
-        this._labelLeftElement.className = "network-graph-label waiting";
-        this._barAreaElement.appendChild(this._labelLeftElement);
+        this._labelLeftElement = this._barAreaElement.createChild("div", "network-graph-label");
+        this._labelLeftElement.classList.add("waiting");
 
-        this._labelRightElement = document.createElement("div");
-        this._labelRightElement.className = "network-graph-label";
-        this._barAreaElement.appendChild(this._labelRightElement);
+        this._labelRightElement = this._barAreaElement.createChild("div", "network-graph-label");
 
         cell.addEventListener("mouseover", this._refreshLabelPositions.bind(this), false);
     },
@@ -2684,19 +2662,18 @@ WebInspector.NetworkDataGridNode.prototype = {
         this._nameCell = cell;
         cell.addEventListener("click", this._onClick.bind(this), false);
         cell.addEventListener("dblclick", this._openInNewTab.bind(this), false);
-
+        var iconElement;
         if (this._request.type === WebInspector.resourceTypes.Image) {
-            var previewImage = document.createElement("img");
-            previewImage.className = "image-network-icon-preview";
+            var previewImage = document.createElementWithClass("img", "image-network-icon-preview");
             this._request.populateImageSource(previewImage);
 
-            var iconElement = document.createElement("div");
-            iconElement.className = "icon";
+            iconElement = document.createElementWithClass("div", "icon");
             iconElement.appendChild(previewImage);
         } else {
-            var iconElement = document.createElement("img");
-            iconElement.className = "icon";
+            iconElement = document.createElementWithClass("img", "icon");
         }
+        iconElement.classList.add(this._request.type.name());
+
         cell.appendChild(iconElement);
         cell.appendChild(document.createTextNode(this._request.name()));
         this._appendSubtitle(cell, this._request.path());

@@ -69,7 +69,6 @@ void AudioSummingJunction::changedOutputs()
 void AudioSummingJunction::updateRenderingState()
 {
     ASSERT(context()->isAudioThread() && context()->isGraphOwner());
-
     if (m_renderingStateNeedUpdating && canUpdateState()) {
         // Copy from m_outputs to m_renderingOutputs.
         m_renderingOutputs.resize(m_outputs.size());

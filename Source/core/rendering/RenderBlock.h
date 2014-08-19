@@ -55,6 +55,8 @@ enum ContainingBlockState { NewContainingBlock, SameContainingBlock };
 
 class RenderBlock : public RenderBox {
 public:
+    virtual void destroy() OVERRIDE;
+    virtual void trace(Visitor*) OVERRIDE;
     friend class LineLayoutState;
 
 protected:
@@ -442,6 +444,7 @@ private:
     // End helper functions and structs used by layoutBlockChildren.
 
     bool widthAvailableToChildrenHasChanged();
+    void removeFromGlobalMaps();
 
 protected:
     // Returns the logicalOffset at the top of the next page. If the offset passed in is already at the top of the current page,
@@ -455,6 +458,7 @@ protected:
     bool createsBlockFormattingContext() const;
 
 public:
+    LayoutUnit pageLogicalTopForOffset(LayoutUnit offset) const;
     LayoutUnit pageLogicalHeightForOffset(LayoutUnit offset) const;
     LayoutUnit pageRemainingLogicalHeightForOffset(LayoutUnit offset, PageBoundaryRule = IncludePageBoundary) const;
 

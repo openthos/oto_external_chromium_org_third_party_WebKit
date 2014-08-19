@@ -38,20 +38,17 @@
 #include "wtf/Vector.h"
 
 namespace blink {
+
 class RenderLayer;
 class RenderObject;
 class Node;
-}
-
-namespace blink {
-
 struct WebFloatRect;
 struct WebRect;
 class WebViewImpl;
 
 class LinkHighlight FINAL : public WebContentLayerClient, public WebAnimationDelegate, blink::LinkHighlightClient {
 public:
-    static PassOwnPtr<LinkHighlight> create(blink::Node*, WebViewImpl*);
+    static PassOwnPtr<LinkHighlight> create(Node*, WebViewImpl*);
     virtual ~LinkHighlight();
 
     WebContentLayer* contentLayer();
@@ -72,27 +69,27 @@ public:
     virtual WebLayer* layer() OVERRIDE;
     virtual void clearCurrentGraphicsLayer() OVERRIDE;
 
-    blink::GraphicsLayer* currentGraphicsLayerForTesting() const { return m_currentGraphicsLayer; }
+    GraphicsLayer* currentGraphicsLayerForTesting() const { return m_currentGraphicsLayer; }
 
 private:
-    LinkHighlight(blink::Node*, WebViewImpl*);
+    LinkHighlight(Node*, WebViewImpl*);
 
     void releaseResources();
-    void computeQuads(blink::Node*, WTF::Vector<blink::FloatQuad>&) const;
+    void computeQuads(Node*, WTF::Vector<FloatQuad>&) const;
 
-    blink::RenderLayer* computeEnclosingCompositingLayer();
+    RenderLayer* computeEnclosingCompositingLayer();
     void clearGraphicsLayerLinkHighlightPointer();
     // This function computes the highlight path, and returns true if it has changed
     // size since the last call to this function.
-    bool computeHighlightLayerPathAndPosition(blink::RenderLayer*);
+    bool computeHighlightLayerPathAndPosition(RenderLayer*);
 
     OwnPtr<WebContentLayer> m_contentLayer;
     OwnPtr<WebLayer> m_clipLayer;
-    blink::Path m_path;
+    Path m_path;
 
-    RefPtrWillBePersistent<blink::Node> m_node;
+    RefPtrWillBePersistent<Node> m_node;
     WebViewImpl* m_owningWebViewImpl;
-    blink::GraphicsLayer* m_currentGraphicsLayer;
+    GraphicsLayer* m_currentGraphicsLayer;
 
     bool m_geometryNeedsUpdate;
     bool m_isAnimating;

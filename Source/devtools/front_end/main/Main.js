@@ -189,8 +189,10 @@ WebInspector.Main.prototype = {
             configuration.push("layers");
         if (WebInspector.experimentsSettings.devicesPanel.isEnabled() && !!WebInspector.queryParam("can_dock"))
             configuration.push("devices");
+        if (WebInspector.experimentsSettings.documentation.isEnabled())
+            configuration.push("documentation");
         if (WebInspector.isWorkerFrontend())
-            configuration = ["main", "sources", "timeline", "profiler", "console", "source_frame"];
+            configuration = ["main", "sources", "timeline", "profiler", "console", "source_frame", "extensions"];
         self.runtime.registerModules(configuration);
     },
 
@@ -324,14 +326,11 @@ WebInspector.Main.prototype = {
 
         this._registerShortcuts();
 
-        if (WebInspector.experimentsSettings.workersInMainWindow.isEnabled())
-            WebInspector.workerTargetManager = new WebInspector.WorkerTargetManager(mainTarget, WebInspector.targetManager);
+        WebInspector.workerTargetManager = new WebInspector.WorkerTargetManager(mainTarget, WebInspector.targetManager);
 
         InspectorBackend.registerInspectorDispatcher(this);
 
-        if (!WebInspector.isWorkerFrontend())
-            WebInspector.workerFrontendManager = new WebInspector.WorkerFrontendManager();
-        else
+        if (WebInspector.isWorkerFrontend())
             mainTarget.workerManager.addEventListener(WebInspector.WorkerManager.Events.WorkerDisconnected, onWorkerDisconnected);
 
         function onWorkerDisconnected()

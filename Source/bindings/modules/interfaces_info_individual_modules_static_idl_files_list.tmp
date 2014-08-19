@@ -1,4 +1,8 @@
 ../../modules/battery/BatteryManager.idl
+../../modules/credentialmanager/Credential.idl
+../../modules/credentialmanager/CredentialsContainer.idl
+../../modules/credentialmanager/FederatedCredential.idl
+../../modules/credentialmanager/LocalCredential.idl
 ../../modules/crypto/Crypto.idl
 ../../modules/crypto/CryptoKey.idl
 ../../modules/crypto/SubtleCrypto.idl
@@ -102,8 +106,8 @@
 ../../modules/quota/StorageQuotaCallback.idl
 ../../modules/quota/StorageUsageCallback.idl
 ../../modules/screen_orientation/ScreenOrientation.idl
+../../modules/serviceworkers/Cache.idl
 ../../modules/serviceworkers/CacheStorage.idl
-../../modules/serviceworkers/Client.idl
 ../../modules/serviceworkers/FetchBodyStream.idl
 ../../modules/serviceworkers/FetchEvent.idl
 ../../modules/serviceworkers/Headers.idl
@@ -113,6 +117,7 @@
 ../../modules/serviceworkers/Request.idl
 ../../modules/serviceworkers/Response.idl
 ../../modules/serviceworkers/ServiceWorker.idl
+../../modules/serviceworkers/ServiceWorkerClient.idl
 ../../modules/serviceworkers/ServiceWorkerClients.idl
 ../../modules/serviceworkers/ServiceWorkerContainer.idl
 ../../modules/serviceworkers/ServiceWorkerGlobalScope.idl
@@ -182,6 +187,7 @@
 ../../modules/websockets/WebSocket.idl
 ../../modules/battery/NavigatorBattery.idl
 ../../modules/beacon/NavigatorBeacon.idl
+../../modules/credentialmanager/NavigatorCredentials.idl
 ../../modules/crypto/WindowCrypto.idl
 ../../modules/crypto/WorkerGlobalScopeCrypto.idl
 ../../modules/device_light/WindowDeviceLight.idl

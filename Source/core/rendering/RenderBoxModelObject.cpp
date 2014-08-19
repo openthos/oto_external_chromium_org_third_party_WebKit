@@ -38,6 +38,7 @@
 #include "core/rendering/RenderLayer.h"
 #include "core/rendering/RenderObjectInlines.h"
 #include "core/rendering/RenderRegion.h"
+#include "core/rendering/RenderTextFragment.h"
 #include "core/rendering/RenderView.h"
 #include "core/rendering/compositing/CompositedLayerMapping.h"
 #include "core/rendering/compositing/RenderLayerCompositor.h"
@@ -60,13 +61,13 @@ using namespace HTMLNames;
 // an anonymous block (that houses other blocks) or it will be an inline flow.
 // <b><i><p>Hello</p></i></b>. In this example the <i> will have a block as
 // its continuation but the <b> will just have an inline as its continuation.
-typedef HashMap<const RenderBoxModelObject*, RenderBoxModelObject*> ContinuationMap;
-static ContinuationMap* continuationMap = 0;
+typedef WillBeHeapHashMap<RawPtrWillBeMember<const RenderBoxModelObject>, RawPtrWillBeMember<RenderBoxModelObject> > ContinuationMap;
+static OwnPtrWillBePersistent<ContinuationMap>* continuationMap = 0;
 
 // This HashMap is similar to the continuation map, but connects first-letter
 // renderers to their remaining text fragments.
-typedef HashMap<const RenderBoxModelObject*, RenderTextFragment*> FirstLetterRemainingTextMap;
-static FirstLetterRemainingTextMap* firstLetterRemainingTextMap = 0;
+typedef WillBeHeapHashMap<RawPtrWillBeMember<const RenderBoxModelObject>, RawPtrWillBeMember<RenderTextFragment> > FirstLetterRemainingTextMap;
+static OwnPtrWillBePersistent<FirstLetterRemainingTextMap>* firstLetterRemainingTextMap = 0;
 
 void RenderBoxModelObject::setSelectionState(SelectionState state)
 {
@@ -112,7 +113,12 @@ RenderBoxModelObject::RenderBoxModelObject(ContainerNode* node)
 
 RenderBoxModelObject::~RenderBoxModelObject()
 {
+}
+
+void RenderBoxModelObject::destroy()
+{
     ImageQualityController::remove(this);
+    RenderLayerModelObject::destroy();
 }
 
 void RenderBoxModelObject::willBeDestroyed()
@@ -410,7 +416,7 @@ void RenderBoxModelObject::paintFillLayerExtended(const PaintInfo& paintInfo, co
     BackgroundBleedAvoidance bleedAvoidance, InlineFlowBox* box, const LayoutSize& boxSize, CompositeOperator op, RenderObject* backgroundObject)
 {
     GraphicsContext* context = paintInfo.context;
-    if (context->paintingDisabled() || rect.isEmpty())
+    if (rect.isEmpty())
         return;
 
     bool includeLeftEdge = box ? box->includeLogicalLeftEdge() : true;
@@ -1627,9 +1633,6 @@ void RenderBoxModelObject::paintBorder(const PaintInfo& info, const LayoutRect& 
     if (paintNinePieceImage(graphicsContext, rect, style, style->borderImage()))
         return;
 
-    if (graphicsContext->paintingDisabled())
-        return;
-
     BorderEdge edges[4];
     getBorderEdgeInfo(edges, style, includeLogicalLeftEdge, includeLogicalRightEdge);
     RoundedRect outerBorder = style->getRoundedBorderFor(rect, includeLogicalLeftEdge, includeLogicalRightEdge);
@@ -2377,7 +2380,7 @@ void RenderBoxModelObject::paintBoxShadow(const PaintInfo& info, const LayoutRec
 {
     // FIXME: Deal with border-image.  Would be great to use border-image as a mask.
     GraphicsContext* context = info.context;
-    if (context->paintingDisabled() || !s->boxShadow())
+    if (!s->boxShadow())
         return;
 
     RoundedRect border = (shadowStyle == Inset) ? s->getRoundedInnerBorderFor(paintRect, includeLogicalLeftEdge, includeLogicalRightEdge)
@@ -2509,18 +2512,18 @@ RenderBoxModelObject* RenderBoxModelObject::continuation() const
 {
     if (!continuationMap)
         return 0;
-    return continuationMap->get(this);
+    return (*continuationMap)->get(this);
 }
 
 void RenderBoxModelObject::setContinuation(RenderBoxModelObject* continuation)
 {
     if (continuation) {
         if (!continuationMap)
-            continuationMap = new ContinuationMap;
-        continuationMap->set(this, continuation);
+            continuationMap = new OwnPtrWillBePersistent<ContinuationMap>(adoptPtrWillBeNoop(new ContinuationMap));
+        (*continuationMap)->set(this, continuation);
     } else {
         if (continuationMap)
-            continuationMap->remove(this);
+            (*continuationMap)->remove(this);
     }
 }
 
@@ -2540,17 +2543,18 @@ RenderTextFragment* RenderBoxModelObject::firstLetterRemainingText() const
 {
     if (!firstLetterRemainingTextMap)
         return 0;
-    return firstLetterRemainingTextMap->get(this);
+    return (*firstLetterRemainingTextMap)->get(this);
 }
 
 void RenderBoxModelObject::setFirstLetterRemainingText(RenderTextFragment* remainingText)
 {
     if (remainingText) {
         if (!firstLetterRemainingTextMap)
-            firstLetterRemainingTextMap = new FirstLetterRemainingTextMap;
-        firstLetterRemainingTextMap->set(this, remainingText);
-    } else if (firstLetterRemainingTextMap)
-        firstLetterRemainingTextMap->remove(this);
+            firstLetterRemainingTextMap = new OwnPtrWillBePersistent<FirstLetterRemainingTextMap>(adoptPtrWillBeNoop(new FirstLetterRemainingTextMap));
+        (*firstLetterRemainingTextMap)->set(this, remainingText);
+    } else if (firstLetterRemainingTextMap) {
+        (*firstLetterRemainingTextMap)->remove(this);
+    }
 }
 
 LayoutRect RenderBoxModelObject::localCaretRectForEmptyElement(LayoutUnit width, LayoutUnit textIndentOffset)

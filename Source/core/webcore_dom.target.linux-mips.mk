@@ -79,6 +79,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/dom/Element.cpp \
 	third_party/WebKit/Source/core/dom/ElementData.cpp \
 	third_party/WebKit/Source/core/dom/ElementDataCache.cpp \
+	third_party/WebKit/Source/core/dom/ElementFullscreen.cpp \
 	third_party/WebKit/Source/core/dom/ElementRareData.cpp \
 	third_party/WebKit/Source/core/dom/EmptyNodeList.cpp \
 	third_party/WebKit/Source/core/dom/ExecutionContext.cpp \
@@ -99,7 +100,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/dom/MutationRecord.cpp \
 	third_party/WebKit/Source/core/dom/NameNodeList.cpp \
 	third_party/WebKit/Source/core/dom/NamedNodeMap.cpp \
-	third_party/WebKit/Source/core/dom/NamedNodesCollection.cpp \
 	third_party/WebKit/Source/core/dom/Node.cpp \
 	third_party/WebKit/Source/core/dom/NodeChildRemovalTracker.cpp \
 	third_party/WebKit/Source/core/dom/NodeFilter.cpp \
@@ -128,7 +128,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/dom/SelectorQuery.cpp \
 	third_party/WebKit/Source/core/dom/ShadowTreeStyleSheetCollection.cpp \
 	third_party/WebKit/Source/core/dom/SpaceSplitString.cpp \
-	third_party/WebKit/Source/core/dom/StaticNodeList.cpp \
 	third_party/WebKit/Source/core/dom/StringCallback.cpp \
 	third_party/WebKit/Source/core/dom/StyleElement.cpp \
 	third_party/WebKit/Source/core/dom/StyleEngine.cpp \
@@ -254,7 +253,6 @@ MY_CFLAGS_Debug := \
 
 MY_DEFS_Debug := \
 	'-DV8_DEPRECATION_WARNINGS' \
-	'-DBLINK_SCALE_FILTERS_AT_RECORD_TIME' \
 	'-D_FILE_OFFSET_BITS=64' \
 	'-DNO_TCMALLOC' \
 	'-DDISABLE_NACL' \
@@ -417,7 +415,6 @@ MY_CFLAGS_Release := \
 
 MY_DEFS_Release := \
 	'-DV8_DEPRECATION_WARNINGS' \
-	'-DBLINK_SCALE_FILTERS_AT_RECORD_TIME' \
 	'-D_FILE_OFFSET_BITS=64' \
 	'-DNO_TCMALLOC' \
 	'-DDISABLE_NACL' \

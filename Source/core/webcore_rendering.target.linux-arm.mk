@@ -76,7 +76,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/rendering/RenderImageResourceStyleImage.cpp \
 	third_party/WebKit/Source/core/rendering/RenderInline.cpp \
 	third_party/WebKit/Source/core/rendering/RenderLayer.cpp \
-	third_party/WebKit/Source/core/rendering/RenderLayerBlendInfo.cpp \
 	third_party/WebKit/Source/core/rendering/RenderLayerClipper.cpp \
 	third_party/WebKit/Source/core/rendering/RenderLayerFilterInfo.cpp \
 	third_party/WebKit/Source/core/rendering/RenderLayerModelObject.cpp \
@@ -240,7 +239,6 @@ MY_CFLAGS_Debug := \
 
 MY_DEFS_Debug := \
 	'-DV8_DEPRECATION_WARNINGS' \
-	'-DBLINK_SCALE_FILTERS_AT_RECORD_TIME' \
 	'-D_FILE_OFFSET_BITS=64' \
 	'-DNO_TCMALLOC' \
 	'-DDISABLE_NACL' \
@@ -409,7 +407,6 @@ MY_CFLAGS_Release := \
 
 MY_DEFS_Release := \
 	'-DV8_DEPRECATION_WARNINGS' \
-	'-DBLINK_SCALE_FILTERS_AT_RECORD_TIME' \
 	'-D_FILE_OFFSET_BITS=64' \
 	'-DNO_TCMALLOC' \
 	'-DDISABLE_NACL' \

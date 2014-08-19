@@ -40,6 +40,7 @@
 #include "core/html/DOMFormData.h"
 #include "core/html/HTMLDocument.h"
 #include "core/html/parser/TextResourceDecoder.h"
+#include "core/inspector/ConsoleMessage.h"
 #include "core/inspector/InspectorInstrumentation.h"
 #include "core/inspector/InspectorTraceEvents.h"
 #include "core/loader/ThreadableLoader.h"
@@ -107,7 +108,7 @@ static void logConsoleError(ExecutionContext* context, const String& message)
         return;
     // FIXME: It's not good to report the bad usage without indicating what source line it came from.
     // We should pass additional parameters so we can tell the console where the mistake occurred.
-    context->addConsoleMessage(JSMessageSource, ErrorMessageLevel, message);
+    context->addConsoleMessage(ConsoleMessage::create(JSMessageSource, ErrorMessageLevel, message));
 }
 
 PassRefPtrWillBeRawPtr<XMLHttpRequest> XMLHttpRequest::create(ExecutionContext* context, PassRefPtr<SecurityOrigin> securityOrigin)
@@ -132,7 +133,7 @@ XMLHttpRequest::XMLHttpRequest(ExecutionContext* context, PassRefPtr<SecurityOri
     , m_previousReadyStateChangeFireTime(0)
     , m_async(true)
     , m_includeCredentials(false)
-    , m_createdDocument(false)
+    , m_parsedResponse(false)
     , m_error(false)
     , m_uploadEventsAllowed(true)
     , m_uploadComplete(false)
@@ -187,6 +188,32 @@ ScriptString XMLHttpRequest::responseJSONSource()
     return m_responseText;
 }
 
+void XMLHttpRequest::initResponseDocument()
+{
+    AtomicString mimeType = finalResponseMIMETypeWithFallback();
+    bool isHTML = equalIgnoringCase(mimeType, "text/html");
+
+    // The W3C spec requires the final MIME type to be some valid XML type, or text/html.
+    // If it is text/html, then the responseType of "document" must have been supplied explicitly.
+    if ((m_response.isHTTP() && !responseIsXML() && !isHTML)
+        || (isHTML && m_responseTypeCode == ResponseTypeDefault)
+        || executionContext()->isWorkerGlobalScope()) {
+        m_responseDocument = nullptr;
+        return;
+    }
+
+    DocumentInit init = DocumentInit::fromContext(document()->contextDocument(), m_url);
+    if (isHTML)
+        m_responseDocument = HTMLDocument::create(init);
+    else
+        m_responseDocument = XMLDocument::create(init);
+
+    // FIXME: Set Last-Modified.
+    m_responseDocument->setSecurityOrigin(securityOrigin());
+    m_responseDocument->setContextFeatures(document()->contextFeatures());
+    m_responseDocument->setMimeType(mimeType);
+}
+
 Document* XMLHttpRequest::responseXML(ExceptionState& exceptionState)
 {
     if (m_responseTypeCode != ResponseTypeDefault && m_responseTypeCode != ResponseTypeDocument) {
@@ -197,31 +224,16 @@ Document* XMLHttpRequest::responseXML(ExceptionState& exceptionState)
     if (m_error || m_state != DONE)
         return 0;
 
-    if (!m_createdDocument) {
-        AtomicString mimeType = responseMIMEType();
-        bool isHTML = equalIgnoringCase(mimeType, "text/html");
+    if (!m_parsedResponse) {
+        initResponseDocument();
+        if (!m_responseDocument)
+            return nullptr;
 
-        // The W3C spec requires the final MIME type to be some valid XML type, or text/html.
-        // If it is text/html, then the responseType of "document" must have been supplied explicitly.
-        if ((m_response.isHTTP() && !responseIsXML() && !isHTML)
-            || (isHTML && m_responseTypeCode == ResponseTypeDefault)
-            || executionContext()->isWorkerGlobalScope()) {
+        m_responseDocument->setContent(m_responseText.flattenToString());
+        if (!m_responseDocument->wellFormed())
             m_responseDocument = nullptr;
-        } else {
-            DocumentInit init = DocumentInit::fromContext(document()->contextDocument(), m_url);
-            if (isHTML)
-                m_responseDocument = HTMLDocument::create(init);
-            else
-                m_responseDocument = XMLDocument::create(init);
-            // FIXME: Set Last-Modified.
-            m_responseDocument->setContent(m_responseText.flattenToString());
-            m_responseDocument->setSecurityOrigin(securityOrigin());
-            m_responseDocument->setContextFeatures(document()->contextFeatures());
-            m_responseDocument->setMimeType(mimeType);
-            if (!m_responseDocument->wellFormed())
-                m_responseDocument = nullptr;
-        }
-        m_createdDocument = true;
+
+        m_parsedResponse = true;
     }
 
     return m_responseDocument.get();
@@ -247,7 +259,10 @@ Blob* XMLHttpRequest::responseBlob()
         // empty one.
         if (!filePath.isEmpty() && m_downloadedBlobLength) {
             blobData->appendFile(filePath);
-            blobData->setContentType(responseMIMEType()); // responseMIMEType defaults to text/xml which may be incorrect.
+            // FIXME: finalResponseMIMETypeWithFallback() defaults to text/xml
+            // which may be incorrect. Replace it with finalResponseMIMEType()
+            // after compatibility investigation.
+            blobData->setContentType(finalResponseMIMETypeWithFallback());
         }
         m_responseBlob = Blob::create(BlobDataHandle::create(blobData.release(), m_downloadedBlobLength));
     }
@@ -282,7 +297,7 @@ ArrayBuffer* XMLHttpRequest::responseArrayBuffer()
 
 Stream* XMLHttpRequest::responseStream()
 {
-    ASSERT(m_responseTypeCode == ResponseTypeStream);
+    ASSERT(m_responseTypeCode == ResponseTypeLegacyStream);
 
     if (m_error || (m_state != LOADING && m_state != DONE))
         return 0;
@@ -298,7 +313,16 @@ void XMLHttpRequest::setTimeout(unsigned long timeout, ExceptionState& exception
         exceptionState.throwDOMException(InvalidAccessError, "Timeouts cannot be set for synchronous requests made from a document.");
         return;
     }
+
     m_timeoutMilliseconds = timeout;
+
+    // From http://www.w3.org/TR/XMLHttpRequest/#the-timeout-attribute:
+    // Note: This implies that the timeout attribute can be set while fetching is in progress. If
+    // that occurs it will still be measured relative to the start of fetching.
+    //
+    // The timeout may be overridden after send.
+    if (m_loader)
+        m_loader->overrideTimeout(timeout);
 }
 
 void XMLHttpRequest::setResponseType(const String& responseType, ExceptionState& exceptionState)
@@ -327,9 +351,9 @@ void XMLHttpRequest::setResponseType(const String& responseType, ExceptionState&
         m_responseTypeCode = ResponseTypeBlob;
     } else if (responseType == "arraybuffer") {
         m_responseTypeCode = ResponseTypeArrayBuffer;
-    } else if (responseType == "stream") {
+    } else if (responseType == "legacystream") {
         if (RuntimeEnabledFeatures::streamEnabled())
-            m_responseTypeCode = ResponseTypeStream;
+            m_responseTypeCode = ResponseTypeLegacyStream;
         else
             return;
     } else {
@@ -352,8 +376,8 @@ String XMLHttpRequest::responseType()
         return "blob";
     case ResponseTypeArrayBuffer:
         return "arraybuffer";
-    case ResponseTypeStream:
-        return "stream";
+    case ResponseTypeLegacyStream:
+        return "legacystream";
     }
     return "";
 }
@@ -858,7 +882,7 @@ void XMLHttpRequest::clearVariablesForLoading()
 {
     m_decoder.clear();
 
-    m_responseEncoding = String();
+    m_finalResponseCharset = String();
 }
 
 bool XMLHttpRequest::internalAbort()
@@ -906,7 +930,7 @@ void XMLHttpRequest::clearResponse()
 
     m_responseText.clear();
 
-    m_createdDocument = false;
+    m_parsedResponse = false;
     m_responseDocument = nullptr;
 
     m_responseBlob = nullptr;
@@ -958,9 +982,11 @@ void XMLHttpRequest::handleNetworkError()
     long long expectedLength = m_response.expectedContentLength();
     long long receivedLength = m_receivedLength;
 
+    if (!internalAbort())
+        return;
+
     handleDidFailGeneric();
     handleRequestError(NetworkError, EventTypeNames::error, receivedLength, expectedLength);
-    internalAbort();
 }
 
 void XMLHttpRequest::handleDidCancel()
@@ -1009,6 +1035,9 @@ void XMLHttpRequest::handleRequestError(ExceptionCode exceptionCode, const Atomi
 
 void XMLHttpRequest::overrideMimeType(const AtomicString& override)
 {
+    // FIXME: This method must throw an InvalidStateError exception when the
+    // XHR is in the LOADING or DONE state. http://crbug.com/402375
+
     m_mimeTypeOverride = override;
 }
 
@@ -1105,24 +1134,32 @@ const AtomicString& XMLHttpRequest::getResponseHeader(const AtomicString& name) 
     return m_response.httpHeaderField(name);
 }
 
-AtomicString XMLHttpRequest::responseMIMEType() const
+AtomicString XMLHttpRequest::finalResponseMIMEType() const
 {
-    AtomicString mimeType = extractMIMETypeFromMediaType(m_mimeTypeOverride);
-    if (mimeType.isEmpty()) {
-        if (m_response.isHTTP())
-            mimeType = extractMIMETypeFromMediaType(m_response.httpHeaderField("Content-Type"));
-        else
-            mimeType = m_response.mimeType();
-    }
-    if (mimeType.isEmpty())
-        mimeType = AtomicString("text/xml", AtomicString::ConstructFromLiteral);
+    AtomicString overriddenType = extractMIMETypeFromMediaType(m_mimeTypeOverride);
+    if (!overriddenType.isEmpty())
+        return overriddenType;
 
-    return mimeType;
+    if (m_response.isHTTP())
+        return extractMIMETypeFromMediaType(m_response.httpHeaderField("Content-Type"));
+
+    return m_response.mimeType();
+}
+
+AtomicString XMLHttpRequest::finalResponseMIMETypeWithFallback() const
+{
+    AtomicString finalType = finalResponseMIMEType();
+    if (!finalType.isEmpty())
+        return finalType;
+
+    // FIXME: This fallback is not specified in the final MIME type algorithm
+    // of the XHR spec. Move this to more appropriate place.
+    return AtomicString("text/xml", AtomicString::ConstructFromLiteral);
 }
 
 bool XMLHttpRequest::responseIsXML() const
 {
-    return DOMImplementation::isXMLMIMEType(responseMIMEType());
+    return DOMImplementation::isXMLMIMEType(finalResponseMIMETypeWithFallback());
 }
 
 int XMLHttpRequest::status() const
@@ -1229,11 +1266,36 @@ void XMLHttpRequest::didReceiveResponse(unsigned long identifier, const Resource
     m_response = response;
     if (!m_mimeTypeOverride.isEmpty()) {
         m_response.setHTTPHeaderField("Content-Type", m_mimeTypeOverride);
-        m_responseEncoding = extractCharsetFromMediaType(m_mimeTypeOverride);
+        m_finalResponseCharset = extractCharsetFromMediaType(m_mimeTypeOverride);
     }
 
-    if (m_responseEncoding.isEmpty())
-        m_responseEncoding = response.textEncodingName();
+    if (m_finalResponseCharset.isEmpty())
+        m_finalResponseCharset = response.textEncodingName();
+}
+
+PassOwnPtr<TextResourceDecoder> XMLHttpRequest::createDecoder() const
+{
+    if (m_responseTypeCode == ResponseTypeJSON)
+        return TextResourceDecoder::create("application/json", "UTF-8");
+
+    if (!m_finalResponseCharset.isEmpty())
+        return TextResourceDecoder::create("text/plain", m_finalResponseCharset);
+
+    // allow TextResourceDecoder to look inside the m_response if it's XML or HTML
+    if (responseIsXML()) {
+        OwnPtr<TextResourceDecoder> decoder = TextResourceDecoder::create("application/xml");
+        // Don't stop on encoding errors, unlike it is done for other kinds
+        // of XML resources. This matches the behavior of previous WebKit
+        // versions, Firefox and Opera.
+        decoder->useLenientXMLDecoding();
+
+        return decoder.release();
+    }
+
+    if (equalIgnoringCase(finalResponseMIMEType(), "text/html"))
+        return TextResourceDecoder::create("text/html", "UTF-8");
+
+    return TextResourceDecoder::create("text/plain", "UTF-8");
 }
 
 void XMLHttpRequest::didReceiveData(const char* data, int len)
@@ -1246,43 +1308,26 @@ void XMLHttpRequest::didReceiveData(const char* data, int len)
     if (m_state < HEADERS_RECEIVED)
         changeState(HEADERS_RECEIVED);
 
-    bool useDecoder = m_responseTypeCode == ResponseTypeDefault || m_responseTypeCode == ResponseTypeText || m_responseTypeCode == ResponseTypeJSON || m_responseTypeCode == ResponseTypeDocument;
-
-    if (useDecoder && !m_decoder) {
-        if (m_responseTypeCode == ResponseTypeJSON) {
-            m_decoder = TextResourceDecoder::create("application/json", "UTF-8");
-        } else if (!m_responseEncoding.isEmpty()) {
-            m_decoder = TextResourceDecoder::create("text/plain", m_responseEncoding);
-        // allow TextResourceDecoder to look inside the m_response if it's XML or HTML
-        } else if (responseIsXML()) {
-            m_decoder = TextResourceDecoder::create("application/xml");
-            // Don't stop on encoding errors, unlike it is done for other kinds
-            // of XML resources. This matches the behavior of previous WebKit
-            // versions, Firefox and Opera.
-            m_decoder->useLenientXMLDecoding();
-        } else if (equalIgnoringCase(responseMIMEType(), "text/html")) {
-            m_decoder = TextResourceDecoder::create("text/html", "UTF-8");
-        } else {
-            m_decoder = TextResourceDecoder::create("text/plain", "UTF-8");
-        }
-    }
-
     if (!len)
         return;
 
     if (len == -1)
         len = strlen(data);
 
+    bool useDecoder = m_responseTypeCode == ResponseTypeDefault || m_responseTypeCode == ResponseTypeText || m_responseTypeCode == ResponseTypeJSON || m_responseTypeCode == ResponseTypeDocument;
     if (useDecoder) {
+        if (!m_decoder)
+            m_decoder = createDecoder();
+
         m_responseText = m_responseText.concatenateWith(m_decoder->decode(data, len));
     } else if (m_responseTypeCode == ResponseTypeArrayBuffer) {
         // Buffer binary data.
         if (!m_binaryResponseBuilder)
             m_binaryResponseBuilder = SharedBuffer::create();
         m_binaryResponseBuilder->append(data, len);
-    } else if (m_responseTypeCode == ResponseTypeStream) {
+    } else if (m_responseTypeCode == ResponseTypeLegacyStream) {
         if (!m_responseStream)
-            m_responseStream = Stream::create(executionContext(), responseMIMEType());
+            m_responseStream = Stream::create(executionContext(), finalResponseMIMEType());
         m_responseStream->addData(data, len);
     }
 

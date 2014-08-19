@@ -62,6 +62,8 @@ $(gyp_intermediate_dir)/EventModulesNames.cpp: $(gyp_shared_intermediate_dir)/bl
 	mkdir -p $(@D); cp $< $@
 $(gyp_intermediate_dir)/EventTargetModulesNames.cpp: $(gyp_shared_intermediate_dir)/blink/modules/EventTargetModulesNames.cpp
 	mkdir -p $(@D); cp $< $@
+$(gyp_intermediate_dir)/IndexedDBNames.cpp: $(gyp_shared_intermediate_dir)/blink/modules/IndexedDBNames.cpp
+	mkdir -p $(@D); cp $< $@
 $(gyp_intermediate_dir)/V8GeneratedModulesBindings01.cpp: $(gyp_shared_intermediate_dir)/blink/bindings/modules/v8/V8GeneratedModulesBindings01.cpp
 	mkdir -p $(@D); cp $< $@
 $(gyp_intermediate_dir)/V8GeneratedModulesBindings02.cpp: $(gyp_shared_intermediate_dir)/blink/bindings/modules/v8/V8GeneratedModulesBindings02.cpp
@@ -106,6 +108,7 @@ LOCAL_GENERATED_SOURCES := \
 	$(gyp_intermediate_dir)/EventModules.cpp \
 	$(gyp_intermediate_dir)/EventModulesNames.cpp \
 	$(gyp_intermediate_dir)/EventTargetModulesNames.cpp \
+	$(gyp_intermediate_dir)/IndexedDBNames.cpp \
 	$(gyp_intermediate_dir)/V8GeneratedModulesBindings01.cpp \
 	$(gyp_intermediate_dir)/V8GeneratedModulesBindings02.cpp \
 	$(gyp_intermediate_dir)/V8GeneratedModulesBindings03.cpp \
@@ -139,6 +142,11 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/modules/battery/BatteryStatus.cpp \
 	third_party/WebKit/Source/modules/battery/NavigatorBattery.cpp \
 	third_party/WebKit/Source/modules/beacon/NavigatorBeacon.cpp \
+	third_party/WebKit/Source/modules/credentialmanager/Credential.cpp \
+	third_party/WebKit/Source/modules/credentialmanager/CredentialsContainer.cpp \
+	third_party/WebKit/Source/modules/credentialmanager/FederatedCredential.cpp \
+	third_party/WebKit/Source/modules/credentialmanager/LocalCredential.cpp \
+	third_party/WebKit/Source/modules/credentialmanager/NavigatorCredentials.cpp \
 	third_party/WebKit/Source/modules/crypto/Crypto.cpp \
 	third_party/WebKit/Source/modules/crypto/CryptoKey.cpp \
 	third_party/WebKit/Source/modules/crypto/CryptoResultImpl.cpp \
@@ -305,8 +313,8 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/modules/screen_orientation/ScreenOrientation.cpp \
 	third_party/WebKit/Source/modules/screen_orientation/ScreenOrientationController.cpp \
 	third_party/WebKit/Source/modules/screen_orientation/ScreenOrientationDispatcher.cpp \
+	third_party/WebKit/Source/modules/serviceworkers/Cache.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/CacheStorage.cpp \
-	third_party/WebKit/Source/modules/serviceworkers/Client.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/FetchBodyStream.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/FetchEvent.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/FetchHeaderList.cpp \
@@ -321,6 +329,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/modules/serviceworkers/RespondWithObserver.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/Response.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/ServiceWorker.cpp \
+	third_party/WebKit/Source/modules/serviceworkers/ServiceWorkerClient.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/ServiceWorkerClients.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/ServiceWorkerContainer.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/ServiceWorkerContainerClient.cpp \
@@ -452,7 +461,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/modules/websockets/WebSocketPerMessageDeflate.cpp \
 	third_party/WebKit/Source/modules/websockets/WorkerThreadableWebSocketChannel.cpp \
 	third_party/WebKit/Source/bindings/modules/v8/custom/V8AudioNodeCustom.cpp \
-	third_party/WebKit/Source/bindings/modules/v8/custom/V8ClientCustom.cpp \
 	third_party/WebKit/Source/bindings/modules/v8/custom/V8CryptoCustom.cpp \
 	third_party/WebKit/Source/bindings/modules/v8/custom/V8CryptoKeyCustom.cpp \
 	third_party/WebKit/Source/bindings/modules/v8/custom/V8CustomSQLStatementErrorCallback.cpp \
@@ -463,6 +471,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/bindings/modules/v8/custom/V8SQLResultSetRowListCustom.cpp \
 	third_party/WebKit/Source/bindings/modules/v8/custom/V8SQLTransactionCustom.cpp \
 	third_party/WebKit/Source/bindings/modules/v8/custom/V8SQLTransactionSyncCustom.cpp \
+	third_party/WebKit/Source/bindings/modules/v8/custom/V8ServiceWorkerClientCustom.cpp \
 	third_party/WebKit/Source/bindings/modules/v8/custom/V8ServiceWorkerCustom.cpp \
 	third_party/WebKit/Source/bindings/modules/v8/custom/V8SubtleCryptoCustom.cpp \
 	third_party/WebKit/Source/bindings/modules/v8/DictionaryHelperForModules.cpp \
@@ -507,7 +516,6 @@ MY_CFLAGS_Debug := \
 
 MY_DEFS_Debug := \
 	'-DV8_DEPRECATION_WARNINGS' \
-	'-DBLINK_SCALE_FILTERS_AT_RECORD_TIME' \
 	'-D_FILE_OFFSET_BITS=64' \
 	'-DNO_TCMALLOC' \
 	'-DDISABLE_NACL' \
@@ -657,7 +665,6 @@ MY_CFLAGS_Release := \
 
 MY_DEFS_Release := \
 	'-DV8_DEPRECATION_WARNINGS' \
-	'-DBLINK_SCALE_FILTERS_AT_RECORD_TIME' \
 	'-D_FILE_OFFSET_BITS=64' \
 	'-DNO_TCMALLOC' \
 	'-DDISABLE_NACL' \

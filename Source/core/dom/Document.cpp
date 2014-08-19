@@ -73,7 +73,6 @@
 #include "core/dom/ExecutionContextTask.h"
 #include "core/dom/MainThreadTaskRunner.h"
 #include "core/dom/MutationObserver.h"
-#include "core/dom/NoEventDispatchAssertion.h"
 #include "core/dom/NodeChildRemovalTracker.h"
 #include "core/dom/NodeFilter.h"
 #include "core/dom/NodeIterator.h"
@@ -150,6 +149,7 @@
 #include "core/html/parser/HTMLParserIdioms.h"
 #include "core/html/parser/NestingLevelIncrementer.h"
 #include "core/html/parser/TextResourceDecoder.h"
+#include "core/inspector/ConsoleMessage.h"
 #include "core/inspector/InspectorCounters.h"
 #include "core/inspector/InspectorInstrumentation.h"
 #include "core/inspector/InspectorTraceEvents.h"
@@ -182,6 +182,7 @@
 #include "core/xml/XSLTProcessor.h"
 #include "core/xml/parser/XMLDocumentParser.h"
 #include "platform/DateComponents.h"
+#include "platform/EventDispatchForbiddenScope.h"
 #include "platform/Language.h"
 #include "platform/RuntimeEnabledFeatures.h"
 #include "platform/ScriptForbiddenScope.h"
@@ -757,6 +758,11 @@ void Document::childrenChanged(const ChildrenChange& change)
     m_documentElement = ElementTraversal::firstWithin(*this);
 }
 
+AtomicString Document::convertLocalName(const AtomicString& name)
+{
+    return isHTMLDocument() ? name.lower() : name;
+}
+
 PassRefPtrWillBeRawPtr<Element> Document::createElement(const AtomicString& name, ExceptionState& exceptionState)
 {
     if (!isValidName(name)) {
@@ -765,7 +771,7 @@ PassRefPtrWillBeRawPtr<Element> Document::createElement(const AtomicString& name
     }
 
     if (isXHTMLDocument() || isHTMLDocument())
-        return HTMLElementFactory::createHTMLElement(isHTMLDocument() ? name.lower() : name, *this, 0, false);
+        return HTMLElementFactory::createHTMLElement(convertLocalName(name), *this, 0, false);
 
     return Element::create(QualifiedName(nullAtom, name, nullAtom), this);
 }
@@ -780,7 +786,7 @@ PassRefPtrWillBeRawPtr<Element> Document::createElement(const AtomicString& loca
     RefPtrWillBeRawPtr<Element> element;
 
     if (CustomElement::isValidName(localName) && registrationContext()) {
-        element = registrationContext()->createCustomTagElement(*this, QualifiedName(nullAtom, localName, xhtmlNamespaceURI));
+        element = registrationContext()->createCustomTagElement(*this, QualifiedName(nullAtom, convertLocalName(localName), xhtmlNamespaceURI));
     } else {
         element = createElement(localName, exceptionState);
         if (exceptionState.hadException())
@@ -835,12 +841,12 @@ PassRefPtrWillBeRawPtr<Element> Document::createElementNS(const AtomicString& na
     return element.release();
 }
 
-ScriptValue Document::registerElement(blink::ScriptState* scriptState, const AtomicString& name, ExceptionState& exceptionState)
+ScriptValue Document::registerElement(ScriptState* scriptState, const AtomicString& name, ExceptionState& exceptionState)
 {
     return registerElement(scriptState, name, Dictionary(), exceptionState);
 }
 
-ScriptValue Document::registerElement(blink::ScriptState* scriptState, const AtomicString& name, const Dictionary& options, ExceptionState& exceptionState, CustomElement::NameSet validNames)
+ScriptValue Document::registerElement(ScriptState* scriptState, const AtomicString& name, const Dictionary& options, ExceptionState& exceptionState, CustomElement::NameSet validNames)
 {
     if (!registrationContext()) {
         exceptionState.throwDOMException(NotSupportedError, "No element registration context is available.");
@@ -2016,6 +2022,7 @@ PassRefPtr<RenderStyle> Document::styleForElementIgnoringPendingStylesheets(Elem
 
 PassRefPtr<RenderStyle> Document::styleForPage(int pageIndex)
 {
+    updateDistributionIfNeeded();
     return ensureStyleResolver().styleForPage(pageIndex);
 }
 
@@ -2208,8 +2215,6 @@ void Document::detach(const AttachContext& context)
 
     m_styleEngine->didDetach();
 
-    if (Document* parentDoc = parentDocument())
-        parentDoc->didClearTouchEventHandlers(this);
     frameHost()->eventHandlerRegistry().documentDetached(*this);
 
     // This is required, as our LocalFrame might delete itself as soon as it detaches
@@ -2225,12 +2230,6 @@ void Document::detach(const AttachContext& context)
     lifecycleNotifier().notifyDocumentWasDetached();
     m_lifecycle.advanceTo(DocumentLifecycle::Stopped);
 #if ENABLE(OILPAN)
-    // This mirrors the clearing of the document object's touch
-    // handlers that happens when the LocalDOMWindow is destructed in a
-    // non-Oilpan setting (LocalDOMWindow::removeAllEventListeners()),
-    // except that it is now done during detach instead.
-    didClearTouchEventHandlers(this);
-
     // Done with the window, explicitly clear to hasten its
     // destruction.
     clearDOMWindow();
@@ -2625,7 +2624,7 @@ bool Document::dispatchBeforeUnloadEvent(Chrome& chrome, bool& didAllowNavigatio
         return true;
 
     if (didAllowNavigation) {
-        addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Blocked attempt to show multiple 'beforeunload' confirmation panels for a single navigation.");
+        addConsoleMessage(ConsoleMessage::create(JSMessageSource, ErrorMessageLevel, "Blocked attempt to show multiple 'beforeunload' confirmation panels for a single navigation."));
         return true;
     }
 
@@ -2744,7 +2743,7 @@ void Document::write(const SegmentedString& text, Document* ownerDocument, Excep
     bool hasInsertionPoint = m_parser && m_parser->hasInsertionPoint();
 
     if (!hasInsertionPoint && m_ignoreDestructiveWriteCount) {
-        addConsoleMessage(JSMessageSource, WarningMessageLevel, ExceptionMessages::failedToExecute("write", "Document", "It isn't possible to write into a document from an asynchronously-loaded external script unless it is explicitly opened."));
+        addConsoleMessage(ConsoleMessage::create(JSMessageSource, WarningMessageLevel, ExceptionMessages::failedToExecute("write", "Document", "It isn't possible to write into a document from an asynchronously-loaded external script unless it is explicitly opened.")));
         return;
     }
 
@@ -2793,7 +2792,9 @@ EventTarget* Document::errorEventTarget()
 
 void Document::logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtrWillBeRawPtr<ScriptCallStack> callStack)
 {
-    internalAddMessage(JSMessageSource, ErrorMessageLevel, errorMessage, sourceURL, lineNumber, callStack, 0);
+    RefPtrWillBeRawPtr<ConsoleMessage> consoleMessage = ConsoleMessage::create(JSMessageSource, ErrorMessageLevel, errorMessage, sourceURL, lineNumber);
+    consoleMessage->setCallStack(callStack);
+    addMessage(consoleMessage.release());
 }
 
 void Document::setURL(const KURL& url)
@@ -2996,6 +2997,9 @@ void Document::didLoadAllScriptBlockingResources()
 {
     m_executeScriptsWaitingForResourcesTimer.startOneShot(0, FROM_HERE);
 
+    if (frame())
+        frame()->loader().client()->didRemoveAllPendingStylesheet();
+
     if (m_gotoAnchorNeededAfterStylesheetsLoad && view())
         view()->scrollToFragment(m_url);
 }
@@ -3085,13 +3089,13 @@ void Document::maybeHandleHttpRefresh(const String& content, HttpRefreshType htt
 
     if (protocolIsJavaScript(refreshURL)) {
         String message = "Refused to refresh " + m_url.elidedString() + " to a javascript: URL";
-        addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, message);
+        addConsoleMessage(ConsoleMessage::create(SecurityMessageSource, ErrorMessageLevel, message));
         return;
     }
 
     if (httpRefreshType == HttpRefreshFromMetaTag && isSandboxed(SandboxAutomaticFeatures)) {
         String message = "Refused to execute the redirect specified via '<meta http-equiv='refresh' content='...'>'. The document is sandboxed, and the 'allow-scripts' keyword is not set.";
-        addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, message);
+        addConsoleMessage(ConsoleMessage::create(SecurityMessageSource, ErrorMessageLevel, message));
         return;
     }
     m_frame->navigationScheduler().scheduleRedirect(delay, refreshURL);
@@ -3122,7 +3126,9 @@ void Document::processHttpEquivXFrameOptions(const AtomicString& content)
         // intent, we must navigate away from the possibly partially-rendered document to a location that
         // doesn't inherit the parent's SecurityOrigin.
         frame->navigationScheduler().scheduleLocationChange(this, SecurityOrigin::urlWithUniqueSecurityOrigin(), Referrer());
-        addConsoleMessageWithRequestIdentifier(SecurityMessageSource, ErrorMessageLevel, message, requestIdentifier);
+        RefPtrWillBeRawPtr<ConsoleMessage> consoleMessage = ConsoleMessage::create(SecurityMessageSource, ErrorMessageLevel, message);
+        consoleMessage->setRequestIdentifier(requestIdentifier);
+        addMessage(consoleMessage.release());
     }
 }
 
@@ -3180,7 +3186,7 @@ void Document::processReferrerPolicy(const String& policy)
     } else if (equalIgnoringCase(policy, "default")) {
         setReferrerPolicy(ReferrerPolicyDefault);
     } else {
-        addConsoleMessage(RenderingMessageSource, ErrorMessageLevel, "Failed to set referrer policy: The value '" + policy + "' is not one of 'always', 'default', 'never', or 'origin'. Defaulting to 'never'.");
+        addConsoleMessage(ConsoleMessage::create(RenderingMessageSource, ErrorMessageLevel, "Failed to set referrer policy: The value '" + policy + "' is not one of 'always', 'default', 'never', or 'origin'. Defaulting to 'never'."));
         setReferrerPolicy(ReferrerPolicyNever);
     }
 }
@@ -3756,7 +3762,7 @@ void Document::updateRangesAfterNodeMovedToAnotherDocument(const Node& node)
 
 void Document::nodeChildrenWillBeRemoved(ContainerNode& container)
 {
-    NoEventDispatchAssertion assertNoEventDispatch;
+    EventDispatchForbiddenScope assertNoEventDispatch;
     if (!m_ranges.isEmpty()) {
         AttachedRangeSet::const_iterator end = m_ranges.end();
         for (AttachedRangeSet::const_iterator it = m_ranges.begin(); it != end; ++it)
@@ -4338,7 +4344,7 @@ bool Document::execCommand(const String& commandName, bool userInterface, const 
     static bool inExecCommand = false;
     if (inExecCommand) {
         String message = "We don't execute document.execCommand() this time, because it is called recursively.";
-        addConsoleMessage(JSMessageSource, WarningMessageLevel, message);
+        addConsoleMessage(ConsoleMessage::create(JSMessageSource, WarningMessageLevel, message));
         return false;
     }
     TemporaryChange<bool> executeScope(inExecCommand, true);
@@ -4347,7 +4353,7 @@ bool Document::execCommand(const String& commandName, bool userInterface, const 
     // DOM tree against implementation assumption.
     EventQueueScope eventQueueScope;
     Editor::Command editorCommand = command(this, commandName, userInterface);
-    blink::Platform::current()->histogramSparse("WebCore.Document.execCommand", editorCommand.idForHistogram());
+    Platform::current()->histogramSparse("WebCore.Document.execCommand", editorCommand.idForHistogram());
     return editorCommand.execute(value);
 }
 
@@ -4940,7 +4946,7 @@ void Document::detachRange(Range* range)
     m_ranges.remove(range);
 }
 
-void Document::getCSSCanvasContext(const String& type, const String& name, int width, int height, bool& is2d, RefPtrWillBeRawPtr<CanvasRenderingContext2D>& context2d, bool& is3d, RefPtrWillBeRawPtr<WebGLRenderingContext>& context3d)
+void Document::getCSSCanvasContext(const String& type, const String& name, int width, int height, RefPtrWillBeRawPtr<CanvasRenderingContext2D>& context2d, RefPtrWillBeRawPtr<WebGLRenderingContext>& context3d)
 {
     HTMLCanvasElement& element = getCSSCanvasElement(name);
     element.setSize(IntSize(width, height));
@@ -4949,10 +4955,8 @@ void Document::getCSSCanvasContext(const String& type, const String& name, int w
         return;
 
     if (context->is2d()) {
-        is2d = true;
         context2d = toCanvasRenderingContext2D(context);
     } else if (context->is3d()) {
-        is3d = true;
         context3d = toWebGLRenderingContext(context);
     }
 }
@@ -4997,42 +5001,25 @@ void Document::reportBlockedScriptExecutionToInspector(const String& directiveTe
     InspectorInstrumentation::scriptExecutionBlockedByCSP(this, directiveText);
 }
 
-void Document::addMessage(MessageSource source, MessageLevel level, const String& message, const String& sourceURL, unsigned lineNumber, ScriptState* scriptState)
-{
-    internalAddMessage(source, level, message, sourceURL, lineNumber, nullptr, scriptState);
-}
-
-void Document::internalAddMessage(MessageSource source, MessageLevel level, const String& message, const String& sourceURL, unsigned lineNumber, PassRefPtrWillBeRawPtr<ScriptCallStack> callStack, ScriptState* scriptState)
+void Document::addMessage(PassRefPtrWillBeRawPtr<ConsoleMessage> consoleMessage)
 {
     if (!isContextThread()) {
-        m_taskRunner->postTask(AddConsoleMessageTask::create(source, level, message));
+        m_taskRunner->postTask(AddConsoleMessageTask::create(consoleMessage->source(), consoleMessage->level(), consoleMessage->message()));
         return;
     }
 
     if (!m_frame)
         return;
 
-    String messageURL = sourceURL;
-    if (!scriptState && sourceURL.isNull() && !lineNumber) {
-        messageURL = url().string();
+    if (!consoleMessage->scriptState() && consoleMessage->url().isNull() && !consoleMessage->lineNumber()) {
+        consoleMessage->setURL(url().string());
         if (parsing() && !isInDocumentWrite() && scriptableDocumentParser()) {
             ScriptableDocumentParser* parser = scriptableDocumentParser();
             if (!parser->isWaitingForScripts() && !parser->isExecutingScript())
-                lineNumber = parser->lineNumber().oneBasedInt();
+                consoleMessage->setLineNumber(parser->lineNumber().oneBasedInt());
         }
     }
-    m_frame->console().addMessage(source, level, message, messageURL, lineNumber, 0, callStack, scriptState, 0);
-}
-
-void Document::addConsoleMessageWithRequestIdentifier(MessageSource source, MessageLevel level, const String& message, unsigned long requestIdentifier)
-{
-    if (!isContextThread()) {
-        m_taskRunner->postTask(AddConsoleMessageTask::create(source, level, message));
-        return;
-    }
-
-    if (m_frame)
-        m_frame->console().addMessage(source, level, message, String(), 0, 0, nullptr, 0, requestIdentifier);
+    m_frame->console().addMessage(consoleMessage);
 }
 
 // FIXME(crbug.com/305497): This should be removed after ExecutionContext-LocalDOMWindow migration.
@@ -5255,80 +5242,6 @@ PassRefPtrWillBeRawPtr<Touch> Document::createTouch(LocalDOMWindow* window, Even
 PassRefPtrWillBeRawPtr<TouchList> Document::createTouchList(WillBeHeapVector<RefPtrWillBeMember<Touch> >& touches) const
 {
     return TouchList::create(touches);
-}
-
-void Document::didAddTouchEventHandler(Node* handler)
-{
-    // The node should either be in this document, or be the Document node of a child
-    // of this document.
-    ASSERT(&handler->document() == this
-        || (handler->isDocumentNode() && toDocument(handler)->parentDocument() == this));
-    if (!m_touchEventTargets.get())
-        m_touchEventTargets = adoptPtr(new TouchEventTargetSet);
-    bool isFirstHandler = m_touchEventTargets->isEmpty();
-
-    if (!m_touchEventTargets->add(handler).isNewEntry) {
-        // Just incremented refcount, no real change.
-        // If this is a child document node, then the count should never go above 1.
-        ASSERT(!handler->isDocumentNode() || &handler->document() == this);
-        return;
-    }
-
-    if (isFirstHandler) {
-        if (Document* parent = parentDocument()) {
-            parent->didAddTouchEventHandler(this);
-        } else {
-            // This is the first touch handler on the whole page.
-            if (FrameHost* frameHost = this->frameHost())
-                frameHost->chrome().client().needTouchEvents(true);
-        }
-    }
-
-    // When we're all done with all frames, ensure touch hit rects are marked as dirty.
-    if (!handler->isDocumentNode() || handler == this) {
-        if (Page* page = this->page()) {
-            if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator())
-                scrollingCoordinator->touchEventTargetRectsDidChange();
-        }
-    }
-}
-
-void Document::didRemoveTouchEventHandler(Node* handler, bool clearAll)
-{
-    // Note that we can't assert that |handler| is in this document because it might be in
-    // the process of moving out of it.
-    ASSERT(clearAll || m_touchEventTargets->contains(handler));
-    if (!m_touchEventTargets.get())
-        return;
-
-    if (clearAll) {
-        if (!m_touchEventTargets->contains(handler))
-            return;
-        m_touchEventTargets->removeAll(handler);
-    } else {
-        if (!m_touchEventTargets->remove(handler))
-            // Just decremented refcount, no real update.
-            return;
-    }
-
-    if (m_touchEventTargets->isEmpty()) {
-        if (Document* parent = parentDocument()) {
-            // This was the last handler in this document, update the parent document too.
-            parent->didRemoveTouchEventHandler(this, clearAll);
-        } else {
-            // We just removed the last touch handler on the whole page.
-            if (FrameHost* frameHost = this->frameHost())
-                frameHost->chrome().client().needTouchEvents(false);
-        }
-    }
-
-    // When we're all done with all frames, ensure touch hit rects are marked as dirty.
-    if (!handler->isDocumentNode() || handler == this) {
-        if (Page* page = this->page()) {
-            if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator())
-                scrollingCoordinator->touchEventTargetRectsDidChange();
-        }
-    }
 }
 
 DocumentLoader* Document::loader() const
@@ -5701,18 +5614,18 @@ void Document::getTransitionElementData(Vector<TransitionElementData>& elementDa
 
         TrackExceptionState exceptionState;
         AtomicString selector(metaElementContents.substring(0, firstSemicolon));
-        RefPtrWillBeRawPtr<StaticNodeList> nodeList = querySelectorAll(selector, exceptionState);
-        if (!nodeList || exceptionState.hadException())
+        RefPtrWillBeRawPtr<StaticElementList> elementList = querySelectorAll(selector, exceptionState);
+        if (!elementList || exceptionState.hadException())
             continue;
 
-        unsigned nodeListLength = nodeList->length();
+        unsigned nodeListLength = elementList->length();
         if (!nodeListLength)
             continue;
 
         StringBuilder markup;
         for (unsigned nodeIndex = 0; nodeIndex < nodeListLength; ++nodeIndex) {
-            Node* node = nodeList->item(nodeIndex);
-            markup.append(createStyledMarkupForNavigationTransition(node));
+            Element* element = elementList->item(nodeIndex);
+            markup.append(createStyledMarkupForNavigationTransition(element));
         }
 
         TransitionElementData newElements;
@@ -5726,13 +5639,13 @@ void Document::getTransitionElementData(Vector<TransitionElementData>& elementDa
 void Document::hideTransitionElements(const AtomicString& cssSelector)
 {
     TrackExceptionState exceptionState;
-    RefPtrWillBeRawPtr<StaticNodeList> nodeList = querySelectorAll(cssSelector, exceptionState);
-    if (nodeList && !exceptionState.hadException()) {
-        unsigned nodeListLength = nodeList->length();
+    RefPtrWillBeRawPtr<StaticElementList> elementList = querySelectorAll(cssSelector, exceptionState);
+    if (elementList && !exceptionState.hadException()) {
+        unsigned nodeListLength = elementList->length();
 
         for (unsigned nodeIndex = 0; nodeIndex < nodeListLength; ++nodeIndex) {
-            Node* node = nodeList->item(nodeIndex);
-            toElement(node)->setInlineStyleProperty(CSSPropertyDisplay, CSSValueNone);
+            Element* element = elementList->item(nodeIndex);
+            element->setInlineStyleProperty(CSSPropertyOpacity, 0.0, CSSPrimitiveValue::CSS_NUMBER);
         }
     }
 }
@@ -5815,17 +5728,6 @@ void Document::clearWeakMembers(Visitor* visitor)
 {
     if (m_axObjectCache)
         m_axObjectCache->clearWeakMembers(visitor);
-
-    // FIXME: Oilpan: Use a weak counted set instead.
-    if (m_touchEventTargets) {
-        Vector<Node*> deadNodes;
-        for (TouchEventTargetSet::iterator it = m_touchEventTargets->begin(); it != m_touchEventTargets->end(); ++it) {
-            if (!visitor->isAlive(it->key))
-                deadNodes.append(it->key);
-        }
-        for (unsigned i = 0; i < deadNodes.size(); ++i)
-            didClearTouchEventHandlers(deadNodes[i]);
-    }
 }
 
 void Document::trace(Visitor* visitor)
@@ -5884,6 +5786,7 @@ void Document::trace(Visitor* visitor)
     TreeScope::trace(visitor);
     ContainerNode::trace(visitor);
     ExecutionContext::trace(visitor);
+    LifecycleContext<Document>::trace(visitor);
 }
 
 } // namespace blink

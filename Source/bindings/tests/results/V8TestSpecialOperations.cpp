@@ -42,7 +42,7 @@ void webCoreInitializeScriptWrappableForInterface(blink::TestSpecialOperations* 
 }
 
 namespace blink {
-const WrapperTypeInfo V8TestSpecialOperations::wrapperTypeInfo = { gin::kEmbedderBlink, V8TestSpecialOperations::domTemplate, V8TestSpecialOperations::derefObject, 0, 0, 0, V8TestSpecialOperations::installPerContextEnabledMethods, 0, WrapperTypeObjectPrototype, RefCountedObject };
+const WrapperTypeInfo V8TestSpecialOperations::wrapperTypeInfo = { gin::kEmbedderBlink, V8TestSpecialOperations::domTemplate, V8TestSpecialOperations::derefObject, 0, 0, 0, V8TestSpecialOperations::installConditionallyEnabledMethods, 0, WrapperTypeObjectPrototype, RefCountedObject };
 
 namespace TestSpecialOperationsV8Internal {
 
@@ -51,7 +51,7 @@ template <typename T> void V8_USE(T) { }
 static void namedItemMethod(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
     if (UNLIKELY(info.Length() < 1)) {
-        throwMinimumArityTypeErrorForMethod("namedItem", "TestSpecialOperations", 1, info.Length(), info.GetIsolate());
+        V8ThrowException::throwException(createMinimumArityTypeErrorForMethod("namedItem", "TestSpecialOperations", 1, info.Length(), info.GetIsolate()), info.GetIsolate());
         return;
     }
     TestSpecialOperations* impl = V8TestSpecialOperations::toNative(info.Holder());
@@ -59,16 +59,14 @@ static void namedItemMethod(const v8::FunctionCallbackInfo<v8::Value>& info)
     {
         TOSTRING_VOID_INTERNAL(name, info[0]);
     }
-    bool result0Enabled = false;
     RefPtrWillBeRawPtr<Node> result0;
-    bool result1Enabled = false;
     RefPtrWillBeRawPtr<NodeList> result1;
-    impl->getItem(name, result0Enabled, result0, result1Enabled, result1);
-    if (result0Enabled) {
+    impl->getItem(name, result0, result1);
+    if (result0) {
         v8SetReturnValue(info, result0.release());
         return;
     }
-    if (result1Enabled) {
+    if (result1) {
         v8SetReturnValue(info, result1.release());
         return;
     }
@@ -86,22 +84,20 @@ static void namedPropertyGetter(v8::Local<v8::String> name, const v8::PropertyCa
 {
     TestSpecialOperations* impl = V8TestSpecialOperations::toNative(info.Holder());
     AtomicString propertyName = toCoreAtomicString(name);
-    bool result0Enabled = false;
     RefPtrWillBeRawPtr<Node> result0;
-    bool result1Enabled = false;
     RefPtrWillBeRawPtr<NodeList> result1;
-    impl->getItem(propertyName, result0Enabled, result0, result1Enabled, result1);
-    if (!result0Enabled && !result1Enabled)
+    impl->getItem(propertyName, result0, result1);
+    if (!(result0 || result1))
         return;
-    if (result0Enabled) {
-        v8SetReturnValueFast(info, WTF::getPtr(result0.release()), impl);
-        return;
-    }
-    if (result1Enabled) {
-        v8SetReturnValueFast(info, WTF::getPtr(result1.release()), impl);
+    if (result0) {
+        v8SetReturnValue(info, result0.release());
         return;
     }
-    v8SetReturnValueNull(info);
+    if (result1) {
+        v8SetReturnValue(info, result1.release());
+        return;
+    }
+    ASSERT_NOT_REACHED();
 }
 
 static void namedPropertyGetterCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info)
@@ -212,7 +208,7 @@ v8::Handle<v8::Object> V8TestSpecialOperations::findInstanceInPrototypeChain(v8:
 
 TestSpecialOperations* V8TestSpecialOperations::toNativeWithTypeCheck(v8::Isolate* isolate, v8::Handle<v8::Value> value)
 {
-    return hasInstance(value, isolate) ? fromInternalPointer(v8::Handle<v8::Object>::Cast(value)->GetAlignedPointerFromInternalField(v8DOMWrapperObjectIndex)) : 0;
+    return hasInstance(value, isolate) ? fromInternalPointer(blink::toInternalPointer(v8::Handle<v8::Object>::Cast(value))) : 0;
 }
 
 v8::Handle<v8::Object> wrap(TestSpecialOperations* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
@@ -237,14 +233,14 @@ v8::Handle<v8::Object> V8TestSpecialOperations::createWrapper(PassRefPtr<TestSpe
     if (UNLIKELY(wrapper.IsEmpty()))
         return wrapper;
 
-    installPerContextEnabledProperties(wrapper, impl.get(), isolate);
+    installConditionallyEnabledProperties(wrapper, isolate);
     V8DOMWrapper::associateObjectWithWrapper<V8TestSpecialOperations>(impl, &wrapperTypeInfo, wrapper, isolate, WrapperConfiguration::Independent);
     return wrapper;
 }
 
-void V8TestSpecialOperations::derefObject(void* object)
+void V8TestSpecialOperations::derefObject(ScriptWrappableBase* internalPointer)
 {
-    fromInternalPointer(object)->deref();
+    fromInternalPointer(internalPointer)->deref();
 }
 
 template<>

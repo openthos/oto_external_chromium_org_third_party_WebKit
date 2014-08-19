@@ -45,7 +45,7 @@
 
 namespace blink {
 
-InspectorConsoleMessage::InspectorConsoleMessage(bool canGenerateCallStack, MessageSource source, MessageType type, MessageLevel level, const String& message)
+InspectorConsoleMessage::InspectorConsoleMessage(MessageSource source, MessageType type, MessageLevel level, const String& message)
     : m_source(source)
     , m_type(type)
     , m_level(level)
@@ -56,11 +56,12 @@ InspectorConsoleMessage::InspectorConsoleMessage(bool canGenerateCallStack, Mess
     , m_column(0)
     , m_requestId(IdentifiersFactory::requestId(0))
     , m_timestamp(WTF::currentTime())
+    , m_workerProxy(nullptr)
 {
-    autogenerateMetadata(canGenerateCallStack);
+    autogenerateMetadata();
 }
 
-InspectorConsoleMessage::InspectorConsoleMessage(bool canGenerateCallStack, MessageSource source, MessageType type, MessageLevel level, const String& message, const String& url, unsigned line, unsigned column, ScriptState* scriptState, unsigned long requestIdentifier)
+InspectorConsoleMessage::InspectorConsoleMessage(bool shouldGenerateCallStack, MessageSource source, MessageType type, MessageLevel level, const String& message, const String& url, unsigned line, unsigned column, ScriptState* scriptState, unsigned long requestIdentifier)
     : m_source(source)
     , m_type(type)
     , m_level(level)
@@ -71,32 +72,29 @@ InspectorConsoleMessage::InspectorConsoleMessage(bool canGenerateCallStack, Mess
     , m_column(column)
     , m_requestId(IdentifiersFactory::requestId(requestIdentifier))
     , m_timestamp(WTF::currentTime())
+    , m_workerProxy(nullptr)
 {
-    autogenerateMetadata(canGenerateCallStack, scriptState);
+    autogenerateMetadata(shouldGenerateCallStack);
 }
 
-InspectorConsoleMessage::InspectorConsoleMessage(bool, MessageSource source, MessageType type, MessageLevel level, const String& message, PassRefPtrWillBeRawPtr<ScriptCallStack> callStack, unsigned long requestIdentifier)
+InspectorConsoleMessage::InspectorConsoleMessage(MessageSource source, MessageType type, MessageLevel level, const String& message, PassRefPtrWillBeRawPtr<ScriptCallStack> callStack, unsigned long requestIdentifier)
     : m_source(source)
     , m_type(type)
     , m_level(level)
     , m_message(message)
     , m_scriptState(0)
     , m_arguments(nullptr)
+    , m_callStack(callStack)
     , m_line(0)
     , m_column(0)
     , m_requestId(IdentifiersFactory::requestId(requestIdentifier))
     , m_timestamp(WTF::currentTime())
+    , m_workerProxy(nullptr)
 {
-    if (callStack && callStack->size()) {
-        const ScriptCallFrame& frame = callStack->at(0);
-        m_url = frame.sourceURL();
-        m_line = frame.lineNumber();
-        m_column = frame.columnNumber();
-    }
-    m_callStack = callStack;
+    autogenerateMetadata(false);
 }
 
-InspectorConsoleMessage::InspectorConsoleMessage(bool canGenerateCallStack, MessageSource source, MessageType type, MessageLevel level, const String& message, PassRefPtrWillBeRawPtr<ScriptArguments> arguments, ScriptState* scriptState, unsigned long requestIdentifier)
+InspectorConsoleMessage::InspectorConsoleMessage(MessageSource source, MessageType type, MessageLevel level, const String& message, PassRefPtrWillBeRawPtr<ScriptArguments> arguments, ScriptState* scriptState, unsigned long requestIdentifier)
     : m_source(source)
     , m_type(type)
     , m_level(level)
@@ -108,25 +106,22 @@ InspectorConsoleMessage::InspectorConsoleMessage(bool canGenerateCallStack, Mess
     , m_column(0)
     , m_requestId(IdentifiersFactory::requestId(requestIdentifier))
     , m_timestamp(WTF::currentTime())
+    , m_workerProxy(nullptr)
 {
-    autogenerateMetadata(canGenerateCallStack, scriptState);
+    autogenerateMetadata();
 }
 
 InspectorConsoleMessage::~InspectorConsoleMessage()
 {
 }
 
-void InspectorConsoleMessage::autogenerateMetadata(bool canGenerateCallStack, ScriptState* scriptState)
+void InspectorConsoleMessage::autogenerateMetadata(bool shouldGenerateCallStack)
 {
     if (m_type == EndGroupMessageType)
         return;
 
-    if (scriptState)
-        m_callStack = createScriptCallStackForConsole(scriptState);
-    else if (canGenerateCallStack)
-        m_callStack = createScriptCallStack(ScriptCallStack::maxCallStackSizeToCapture, true);
-    else
-        return;
+    if (shouldGenerateCallStack)
+        m_callStack = createScriptCallStackForConsole(ScriptCallStack::maxCallStackSizeToCapture, true);
 
     if (m_callStack && m_callStack->size()) {
         const ScriptCallFrame& frame = m_callStack->at(0);
@@ -188,6 +183,9 @@ static TypeBuilder::Console::ConsoleMessage::Level::Enum messageLevelValue(Messa
 
 void InspectorConsoleMessage::addToFrontend(InspectorFrontend::Console* frontend, InjectedScriptManager* injectedScriptManager, bool generatePreview)
 {
+    if (m_workerProxy)
+        return;
+
     RefPtr<TypeBuilder::Console::ConsoleMessage> jsonObj = TypeBuilder::Console::ConsoleMessage::create()
         .setSource(messageSourceValue(m_source))
         .setLevel(messageLevelValue(m_level))

@@ -20,20 +20,20 @@ GYP_TARGET_DEPENDENCIES := \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_core_module_gyp,,,$(GYP_VAR_PREFIX))/build_core_module.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_console_module_gyp,,,$(GYP_VAR_PREFIX))/build_console_module.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_devices_module_gyp,,,$(GYP_VAR_PREFIX))/build_devices_module.stamp \
+	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_documentation_module_gyp,,,$(GYP_VAR_PREFIX))/build_documentation_module.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_elements_module_gyp,,,$(GYP_VAR_PREFIX))/build_elements_module.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_extensions_module_gyp,,,$(GYP_VAR_PREFIX))/build_extensions_module.stamp \
+	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_heap_snapshot_worker_module_gyp,,,$(GYP_VAR_PREFIX))/build_heap_snapshot_worker_module.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_layers_module_gyp,,,$(GYP_VAR_PREFIX))/build_layers_module.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_network_module_gyp,,,$(GYP_VAR_PREFIX))/build_network_module.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_profiler_module_gyp,,,$(GYP_VAR_PREFIX))/build_profiler_module.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_resources_module_gyp,,,$(GYP_VAR_PREFIX))/build_resources_module.stamp \
+	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_script_formatter_worker_module_gyp,,,$(GYP_VAR_PREFIX))/build_script_formatter_worker_module.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_settings_module_gyp,,,$(GYP_VAR_PREFIX))/build_settings_module.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_source_frame_module_gyp,,,$(GYP_VAR_PREFIX))/build_source_frame_module.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_sources_module_gyp,,,$(GYP_VAR_PREFIX))/build_sources_module.stamp \
-	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_timeline_module_gyp,,,$(GYP_VAR_PREFIX))/build_timeline_module.stamp \
-	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_heap_snapshot_worker_module_gyp,,,$(GYP_VAR_PREFIX))/build_heap_snapshot_worker_module.stamp \
-	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_script_formatter_worker_module_gyp,,,$(GYP_VAR_PREFIX))/build_script_formatter_worker_module.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_temp_storage_shared_worker_module_gyp,,,$(GYP_VAR_PREFIX))/build_temp_storage_shared_worker_module.stamp \
-	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_documentation_module_gyp,,,$(GYP_VAR_PREFIX))/build_documentation_module.stamp \
+	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_timeline_module_gyp,,,$(GYP_VAR_PREFIX))/build_timeline_module.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_concatenated_devtools_css_gyp,,,$(GYP_VAR_PREFIX))/concatenated_devtools_css.stamp
 
 ### Generated for copy rule.
@@ -77,6 +77,26 @@ $(gyp_shared_intermediate_dir)/resources/inspector/Images/cookie.png: $(LOCAL_PA
 	$(hide) mkdir -p $(dir $@)
 	$(hide) $(ACP) -rpf $< $@
 
+$(gyp_shared_intermediate_dir)/resources/inspector/Images/chromeDisabledSelect.png: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/Images/chromeDisabledSelect.png $(GYP_TARGET_DEPENDENCIES) | $(ACP)
+	@echo Copying: $@
+	$(hide) mkdir -p $(dir $@)
+	$(hide) $(ACP) -rpf $< $@
+
+$(gyp_shared_intermediate_dir)/resources/inspector/Images/chromeDisabledSelect_2x.png: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/Images/chromeDisabledSelect_2x.png $(GYP_TARGET_DEPENDENCIES) | $(ACP)
+	@echo Copying: $@
+	$(hide) mkdir -p $(dir $@)
+	$(hide) $(ACP) -rpf $< $@
+
+$(gyp_shared_intermediate_dir)/resources/inspector/Images/chromeSelect.png: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/Images/chromeSelect.png $(GYP_TARGET_DEPENDENCIES) | $(ACP)
+	@echo Copying: $@
+	$(hide) mkdir -p $(dir $@)
+	$(hide) $(ACP) -rpf $< $@
+
+$(gyp_shared_intermediate_dir)/resources/inspector/Images/chromeSelect_2x.png: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/Images/chromeSelect_2x.png $(GYP_TARGET_DEPENDENCIES) | $(ACP)
+	@echo Copying: $@
+	$(hide) mkdir -p $(dir $@)
+	$(hide) $(ACP) -rpf $< $@
+
 $(gyp_shared_intermediate_dir)/resources/inspector/Images/database.png: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/Images/database.png $(GYP_TARGET_DEPENDENCIES) | $(ACP)
 	@echo Copying: $@
 	$(hide) mkdir -p $(dir $@)
@@ -97,12 +117,22 @@ $(gyp_shared_intermediate_dir)/resources/inspector/Images/domain.png: $(LOCAL_PA
 	$(hide) mkdir -p $(dir $@)
 	$(hide) $(ACP) -rpf $< $@
 
-$(gyp_shared_intermediate_dir)/resources/inspector/Images/forward.png: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/Images/forward.png $(GYP_TARGET_DEPENDENCIES) | $(ACP)
+$(gyp_shared_intermediate_dir)/resources/inspector/Images/errorWave.png: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/Images/errorWave.png $(GYP_TARGET_DEPENDENCIES) | $(ACP)
+	@echo Copying: $@
+	$(hide) mkdir -p $(dir $@)
+	$(hide) $(ACP) -rpf $< $@
+
+$(gyp_shared_intermediate_dir)/resources/inspector/Images/errorWave_2x.png: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/Images/errorWave_2x.png $(GYP_TARGET_DEPENDENCIES) | $(ACP)
 	@echo Copying: $@
 	$(hide) mkdir -p $(dir $@)
 	$(hide) $(ACP) -rpf $< $@
 
 $(gyp_shared_intermediate_dir)/resources/inspector/Images/fileSystem.png: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/Images/fileSystem.png $(GYP_TARGET_DEPENDENCIES) | $(ACP)
+	@echo Copying: $@
+	$(hide) mkdir -p $(dir $@)
+	$(hide) $(ACP) -rpf $< $@
+
+$(gyp_shared_intermediate_dir)/resources/inspector/Images/forward.png: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/Images/forward.png $(GYP_TARGET_DEPENDENCIES) | $(ACP)
 	@echo Copying: $@
 	$(hide) mkdir -p $(dir $@)
 	$(hide) $(ACP) -rpf $< $@
@@ -127,12 +157,12 @@ $(gyp_shared_intermediate_dir)/resources/inspector/Images/indexedDB.png: $(LOCAL
 	$(hide) mkdir -p $(dir $@)
 	$(hide) $(ACP) -rpf $< $@
 
-$(gyp_shared_intermediate_dir)/resources/inspector/Images/indexedDBObjectStore.png: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/Images/indexedDBObjectStore.png $(GYP_TARGET_DEPENDENCIES) | $(ACP)
+$(gyp_shared_intermediate_dir)/resources/inspector/Images/indexedDBIndex.png: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/Images/indexedDBIndex.png $(GYP_TARGET_DEPENDENCIES) | $(ACP)
 	@echo Copying: $@
 	$(hide) mkdir -p $(dir $@)
 	$(hide) $(ACP) -rpf $< $@
 
-$(gyp_shared_intermediate_dir)/resources/inspector/Images/indexedDBIndex.png: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/Images/indexedDBIndex.png $(GYP_TARGET_DEPENDENCIES) | $(ACP)
+$(gyp_shared_intermediate_dir)/resources/inspector/Images/indexedDBObjectStore.png: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/Images/indexedDBObjectStore.png $(GYP_TARGET_DEPENDENCIES) | $(ACP)
 	@echo Copying: $@
 	$(hide) mkdir -p $(dir $@)
 	$(hide) $(ACP) -rpf $< $@
@@ -307,11 +337,6 @@ $(gyp_shared_intermediate_dir)/resources/inspector/Images/thumbHoriz.png: $(LOCA
 	$(hide) mkdir -p $(dir $@)
 	$(hide) $(ACP) -rpf $< $@
 
-$(gyp_shared_intermediate_dir)/resources/inspector/Images/thumbVert.png: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/Images/thumbVert.png $(GYP_TARGET_DEPENDENCIES) | $(ACP)
-	@echo Copying: $@
-	$(hide) mkdir -p $(dir $@)
-	$(hide) $(ACP) -rpf $< $@
-
 $(gyp_shared_intermediate_dir)/resources/inspector/Images/thumbHoverHoriz.png: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/Images/thumbHoverHoriz.png $(GYP_TARGET_DEPENDENCIES) | $(ACP)
 	@echo Copying: $@
 	$(hide) mkdir -p $(dir $@)
@@ -322,12 +347,17 @@ $(gyp_shared_intermediate_dir)/resources/inspector/Images/thumbHoverVert.png: $(
 	$(hide) mkdir -p $(dir $@)
 	$(hide) $(ACP) -rpf $< $@
 
+$(gyp_shared_intermediate_dir)/resources/inspector/Images/thumbVert.png: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/Images/thumbVert.png $(GYP_TARGET_DEPENDENCIES) | $(ACP)
+	@echo Copying: $@
+	$(hide) mkdir -p $(dir $@)
+	$(hide) $(ACP) -rpf $< $@
+
 $(gyp_shared_intermediate_dir)/resources/inspector/Images/toolbarItemSelected.png: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/Images/toolbarItemSelected.png $(GYP_TARGET_DEPENDENCIES) | $(ACP)
 	@echo Copying: $@
 	$(hide) mkdir -p $(dir $@)
 	$(hide) $(ACP) -rpf $< $@
 
-third_party_WebKit_Source_devtools_devtools_gyp_devtools_frontend_resources_target_copies = $(gyp_shared_intermediate_dir)/resources/inspector/Images/applicationCache.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/back.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/breakpoint.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/breakpoint_2x.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/breakpointConditional.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/breakpointConditional_2x.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/checker.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/cookie.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/database.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/databaseTable.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/deleteIcon.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/domain.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/forward.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/fileSystem.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/frame.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/graphLabelCalloutLeft.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/graphLabelCalloutRight.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/indexedDB.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/indexedDBObjectStore.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/indexedDBIndex.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/localStorage.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/navigationControls.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/navigationControls_2x.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/paneAddButtons.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/paneElementStateButtons.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/paneFilterButtons.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/paneRefreshButtons.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/popoverArrows.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/popoverBackground.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/profileGroupIcon.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/profileIcon.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/profileSmallIcon.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/radioDot.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/resourceCSSIcon.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/resourceDocumentIcon.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/resourceDocumentIconSmall.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/resourceJSIcon.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/resourcePlainIcon.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/resourcePlainIconSmall.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/resourcesTimeGraphIcon.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/responsiveDesign.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/responsiveDesign_2x.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/searchNext.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/searchPrev.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/sessionStorage.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/settingsListRemove.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/settingsListRemove_2x.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/statusbarButtonGlyphs.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/statusbarButtonGlyphs_2x.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/statusbarResizerHorizontal.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/statusbarResizerVertical.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/thumbActiveHoriz.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/thumbActiveVert.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/thumbHoriz.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/thumbVert.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/thumbHoverHoriz.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/thumbHoverVert.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/toolbarItemSelected.png
+third_party_WebKit_Source_devtools_devtools_gyp_devtools_frontend_resources_target_copies = $(gyp_shared_intermediate_dir)/resources/inspector/Images/applicationCache.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/back.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/breakpoint.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/breakpoint_2x.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/breakpointConditional.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/breakpointConditional_2x.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/checker.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/cookie.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/chromeDisabledSelect.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/chromeDisabledSelect_2x.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/chromeSelect.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/chromeSelect_2x.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/database.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/databaseTable.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/deleteIcon.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/domain.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/errorWave.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/errorWave_2x.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/fileSystem.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/forward.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/frame.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/graphLabelCalloutLeft.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/graphLabelCalloutRight.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/indexedDB.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/indexedDBIndex.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/indexedDBObjectStore.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/localStorage.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/navigationControls.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/navigationControls_2x.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/paneAddButtons.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/paneElementStateButtons.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/paneFilterButtons.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/paneRefreshButtons.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/popoverArrows.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/popoverBackground.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/profileGroupIcon.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/profileIcon.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/profileSmallIcon.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/radioDot.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/resourceCSSIcon.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/resourceDocumentIcon.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/resourceDocumentIconSmall.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/resourceJSIcon.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/resourcePlainIcon.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/resourcePlainIconSmall.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/resourcesTimeGraphIcon.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/responsiveDesign.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/responsiveDesign_2x.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/searchNext.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/searchPrev.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/sessionStorage.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/settingsListRemove.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/settingsListRemove_2x.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/statusbarButtonGlyphs.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/statusbarButtonGlyphs_2x.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/statusbarResizerHorizontal.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/statusbarResizerVertical.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/thumbActiveHoriz.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/thumbActiveVert.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/thumbHoriz.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/thumbHoverHoriz.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/thumbHoverVert.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/thumbVert.png $(gyp_shared_intermediate_dir)/resources/inspector/Images/toolbarItemSelected.png
 
 GYP_GENERATED_OUTPUTS := \
 	$(third_party_WebKit_Source_devtools_devtools_gyp_devtools_frontend_resources_target_copies)

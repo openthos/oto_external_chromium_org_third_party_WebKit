@@ -38,6 +38,7 @@
 #include "core/editing/htmlediting.h"
 #include "core/fetch/ResourceLoadPriorityOptimizer.h"
 #include "core/fetch/ResourceLoader.h"
+#include "core/frame/EventHandlerRegistry.h"
 #include "core/frame/FrameView.h"
 #include "core/frame/LocalFrame.h"
 #include "core/html/HTMLAnchorElement.h"
@@ -121,6 +122,9 @@ struct SameSizeAsRenderObject {
     void* pointers[5];
 #if ENABLE(ASSERT)
     unsigned m_debugBitfields : 2;
+#if ENABLE(OILPAN)
+    unsigned m_oilpanBitfields : 1;
+#endif
 #endif
     unsigned m_bitfields;
     unsigned m_bitfields2;
@@ -132,6 +136,7 @@ COMPILE_ASSERT(sizeof(RenderObject) == sizeof(SameSizeAsRenderObject), RenderObj
 
 bool RenderObject::s_affectsParentBlock = false;
 
+#if !ENABLE(OILPAN)
 void* RenderObject::operator new(size_t sz)
 {
     ASSERT(isMainThread());
@@ -143,6 +148,7 @@ void RenderObject::operator delete(void* ptr)
     ASSERT(isMainThread());
     partitionFree(ptr);
 }
+#endif
 
 RenderObject* RenderObject::createObject(Element* element, RenderStyle* style)
 {
@@ -214,12 +220,15 @@ RenderObject::RenderObject(Node* node)
     : ImageResourceClient()
     , m_style(nullptr)
     , m_node(node)
-    , m_parent(0)
-    , m_previous(0)
-    , m_next(0)
+    , m_parent(nullptr)
+    , m_previous(nullptr)
+    , m_next(nullptr)
 #if ENABLE(ASSERT)
     , m_hasAXObject(false)
     , m_setNeedsLayoutForbidden(false)
+#if ENABLE(OILPAN)
+    , m_didCallDestroy(false)
+#endif
 #endif
     , m_bitfields(node)
 {
@@ -231,12 +240,22 @@ RenderObject::RenderObject(Node* node)
 
 RenderObject::~RenderObject()
 {
-    ResourceLoadPriorityOptimizer::resourceLoadPriorityOptimizer()->removeRenderObject(this);
     ASSERT(!m_hasAXObject);
+#if ENABLE(OILPAN)
+    ASSERT(m_didCallDestroy);
+#endif
 #ifndef NDEBUG
     renderObjectCounter.decrement();
 #endif
     --s_instanceCount;
+}
+
+void RenderObject::trace(Visitor* visitor)
+{
+    visitor->trace(m_node);
+    visitor->trace(m_parent);
+    visitor->trace(m_previous);
+    visitor->trace(m_next);
 }
 
 String RenderObject::debugName() const
@@ -1504,7 +1523,7 @@ void RenderObject::invalidatePaintUsingContainer(const RenderLayerModelObject* p
     }
 
     if (paintInvalidationContainer->hasFilter() && paintInvalidationContainer->layer()->requiresFullLayerImageForFilters()) {
-        paintInvalidationContainer->layer()->repainter().setFilterBackendNeedsRepaintingInRect(r);
+        paintInvalidationContainer->layer()->paintInvalidator().setFilterBackendNeedsRepaintingInRect(r);
         return;
     }
 
@@ -1517,7 +1536,7 @@ void RenderObject::invalidatePaintUsingContainer(const RenderLayerModelObject* p
 
     if (v->usesCompositing()) {
         ASSERT(paintInvalidationContainer->hasLayer() && (paintInvalidationContainer->layer()->compositingState() == PaintsIntoOwnBacking || paintInvalidationContainer->layer()->compositingState() == PaintsIntoGroupedBacking));
-        paintInvalidationContainer->layer()->repainter().setBackingNeedsRepaintInRect(r);
+        paintInvalidationContainer->layer()->paintInvalidator().setBackingNeedsRepaintInRect(r);
     }
 }
 
@@ -1917,26 +1936,26 @@ StyleDifference RenderObject::adjustStyleDifference(StyleDifference diff) const
         // Text nodes share style with their parents but transforms don't apply to them,
         // hence the !isText() check.
         if (!isText() && (!hasLayer() || !toRenderLayerModelObject(this)->layer()->hasStyleDeterminedDirectCompositingReasons()))
-            diff.setNeedsRepaintLayer();
+            diff.setNeedsPaintInvalidationLayer();
     }
 
     // If opacity or zIndex changed, and the layer does not paint into its own separate backing, then we need to invalidate paints (also
     // ignoring text nodes)
     if (diff.opacityChanged() || diff.zIndexChanged()) {
         if (!isText() && (!hasLayer() || !toRenderLayerModelObject(this)->layer()->hasStyleDeterminedDirectCompositingReasons()))
-            diff.setNeedsRepaintLayer();
+            diff.setNeedsPaintInvalidationLayer();
     }
 
     // If filter changed, and the layer does not paint into its own separate backing or it paints with filters, then we need to invalidate paints.
     if (diff.filterChanged() && hasLayer()) {
         RenderLayer* layer = toRenderLayerModelObject(this)->layer();
         if (!layer->hasStyleDeterminedDirectCompositingReasons() || layer->paintsWithFilters())
-            diff.setNeedsRepaintLayer();
+            diff.setNeedsPaintInvalidationLayer();
     }
 
-    if (diff.textOrColorChanged() && !diff.needsRepaint()
+    if (diff.textOrColorChanged() && !diff.needsPaintInvalidation()
         && hasImmediateNonWhitespaceTextChildOrPropertiesDependentOnColor())
-        diff.setNeedsRepaintObject();
+        diff.setNeedsPaintInvalidationObject();
 
     // The answer to layerTypeRequired() for plugins, iframes, and canvas can change without the actual
     // style changing, since it depends on whether we decide to composite these elements. When the
@@ -1947,10 +1966,10 @@ StyleDifference RenderObject::adjustStyleDifference(StyleDifference diff) const
             diff.setNeedsFullLayout();
     }
 
-    // If we have no layer(), just treat a RepaintLayer hint as a normal paint invalidation.
-    if (diff.needsRepaintLayer() && !hasLayer()) {
-        diff.clearNeedsRepaint();
-        diff.setNeedsRepaintObject();
+    // If we have no layer(), just treat a PaintInvalidationLayer hint as a normal paint invalidation.
+    if (diff.needsPaintInvalidationLayer() && !hasLayer()) {
+        diff.clearNeedsPaintInvalidation();
+        diff.setNeedsPaintInvalidationObject();
     }
 
     return diff;
@@ -2063,17 +2082,10 @@ void RenderObject::setStyle(PassRefPtr<RenderStyle> style)
             container->setNeedsOverflowRecalcAfterStyleChange();
     }
 
-    if (updatedDiff.needsRepaint()) {
-        // Invalidate paints with the new style, e.g., for example if we go from not having
-        // an outline to having an outline.
-
-        // The paintInvalidationForWholeRenderer() call is needed for non-layout changes to style. See the corresponding
-        // comment in RenderObject::styleWillChange for why.
-        if (needsLayout())
-            setShouldDoFullPaintInvalidation(true);
-        else if (!selfNeedsLayout())
-            paintInvalidationForWholeRenderer();
-    }
+    if (updatedDiff.needsPaintInvalidationLayer())
+        toRenderLayerModelObject(this)->layer()->setShouldDoFullPaintInvalidationIncludingNonCompositingDescendants();
+    else if (diff.needsPaintInvalidationObject() || updatedDiff.needsPaintInvalidationObject())
+        setShouldDoFullPaintInvalidation(true);
 }
 
 static inline bool rendererHasBackground(const RenderObject* renderer)
@@ -2098,21 +2110,8 @@ void RenderObject::styleWillChange(StyleDifference diff, const RenderStyle& newS
         // Keep layer hierarchy visibility bits up to date if visibility changes.
         if (m_style->visibility() != newStyle.visibility()) {
             // We might not have an enclosing layer yet because we might not be in the tree.
-            if (RenderLayer* layer = enclosingLayer()) {
-                if (newStyle.visibility() == VISIBLE) {
-                    layer->setHasVisibleContent();
-                } else if (layer->hasVisibleContent() && (this == layer->renderer() || layer->renderer()->style()->visibility() != VISIBLE)) {
-                    layer->dirtyVisibleContentStatus();
-                }
-            }
-        }
-
-        // For style-only changes that need paint invalidation, we currently need to issue a paint invalidation before and after the style
-        // change. The paint invalidation before style change is accomplished here. The paint invalidation after style change is accomplished
-        // in RenderObject::setStyle.
-        if (m_parent && diff.needsRepaintObject()) {
-            if (!diff.needsLayout() && !needsLayout())
-                paintInvalidationForWholeRenderer();
+            if (RenderLayer* layer = enclosingLayer())
+                layer->potentiallyDirtyVisibleContentStatus(newStyle.visibility());
         }
 
         if (isFloating() && (m_style->floating() != newStyle.floating()))
@@ -2177,10 +2176,11 @@ void RenderObject::styleWillChange(StyleDifference diff, const RenderStyle& newS
     // handler will have already been added for its parent so ignore it.
     TouchAction oldTouchAction = m_style ? m_style->touchAction() : TouchActionAuto;
     if (node() && !node()->isTextNode() && (oldTouchAction == TouchActionAuto) != (newStyle.touchAction() == TouchActionAuto)) {
+        EventHandlerRegistry& registry = document().frameHost()->eventHandlerRegistry();
         if (newStyle.touchAction() != TouchActionAuto)
-            document().didAddTouchEventHandler(node());
+            registry.didAddEventHandler(*node(), EventHandlerRegistry::TouchEvent);
         else
-            document().didRemoveTouchEventHandler(node());
+            registry.didRemoveEventHandler(*node(), EventHandlerRegistry::TouchEvent);
     }
 }
 
@@ -2514,7 +2514,7 @@ void RenderObject::addLayerHitTestRects(LayerHitTestRects& layerRects, const Ren
     const size_t maxRectsPerLayer = 100;
 
     LayerHitTestRects::iterator iter = layerRects.find(currentLayer);
-    Vector<blink::LayoutRect>* iterValue;
+    Vector<LayoutRect>* iterValue;
     if (iter == layerRects.end())
         iterValue = &layerRects.add(currentLayer, Vector<LayoutRect>()).storedValue->value;
     else
@@ -2698,7 +2698,7 @@ void RenderObject::willBeDestroyed()
     // previously. Handlers are not added for text nodes so don't try removing
     // for one too. Need to check if m_style is null in cases of partial construction.
     if (!documentBeingDestroyed() && node() && !node()->isTextNode() && m_style && m_style->touchAction() != TouchActionAuto)
-        document().didRemoveTouchEventHandler(node());
+        document().frameHost()->eventHandlerRegistry().didRemoveEventHandler(*node(), EventHandlerRegistry::TouchEvent);
 
     setAncestorLineBoxDirty(false);
 
@@ -2723,7 +2723,7 @@ void RenderObject::insertedIntoTree()
         if (!layer)
             layer = parent()->enclosingLayer();
         if (layer)
-            layer->setHasVisibleContent();
+            layer->dirtyVisibleContentStatus();
     }
 
     if (!isFloating() && parent()->childrenInline())
@@ -2810,6 +2810,10 @@ void RenderObject::destroyAndCleanupAnonymousWrappers()
 
 void RenderObject::destroy()
 {
+#if ENABLE(ASSERT) && ENABLE(OILPAN)
+    ASSERT(!m_didCallDestroy);
+    m_didCallDestroy = true;
+#endif
     willBeDestroyed();
     postDestroy();
 }
@@ -2844,8 +2848,10 @@ void RenderObject::postDestroy()
 
         removeShapeImageClient(m_style->shapeOutside());
     }
-
+    ResourceLoadPriorityOptimizer::resourceLoadPriorityOptimizer()->removeRenderObject(this);
+#if !ENABLE(OILPAN)
     delete this;
+#endif
 }
 
 PositionWithAffinity RenderObject::positionForPoint(const LayoutPoint&)
@@ -2872,7 +2878,7 @@ CompositingState RenderObject::compositingState() const
     return hasLayer() ? toRenderLayerModelObject(this)->layer()->compositingState() : NotComposited;
 }
 
-CompositingReasons RenderObject::additionalCompositingReasons(CompositingTriggerFlags) const
+CompositingReasons RenderObject::additionalCompositingReasons() const
 {
     return CompositingReasonNone;
 }
@@ -3341,7 +3347,7 @@ bool RenderObject::canUpdateSelectionOnRootLineBoxes()
         return false;
 
     RenderBlock* containingBlock = this->containingBlock();
-    return containingBlock ? !containingBlock->needsLayout() : true;
+    return containingBlock ? !containingBlock->needsLayout() : false;
 }
 
 // We only create "generated" child renderers like one for first-letter if:

@@ -106,8 +106,6 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(touchend);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(touchmove);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(touchstart);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitfullscreenchange);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitfullscreenerror);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(wheel);
 
     bool hasAttribute(const QualifiedName&) const;
@@ -298,10 +296,7 @@ public:
     // Remove attributes that might introduce scripting from the vector leaving the element unchanged.
     void stripScriptingAttributes(Vector<Attribute>&) const;
 
-    const ElementData* elementData() const { return m_elementData.get(); }
-    UniqueElementData& ensureUniqueElementData();
-
-    void synchronizeAllAttributes() const;
+    bool sharesSameElementData(const Element& other) const { return elementData() == other.elementData(); }
 
     // Clones attributes only.
     void cloneAttributesFromElement(const Element&);
@@ -463,13 +458,6 @@ public:
     void setCustomElementDefinition(PassRefPtr<CustomElementDefinition>);
     CustomElementDefinition* customElementDefinition() const;
 
-    // Mozilla version
-    static const unsigned short ALLOW_KEYBOARD_INPUT = 1;
-    void webkitRequestFullScreen(unsigned short flags);
-
-    // W3C version
-    void webkitRequestFullscreen();
-
     bool containsFullScreenElement() const { return hasElementFlag(ContainsFullScreenElement); }
     void setContainsFullScreenElement(bool);
     void setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(bool);
@@ -512,6 +500,9 @@ public:
 
 protected:
     Element(const QualifiedName& tagName, Document*, ConstructionType);
+
+    const ElementData* elementData() const { return m_elementData.get(); }
+    UniqueElementData& ensureUniqueElementData();
 
     void addPropertyToPresentationAttributeStyle(MutableStylePropertySet*, CSSPropertyID, CSSValueID identifier);
     void addPropertyToPresentationAttributeStyle(MutableStylePropertySet*, CSSPropertyID, double value, CSSPrimitiveValue::UnitType);
@@ -590,6 +581,7 @@ private:
     void didModifyAttribute(const QualifiedName&, const AtomicString&);
     void didRemoveAttribute(const QualifiedName&);
 
+    void synchronizeAllAttributes() const;
     void synchronizeAttribute(const QualifiedName&) const;
 
     void updateId(const AtomicString& oldId, const AtomicString& newId);

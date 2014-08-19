@@ -60,6 +60,7 @@ public:
     // dispose() is called just before the destructor. This must be called in
     // the main thread, and while the graph lock is held.
     virtual void dispose();
+    static unsigned instanceCount() { return s_instanceCount; }
 
     AudioContext* context() { return m_context.get(); }
     const AudioContext* context() const { return m_context.get(); }
@@ -157,7 +158,7 @@ public:
     static void printNodeCounts();
 #endif
 
-    bool isMarkedForDeletion() const { return m_isMarkedForDeletion; }
+    bool isDisposeCalled() const { return m_isDisposeCalled; }
 
     // tailTime() is the length of time (not counting latency time) where non-zero output may occur after continuous silent input.
     virtual double tailTime() const = 0;
@@ -224,13 +225,14 @@ private:
 #endif
     volatile int m_connectionRefCount;
 
-    bool m_isMarkedForDeletion;
     bool m_isDisabled;
+    bool m_isDisposeCalled;
 
 #if DEBUG_AUDIONODE_REFERENCES
     static bool s_isNodeCountInitialized;
     static int s_nodeCount[NodeTypeEnd];
 #endif
+    static unsigned s_instanceCount;
 
 #if !ENABLE(OILPAN)
     virtual void refEventTarget() OVERRIDE FINAL { ref(); }

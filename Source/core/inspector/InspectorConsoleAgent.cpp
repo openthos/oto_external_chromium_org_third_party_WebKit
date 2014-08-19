@@ -31,6 +31,7 @@
 #include "bindings/core/v8/ScriptProfiler.h"
 #include "core/frame/LocalFrame.h"
 #include "core/frame/UseCounter.h"
+#include "core/inspector/ConsoleMessage.h"
 #include "core/inspector/InjectedScriptHost.h"
 #include "core/inspector/InjectedScriptManager.h"
 #include "core/inspector/InspectorConsoleMessage.h"
@@ -43,6 +44,7 @@
 #include "core/inspector/ScriptCallStack.h"
 #include "core/loader/DocumentLoader.h"
 #include "core/page/Page.h"
+#include "core/workers/WorkerGlobalScopeProxy.h"
 #include "platform/network/ResourceError.h"
 #include "platform/network/ResourceResponse.h"
 #include "wtf/CurrentTime.h"
@@ -107,7 +109,7 @@ void InspectorConsoleAgent::enable(ErrorString*)
     m_state->setBoolean(ConsoleAgentState::consoleMessagesEnabled, true);
 
     if (m_expiredConsoleMessageCount) {
-        InspectorConsoleMessage expiredMessage(!isWorkerAgent(), OtherMessageSource, LogMessageType, WarningMessageLevel, String::format("%d console messages are not shown.", m_expiredConsoleMessageCount));
+        InspectorConsoleMessage expiredMessage(OtherMessageSource, LogMessageType, WarningMessageLevel, String::format("%d console messages are not shown.", m_expiredConsoleMessageCount));
         expiredMessage.setTimestamp(0);
         expiredMessage.addToFrontend(m_frontend, m_injectedScriptManager, false);
     }
@@ -125,6 +127,7 @@ void InspectorConsoleAgent::disable(ErrorString*)
     if (!(--s_enabledAgentCount))
         ScriptController::setCaptureCallStackForUncaughtExceptions(false);
     m_state->setBoolean(ConsoleAgentState::consoleMessagesEnabled, false);
+    m_state->setBoolean(ConsoleAgentState::tracingBasedTimeline, false);
 }
 
 void InspectorConsoleAgent::clearMessages(ErrorString*)
@@ -165,14 +168,25 @@ void InspectorConsoleAgent::clearFrontend()
     disable(&errorString);
 }
 
-void InspectorConsoleAgent::addMessageToConsole(MessageSource source, MessageType type, MessageLevel level, const String& message, PassRefPtrWillBeRawPtr<ScriptCallStack> callStack, unsigned long requestIdentifier)
+void InspectorConsoleAgent::addMessageToConsole(ConsoleMessage* consoleMessage)
 {
-    if (type == ClearMessageType) {
-        ErrorString error;
-        clearMessages(&error);
+    InspectorConsoleMessage* message;
+    if (consoleMessage->callStack()) {
+        message = new InspectorConsoleMessage(consoleMessage->source(), LogMessageType, consoleMessage->level(), consoleMessage->message(), consoleMessage->callStack(), consoleMessage->requestIdentifier());
+    } else {
+        bool shouldGenerateCallStack = m_frontend;
+        message = new InspectorConsoleMessage(shouldGenerateCallStack, consoleMessage->source(), LogMessageType, consoleMessage->level(), consoleMessage->message(), consoleMessage->url(), consoleMessage->lineNumber(), consoleMessage->columnNumber(), consoleMessage->scriptState(), consoleMessage->requestIdentifier());
     }
+    message->setWorkerGlobalScopeProxy(consoleMessage->workerId());
+    addConsoleMessage(adoptPtr(message));
+}
 
-    addConsoleMessage(adoptPtr(new InspectorConsoleMessage(!isWorkerAgent(), source, type, level, message, callStack, requestIdentifier)));
+void InspectorConsoleAgent::adoptWorkerConsoleMessages(WorkerGlobalScopeProxy* proxy)
+{
+    for (size_t i = 0; i < m_consoleMessages.size(); i++) {
+        if (m_consoleMessages[i]->workerGlobalScopeProxy() == proxy)
+            m_consoleMessages[i]->setWorkerGlobalScopeProxy(nullptr);
+    }
 }
 
 void InspectorConsoleAgent::addConsoleAPIMessageToConsole(MessageType type, MessageLevel level, const String& message, ScriptState* scriptState, PassRefPtrWillBeRawPtr<ScriptArguments> arguments, unsigned long requestIdentifier)
@@ -182,18 +196,7 @@ void InspectorConsoleAgent::addConsoleAPIMessageToConsole(MessageType type, Mess
         clearMessages(&error);
     }
 
-    addConsoleMessage(adoptPtr(new InspectorConsoleMessage(!isWorkerAgent(), ConsoleAPIMessageSource, type, level, message, arguments, scriptState, requestIdentifier)));
-}
-
-void InspectorConsoleAgent::addMessageToConsole(MessageSource source, MessageType type, MessageLevel level, const String& message, const String& scriptId, unsigned lineNumber, unsigned columnNumber, ScriptState* scriptState, unsigned long requestIdentifier)
-{
-    if (type == ClearMessageType) {
-        ErrorString error;
-        clearMessages(&error);
-    }
-
-    bool canGenerateCallStack = !isWorkerAgent() && m_frontend;
-    addConsoleMessage(adoptPtr(new InspectorConsoleMessage(canGenerateCallStack, source, type, level, message, scriptId, lineNumber, columnNumber, scriptState, requestIdentifier)));
+    addConsoleMessage(adoptPtr(new InspectorConsoleMessage(ConsoleAPIMessageSource, type, level, message, arguments, scriptState, requestIdentifier)));
 }
 
 Vector<unsigned> InspectorConsoleAgent::consoleMessageArgumentCounts()
@@ -257,7 +260,7 @@ void InspectorConsoleAgent::consoleTimelineEnd(ExecutionContext* context, const 
 
 void InspectorConsoleAgent::consoleCount(ScriptState* scriptState, PassRefPtrWillBeRawPtr<ScriptArguments> arguments)
 {
-    RefPtrWillBeRawPtr<ScriptCallStack> callStack(createScriptCallStackForConsole(scriptState, 1));
+    RefPtrWillBeRawPtr<ScriptCallStack> callStack(createScriptCallStack(1));
     const ScriptCallFrame& lastCaller = callStack->at(0);
     // Follow Firebug's behavior of counting with null and undefined title in
     // the same bucket as no argument
@@ -290,7 +293,9 @@ void InspectorConsoleAgent::didFinishXHRLoading(XMLHttpRequest*, ThreadableLoade
 {
     if (m_frontend && m_state->getBoolean(ConsoleAgentState::monitoringXHR)) {
         String message = "XHR finished loading: " + method + " \"" + url + "\".";
-        addMessageToConsole(NetworkMessageSource, LogMessageType, DebugMessageLevel, message, sendURL, sendLineNumber, 0, 0, requestIdentifier);
+        RefPtrWillBeRawPtr<ConsoleMessage> consoleMessage = ConsoleMessage::create(NetworkMessageSource, DebugMessageLevel, message, sendURL, sendLineNumber);
+        consoleMessage->setRequestIdentifier(requestIdentifier);
+        addMessageToConsole(consoleMessage.get());
     }
 }
 
@@ -300,7 +305,9 @@ void InspectorConsoleAgent::didReceiveResourceResponse(LocalFrame*, unsigned lon
         return;
     if (response.httpStatusCode() >= 400) {
         String message = "Failed to load resource: the server responded with a status of " + String::number(response.httpStatusCode()) + " (" + response.httpStatusText() + ')';
-        addMessageToConsole(NetworkMessageSource, LogMessageType, ErrorMessageLevel, message, response.url().string(), 0, 0, 0, requestIdentifier);
+        RefPtrWillBeRawPtr<ConsoleMessage> consoleMessage = ConsoleMessage::create(NetworkMessageSource, ErrorMessageLevel, message, response.url().string());
+        consoleMessage->setRequestIdentifier(requestIdentifier);
+        addMessageToConsole(consoleMessage.get());
     }
 }
 
@@ -314,7 +321,9 @@ void InspectorConsoleAgent::didFailLoading(unsigned long requestIdentifier, cons
         message.appendLiteral(": ");
         message.append(error.localizedDescription());
     }
-    addMessageToConsole(NetworkMessageSource, LogMessageType, ErrorMessageLevel, message.toString(), error.failingURL(), 0, 0, 0, requestIdentifier);
+    RefPtrWillBeRawPtr<ConsoleMessage> consoleMessage = ConsoleMessage::create(NetworkMessageSource, ErrorMessageLevel, message.toString(), error.failingURL());
+    consoleMessage->setRequestIdentifier(requestIdentifier);
+    addMessageToConsole(consoleMessage.get());
 }
 
 void InspectorConsoleAgent::setMonitoringXHREnabled(ErrorString*, bool enabled)
@@ -354,4 +363,3 @@ void InspectorConsoleAgent::addInspectedHeapObject(ErrorString*, int inspectedHe
 }
 
 } // namespace blink
-

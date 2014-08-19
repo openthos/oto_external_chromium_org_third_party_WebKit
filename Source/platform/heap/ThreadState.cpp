@@ -38,6 +38,9 @@
 #include "platform/heap/Heap.h"
 #include "public/platform/Platform.h"
 #include "wtf/ThreadingPrimitives.h"
+#if ENABLE(GC_PROFILE_HEAP)
+#include "platform/TracedValue.h"
+#endif
 
 #if OS(WIN)
 #include <stddef.h>
@@ -288,6 +291,7 @@ ThreadState::ThreadState()
     , m_inGC(false)
     , m_heapContainsCache(adoptPtr(new HeapContainsCache()))
     , m_isTerminating(false)
+    , m_lowCollectionRate(false)
 #if defined(ADDRESS_SANITIZER)
     , m_asanFakeStack(__asan_get_current_fake_stack())
 #endif
@@ -567,7 +571,7 @@ bool ThreadState::checkAndMarkPointer(Visitor* visitor, Address address)
     return false;
 }
 
-#if ENABLE(GC_TRACING)
+#if ENABLE(GC_PROFILE_MARKING)
 const GCInfo* ThreadState::findGCInfo(Address address)
 {
     BaseHeapPage* page = heapPageFromAddress(address);
@@ -575,6 +579,66 @@ const GCInfo* ThreadState::findGCInfo(Address address)
         return page->findGCInfo(address);
     }
     return 0;
+}
+#endif
+
+#if ENABLE(GC_PROFILE_HEAP)
+size_t ThreadState::SnapshotInfo::getClassTag(const GCInfo* gcinfo)
+{
+    HashMap<const GCInfo*, size_t>::AddResult result = classTags.add(gcinfo, classTags.size());
+    if (result.isNewEntry) {
+        liveCount.append(0);
+        deadCount.append(0);
+        generations.append(Vector<int, 8>());
+        generations.last().fill(0, 8);
+    }
+    return result.storedValue->value;
+}
+
+void ThreadState::snapshot()
+{
+    SnapshotInfo info(this);
+    RefPtr<TracedValue> json = TracedValue::create();
+
+#define SNAPSHOT_HEAP(HeapType)                                         \
+    {                                                                   \
+        json->beginDictionary();                                        \
+        json->setString("name", #HeapType);                             \
+        m_heaps[HeapType##Heap]->snapshot(json.get(), &info);          \
+        json->endDictionary();                                          \
+    }
+    json->beginArray("heaps");
+    SNAPSHOT_HEAP(General);
+    FOR_EACH_TYPED_HEAP(SNAPSHOT_HEAP);
+    json->endArray();
+#undef SNAPSHOT_HEAP
+
+    json->setInteger("allocatedSpace", m_stats.totalAllocatedSpace());
+    json->setInteger("objectSpace", m_stats.totalObjectSpace());
+    json->setInteger("liveSize", info.liveSize);
+    json->setInteger("deadSize", info.deadSize);
+    json->setInteger("freeSize", info.freeSize);
+    json->setInteger("pageCount", info.freeSize);
+
+    Vector<String> classNameVector(info.classTags.size());
+    for (HashMap<const GCInfo*, size_t>::iterator it = info.classTags.begin(); it != info.classTags.end(); ++it)
+        classNameVector[it->value] = it->key->m_className;
+
+    json->beginArray("classes");
+    for (size_t i = 0; i < classNameVector.size(); ++i) {
+        json->beginDictionary();
+        json->setString("name", classNameVector[i]);
+        json->setInteger("liveCount", info.liveCount[i]);
+        json->setInteger("deadCount", info.deadCount[i]);
+        json->beginArray("generations");
+        for (size_t j = 0; j < heapObjectGenerations; ++j)
+            json->pushInteger(info.generations[i][j]);
+        json->endArray();
+        json->endDictionary();
+    }
+    json->endArray();
+
+    TRACE_EVENT_OBJECT_SNAPSHOT_WITH_ID("blink_gc", "ThreadState", this, json);
 }
 #endif
 
@@ -603,11 +667,12 @@ Mutex& ThreadState::globalRootsMutex()
 
 // Trigger garbage collection on a 50% increase in size, but not for
 // less than 512kbytes.
-static bool increasedEnoughToGC(size_t newSize, size_t oldSize)
+bool ThreadState::increasedEnoughToGC(size_t newSize, size_t oldSize)
 {
     if (newSize < 1 << 19)
         return false;
-    return newSize > oldSize + (oldSize >> 1);
+    size_t limit = oldSize + (oldSize >> 1);
+    return newSize > limit;
 }
 
 // FIXME: The heuristics are local for a thread at this
@@ -622,12 +687,14 @@ bool ThreadState::shouldGC()
 }
 
 // Trigger conservative garbage collection on a 100% increase in size,
-// but not for less than 4Mbytes.
-static bool increasedEnoughToForceConservativeGC(size_t newSize, size_t oldSize)
+// but not for less than 4Mbytes. If the system currently has a low
+// collection rate, then require a 300% increase in size.
+bool ThreadState::increasedEnoughToForceConservativeGC(size_t newSize, size_t oldSize)
 {
     if (newSize < 1 << 22)
         return false;
-    return newSize > 2 * oldSize;
+    size_t limit = (m_lowCollectionRate ? 4 : 2) * oldSize;
+    return newSize > limit;
 }
 
 // FIXME: The heuristics are local for a thread at this
@@ -882,7 +949,17 @@ void ThreadState::performPendingSweep()
     if (!sweepRequested())
         return;
 
-    TRACE_EVENT0("blink", "ThreadState::performPendingSweep");
+#if ENABLE(GC_PROFILE_HEAP)
+    // We snapshot the heap prior to sweeping to get numbers for both resources
+    // that have been allocated since the last GC and for resources that are
+    // going to be freed.
+    bool gcTracingEnabled;
+    TRACE_EVENT_CATEGORY_GROUP_ENABLED("blink_gc", &gcTracingEnabled);
+    if (gcTracingEnabled && m_stats.totalObjectSpace() > 0)
+        snapshot();
+#endif
+
+    TRACE_EVENT0("blink_gc", "ThreadState::performPendingSweep");
 
     double timeStamp = WTF::currentTimeMS();
     const char* samplingState = TRACE_EVENT_GET_SAMPLING_STATE();
@@ -898,6 +975,7 @@ void ThreadState::performPendingSweep()
     while (popAndInvokeWeakPointerCallback(Heap::s_markingVisitor)) { }
     leaveNoAllocationScope();
     // Perform sweeping and finalization.
+    size_t objectSpaceBeforeSweep = m_stats.totalObjectSpace();
     m_stats.clear(); // Sweeping will recalculate the stats
     for (int i = 0; i < NumberOfHeaps; i++)
         m_heaps[i]->sweep();
@@ -905,6 +983,10 @@ void ThreadState::performPendingSweep()
     m_sweepInProgress = false;
     clearGCRequested();
     clearSweepRequested();
+    // If we collected less than 50% of objects, record that the
+    // collection rate is low which we use to determine when to
+    // perform the next GC.
+    setLowCollectionRate(m_stats.totalObjectSpace() > (objectSpaceBeforeSweep >> 1));
 
     if (blink::Platform::current()) {
         blink::Platform::current()->histogramCustomCounts("BlinkGC.PerformPendingSweep", WTF::currentTimeMS() - timeStamp, 0, 10 * 1000, 50);
@@ -952,7 +1034,7 @@ ThreadState::AttachedThreadStateSet& ThreadState::attachedThreads()
     return threads;
 }
 
-#if ENABLE(GC_TRACING)
+#if ENABLE(GC_PROFILE_MARKING)
 const GCInfo* ThreadState::findGCInfoFromAllThreads(Address address)
 {
     bool needLockForIteration = !isAnyThreadInGC();
@@ -972,4 +1054,5 @@ const GCInfo* ThreadState::findGCInfoFromAllThreads(Address address)
     return 0;
 }
 #endif
+
 }

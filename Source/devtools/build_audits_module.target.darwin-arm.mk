@@ -15,19 +15,19 @@ gyp_shared_intermediate_dir := $(call intermediates-dir-for,GYP,shared,,,$(GYP_V
 GYP_TARGET_DEPENDENCIES :=
 
 ### Rules for action "build_audits_module":
-$(gyp_shared_intermediate_dir)/resources/inspector/audits/AuditsPanel.js: gyp_local_path := $(LOCAL_PATH)
-$(gyp_shared_intermediate_dir)/resources/inspector/audits/AuditsPanel.js: gyp_var_prefix := $(GYP_VAR_PREFIX)
-$(gyp_shared_intermediate_dir)/resources/inspector/audits/AuditsPanel.js: gyp_intermediate_dir := $(abspath $(gyp_intermediate_dir))
-$(gyp_shared_intermediate_dir)/resources/inspector/audits/AuditsPanel.js: gyp_shared_intermediate_dir := $(abspath $(gyp_shared_intermediate_dir))
-$(gyp_shared_intermediate_dir)/resources/inspector/audits/AuditsPanel.js: export PATH := $(subst $(ANDROID_BUILD_PATHS),,$(PATH))
-$(gyp_shared_intermediate_dir)/resources/inspector/audits/AuditsPanel.js: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/scripts/inline_js_imports.py $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/audits/AuditCategories.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/audits/AuditCategory.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/audits/AuditController.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/audits/AuditFormatters.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/audits/AuditLauncherView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/audits/AuditResultView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/audits/AuditRules.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/audits/AuditsPanel.js $(GYP_TARGET_DEPENDENCIES)
+$(gyp_shared_intermediate_dir)/resources/inspector/audits/_module.js: gyp_local_path := $(LOCAL_PATH)
+$(gyp_shared_intermediate_dir)/resources/inspector/audits/_module.js: gyp_var_prefix := $(GYP_VAR_PREFIX)
+$(gyp_shared_intermediate_dir)/resources/inspector/audits/_module.js: gyp_intermediate_dir := $(abspath $(gyp_intermediate_dir))
+$(gyp_shared_intermediate_dir)/resources/inspector/audits/_module.js: gyp_shared_intermediate_dir := $(abspath $(gyp_shared_intermediate_dir))
+$(gyp_shared_intermediate_dir)/resources/inspector/audits/_module.js: export PATH := $(subst $(ANDROID_BUILD_PATHS),,$(PATH))
+$(gyp_shared_intermediate_dir)/resources/inspector/audits/_module.js: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/scripts/inline_js_imports.py $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/audits/_module.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/audits/AuditCategories.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/audits/AuditCategory.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/audits/AuditController.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/audits/AuditFormatters.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/audits/AuditLauncherView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/audits/AuditResultView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/audits/AuditRules.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/audits/AuditsPanel.js $(GYP_TARGET_DEPENDENCIES)
 	@echo "Gyp action: third_party_WebKit_Source_devtools_devtools_gyp_build_audits_module_target_build_audits_module ($@)"
-	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/devtools; mkdir -p $(gyp_shared_intermediate_dir)/resources/inspector/audits; python scripts/inline_js_imports.py front_end/audits/AuditsPanel.js "$(gyp_shared_intermediate_dir)/resources/inspector/audits/AuditsPanel.js"
+	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/devtools; mkdir -p $(gyp_shared_intermediate_dir)/resources/inspector/audits; python scripts/inline_js_imports.py front_end/audits/_module.js "$(gyp_shared_intermediate_dir)/resources/inspector/audits/_module.js"
 
 
 
 GYP_GENERATED_OUTPUTS := \
-	$(gyp_shared_intermediate_dir)/resources/inspector/audits/AuditsPanel.js
+	$(gyp_shared_intermediate_dir)/resources/inspector/audits/_module.js
 
 # Make sure our deps and generated files are built first.
 LOCAL_ADDITIONAL_DEPENDENCIES := $(GYP_TARGET_DEPENDENCIES) $(GYP_GENERATED_OUTPUTS)

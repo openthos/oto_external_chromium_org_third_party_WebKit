@@ -30,7 +30,6 @@
 // FIXME: Way too many!
 #include "core/CSSValueKeywords.h"
 #include "core/StylePropertyShorthand.h"
-#include "core/css/CSSArrayFunctionValue.h"
 #include "core/css/CSSAspectRatioValue.h"
 #include "core/css/CSSBasicShapes.h"
 #include "core/css/CSSBorderImage.h"
@@ -50,7 +49,6 @@
 #include "core/css/CSSKeyframeRule.h"
 #include "core/css/CSSKeyframesRule.h"
 #include "core/css/CSSLineBoxContainValue.h"
-#include "core/css/CSSParserValues.h"
 #include "core/css/CSSPrimitiveValue.h"
 #include "core/css/CSSPropertySourceData.h"
 #include "core/css/CSSReflectValue.h"
@@ -69,6 +67,7 @@
 #include "core/css/RuntimeCSSEnabled.h"
 #include "core/css/parser/BisonCSSParser.h"
 #include "core/css/parser/CSSParserIdioms.h"
+#include "core/css/parser/CSSParserValues.h"
 #include "core/frame/UseCounter.h"
 #include "core/html/parser/HTMLParserIdioms.h"
 #include "core/inspector/InspectorInstrumentation.h"
@@ -86,7 +85,6 @@
 namespace blink {
 
 static const double MAX_SCALE = 1000000;
-static const unsigned minRepetitions = 10000;
 
 template <unsigned N>
 static bool equal(const CSSParserString& a, const char (&b)[N])
@@ -168,7 +166,7 @@ void CSSPropertyParser::addProperty(CSSPropertyID propId, PassRefPtrWillBeRawPtr
         Vector<StylePropertyShorthand, 4> shorthands;
         getMatchingShorthandsForLonghand(propId, &shorthands);
         // Viewport descriptors have width and height as shorthands, but it doesn't
-        // make sense for CSSShorthands.in to consider them as such. The shorthand
+        // make sense for CSSProperties.in to consider them as such. The shorthand
         // index is only used by the inspector and doesn't affect viewport
         // descriptors.
         if (shorthands.isEmpty())
@@ -1115,10 +1113,7 @@ bool CSSPropertyParser::parseValue(CSSPropertyID propId, bool important)
         validPrimitive = validUnit(value, FInteger, HTMLStandardMode);
         break;
     case CSSPropertyInternalMarqueeIncrement:
-        if (id == CSSValueSmall || id == CSSValueLarge || id == CSSValueMedium)
-            validPrimitive = true;
-        else
-            validPrimitive = validUnit(value, FLength | FPercent);
+        validPrimitive = validUnit(value, FLength | FPercent);
         break;
     case CSSPropertyInternalMarqueeRepetition:
         if (id == CSSValueInfinite)
@@ -1127,10 +1122,7 @@ bool CSSPropertyParser::parseValue(CSSPropertyID propId, bool important)
             validPrimitive = validUnit(value, FInteger | FNonNeg);
         break;
     case CSSPropertyInternalMarqueeSpeed:
-        if (id == CSSValueNormal || id == CSSValueSlow || id == CSSValueFast)
-            validPrimitive = true;
-        else
-            validPrimitive = validUnit(value, FTime | FInteger | FNonNeg);
+        validPrimitive = validUnit(value, FInteger | FNonNeg);
         break;
     case CSSPropertyTransform:
     case CSSPropertyWebkitTransform:
@@ -1157,24 +1149,21 @@ bool CSSPropertyParser::parseValue(CSSPropertyID propId, bool important)
         addProperty(propId, list.release(), important);
         return true;
     }
-    case CSSPropertyWebkitTransformOrigin:
     case CSSPropertyWebkitTransformOriginX:
+        parsedValue = parseFillPositionX(m_valueList.get());
+        if (parsedValue)
+            m_valueList->next();
+        break;
     case CSSPropertyWebkitTransformOriginY:
-    case CSSPropertyWebkitTransformOriginZ: {
-        RefPtrWillBeRawPtr<CSSValue> val1 = nullptr;
-        RefPtrWillBeRawPtr<CSSValue> val2 = nullptr;
-        RefPtrWillBeRawPtr<CSSValue> val3 = nullptr;
-        CSSPropertyID propId1, propId2, propId3;
-        if (parseWebkitTransformOrigin(propId, propId1, propId2, propId3, val1, val2, val3)) {
-            addProperty(propId1, val1.release(), important);
-            if (val2)
-                addProperty(propId2, val2.release(), important);
-            if (val3)
-                addProperty(propId3, val3.release(), important);
-            return true;
-        }
-        return false;
-    }
+        parsedValue = parseFillPositionY(m_valueList.get());
+        if (parsedValue)
+            m_valueList->next();
+        break;
+    case CSSPropertyWebkitTransformOriginZ:
+        validPrimitive = validUnit(value, FLength);
+        break;
+    case CSSPropertyWebkitTransformOrigin:
+        return parseWebkitTransformOriginShorthand(important);
     case CSSPropertyPerspective:
         if (id == CSSValueNone) {
             validPrimitive = true;
@@ -3140,20 +3129,27 @@ PassRefPtrWillBeRawPtr<CSSValue> CSSPropertyParser::parseAnimationProperty()
     return createPrimitiveStringValue(value);
 }
 
-bool CSSPropertyParser::parseWebkitTransformOriginShorthand(RefPtrWillBeRawPtr<CSSValue>& value1, RefPtrWillBeRawPtr<CSSValue>& value2, RefPtrWillBeRawPtr<CSSValue>& value3)
+bool CSSPropertyParser::parseWebkitTransformOriginShorthand(bool important)
 {
-    parse2ValuesFillPosition(m_valueList.get(), value1, value2);
+    RefPtrWillBeRawPtr<CSSValue> originX = nullptr;
+    RefPtrWillBeRawPtr<CSSValue> originY = nullptr;
+    RefPtrWillBeRawPtr<CSSValue> originZ = nullptr;
 
-    // now get z
+    parse2ValuesFillPosition(m_valueList.get(), originX, originY);
+
     if (m_valueList->current()) {
-        if (validUnit(m_valueList->current(), FLength)) {
-            value3 = createPrimitiveNumericValue(m_valueList->current());
-            m_valueList->next();
-            return true;
-        }
-        return false;
+        if (!validUnit(m_valueList->current(), FLength))
+            return false;
+        originZ = createPrimitiveNumericValue(m_valueList->current());
+        m_valueList->next();
+    } else {
+        originZ = cssValuePool().createImplicitInitialValue();
     }
-    value3 = cssValuePool().createImplicitInitialValue();
+
+    addProperty(CSSPropertyWebkitTransformOriginX, originX.release(), important);
+    addProperty(CSSPropertyWebkitTransformOriginY, originY.release(), important);
+    addProperty(CSSPropertyWebkitTransformOriginZ, originZ.release(), important);
+
     return true;
 }
 
@@ -3776,10 +3772,11 @@ bool CSSPropertyParser::parseGridTrackRepeatFunction(CSSValueList& list)
 
     ASSERT_WITH_SECURITY_IMPLICATION(arguments->valueAt(0)->fValue > 0);
     size_t repetitions = arguments->valueAt(0)->fValue;
-    // Clamp repetitions at minRepetitions.
-    // http://www.w3.org/TR/css-grid-1/#repeat-notation
-    if (repetitions > minRepetitions)
-        repetitions = minRepetitions;
+
+    // The spec allows us to clamp the number of repetitions: http://www.w3.org/TR/css-grid-1/#repeat-notation
+    const size_t maxRepetitions = 10000;
+    repetitions = std::min(repetitions, maxRepetitions);
+
     RefPtrWillBeRawPtr<CSSValueList> repeatedValues = CSSValueList::createSpaceSeparated();
     arguments->next(); // Skip the repetition count.
     arguments->next(); // Skip the comma.
@@ -5859,7 +5856,7 @@ public:
     {
         m_canAdvance = true;
         m_allowCommit = m_allowImage = m_allowImageSlice = m_allowRepeat = m_allowForwardSlashOperator = false;
-        if (!m_borderSlice) {
+        if (!m_borderWidth) {
             m_requireWidth = true;
             m_requireOutset = false;
         } else {
@@ -5867,9 +5864,9 @@ public:
             m_requireWidth = false;
         }
     }
-    void commitBorderWidth(PassRefPtrWillBeRawPtr<CSSPrimitiveValue> slice)
+    void commitBorderWidth(PassRefPtrWillBeRawPtr<CSSPrimitiveValue> width)
     {
-        m_borderSlice = slice;
+        m_borderWidth = width;
         m_canAdvance = true;
         m_allowCommit = m_allowForwardSlashOperator = true;
         m_allowImageSlice = m_requireWidth = m_requireOutset = false;
@@ -5897,14 +5894,14 @@ public:
 
     PassRefPtrWillBeRawPtr<CSSValue> commitCSSValue()
     {
-        return createBorderImageValue(m_image, m_imageSlice.get(), m_borderSlice.get(), m_outset.get(), m_repeat.get());
+        return createBorderImageValue(m_image, m_imageSlice.get(), m_borderWidth.get(), m_outset.get(), m_repeat.get());
     }
 
     void commitMaskBoxImage(CSSPropertyParser* parser, bool important)
     {
         commitBorderImageProperty(CSSPropertyWebkitMaskBoxImageSource, parser, m_image, important);
         commitBorderImageProperty(CSSPropertyWebkitMaskBoxImageSlice, parser, m_imageSlice.get(), important);
-        commitBorderImageProperty(CSSPropertyWebkitMaskBoxImageWidth, parser, m_borderSlice.get(), important);
+        commitBorderImageProperty(CSSPropertyWebkitMaskBoxImageWidth, parser, m_borderWidth.get(), important);
         commitBorderImageProperty(CSSPropertyWebkitMaskBoxImageOutset, parser, m_outset.get(), important);
         commitBorderImageProperty(CSSPropertyWebkitMaskBoxImageRepeat, parser, m_repeat.get(), important);
     }
@@ -5913,7 +5910,7 @@ public:
     {
         commitBorderImageProperty(CSSPropertyBorderImageSource, parser, m_image, important);
         commitBorderImageProperty(CSSPropertyBorderImageSlice, parser, m_imageSlice.get(), important);
-        commitBorderImageProperty(CSSPropertyBorderImageWidth, parser, m_borderSlice.get(), important);
+        commitBorderImageProperty(CSSPropertyBorderImageWidth, parser, m_borderWidth.get(), important);
         commitBorderImageProperty(CSSPropertyBorderImageOutset, parser, m_outset.get(), important);
         commitBorderImageProperty(CSSPropertyBorderImageRepeat, parser, m_repeat, important);
     }
@@ -5941,7 +5938,7 @@ public:
 
     RefPtrWillBeMember<CSSValue> m_image;
     RefPtrWillBeMember<CSSBorderImageSliceValue> m_imageSlice;
-    RefPtrWillBeMember<CSSPrimitiveValue> m_borderSlice;
+    RefPtrWillBeMember<CSSPrimitiveValue> m_borderWidth;
     RefPtrWillBeMember<CSSPrimitiveValue> m_outset;
 
     RefPtrWillBeMember<CSSValue> m_repeat;
@@ -5988,9 +5985,9 @@ bool BorderImageParseContext::buildFromParser(CSSPropertyParser& parser, CSSProp
         }
 
         if (!context.canAdvance() && context.requireWidth()) {
-            RefPtrWillBeRawPtr<CSSPrimitiveValue> borderSlice = nullptr;
-            if (parser.parseBorderImageWidth(borderSlice))
-                context.commitBorderWidth(borderSlice.release());
+            RefPtrWillBeRawPtr<CSSPrimitiveValue> borderWidth = nullptr;
+            if (parser.parseBorderImageWidth(borderWidth))
+                context.commitBorderWidth(borderWidth.release());
         }
 
         if (!context.canAdvance() && context.requireOutset()) {
@@ -7568,50 +7565,6 @@ PassRefPtrWillBeRawPtr<CSSValueList> CSSPropertyParser::parseTransformOrigin()
     return list.release();
 }
 
-bool CSSPropertyParser::parseWebkitTransformOrigin(CSSPropertyID propId, CSSPropertyID& propId1, CSSPropertyID& propId2, CSSPropertyID& propId3, RefPtrWillBeRawPtr<CSSValue>& value, RefPtrWillBeRawPtr<CSSValue>& value2, RefPtrWillBeRawPtr<CSSValue>& value3)
-{
-    propId1 = propId;
-    propId2 = propId;
-    propId3 = propId;
-    if (propId == CSSPropertyWebkitTransformOrigin) {
-        propId1 = CSSPropertyWebkitTransformOriginX;
-        propId2 = CSSPropertyWebkitTransformOriginY;
-        propId3 = CSSPropertyWebkitTransformOriginZ;
-    }
-
-    switch (propId) {
-        case CSSPropertyWebkitTransformOrigin:
-            if (!parseWebkitTransformOriginShorthand(value, value2, value3))
-                return false;
-            // parseWebkitTransformOriginShorthand advances the m_valueList pointer
-            break;
-        case CSSPropertyWebkitTransformOriginX: {
-            value = parseFillPositionX(m_valueList.get());
-            if (value)
-                m_valueList->next();
-            break;
-        }
-        case CSSPropertyWebkitTransformOriginY: {
-            value = parseFillPositionY(m_valueList.get());
-            if (value)
-                m_valueList->next();
-            break;
-        }
-        case CSSPropertyWebkitTransformOriginZ: {
-            if (validUnit(m_valueList->current(), FLength))
-                value = createPrimitiveNumericValue(m_valueList->current());
-            if (value)
-                m_valueList->next();
-            break;
-        }
-        default:
-            ASSERT_NOT_REACHED();
-            return false;
-    }
-
-    return value;
-}
-
 bool CSSPropertyParser::parseWebkitPerspectiveOrigin(CSSPropertyID propId, CSSPropertyID& propId1, CSSPropertyID& propId2, RefPtrWillBeRawPtr<CSSValue>& value, RefPtrWillBeRawPtr<CSSValue>& value2)
 {
     propId1 = propId;
@@ -7649,9 +7602,6 @@ bool CSSPropertyParser::parseWebkitPerspectiveOrigin(CSSPropertyID propId, CSSPr
 
 bool CSSPropertyParser::parseTouchAction(bool important)
 {
-    if (!RuntimeEnabledFeatures::cssTouchActionEnabled())
-        return false;
-
     CSSParserValue* value = m_valueList->current();
     RefPtrWillBeRawPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
     if (m_valueList->size() == 1 && value && (value->id == CSSValueAuto || value->id == CSSValueNone || value->id == CSSValueManipulation)) {
@@ -8236,6 +8186,8 @@ bool CSSPropertyParser::parseSVGValue(CSSPropertyID propId, bool important)
             validPrimitive = true;
         break;
 
+    case CSSPropertyClipPath:
+    case CSSPropertyFilter:
     case CSSPropertyMarkerStart:
     case CSSPropertyMarkerMid:
     case CSSPropertyMarkerEnd:
@@ -8403,19 +8355,8 @@ bool CSSPropertyParser::parseSVGValue(CSSPropertyID propId, bool important)
             validPrimitive = true;
         else
             parsedValue = parseSVGStrokeDasharray();
-
         break;
 
-    case CSSPropertyClipPath: // <uri> | none | inherit
-    case CSSPropertyFilter:
-        if (id == CSSValueNone) {
-            validPrimitive = true;
-        } else if (value->unit == CSSPrimitiveValue::CSS_URI) {
-            parsedValue = CSSPrimitiveValue::create(value->string, (CSSPrimitiveValue::UnitType) value->unit);
-            if (parsedValue)
-                m_valueList->next();
-        }
-        break;
     case CSSPropertyMaskType: // luminance | alpha | inherit
         if (id == CSSValueLuminance || id == CSSValueAlpha)
             validPrimitive = true;

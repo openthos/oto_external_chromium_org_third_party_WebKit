@@ -41,6 +41,10 @@
 #include "wtf/ThreadingPrimitives.h"
 #include "wtf/Vector.h"
 
+#if ENABLE(GC_PROFILE_HEAP)
+#include "wtf/HashMap.h"
+#endif
+
 namespace blink {
 
 class BaseHeap;
@@ -130,11 +134,8 @@ template<typename U> class ThreadingTrait<const U> : public ThreadingTrait<U> { 
 //
 // To create a new typed heap add a H(<ClassName>) to the
 // FOR_EACH_TYPED_HEAP macro below.
-// FIXME: When the Node hierarchy has been moved use Node in our
-// tests instead of TestTypedHeapClass.
 #define FOR_EACH_TYPED_HEAP(H)  \
-    H(TestTypedHeapClass)
-//    H(Node)
+    H(Node)
 
 #define TypedHeapEnumName(Type) Type##Heap,
 
@@ -282,6 +283,8 @@ public:
     // collect garbage at this point.
     bool shouldGC();
     bool shouldForceConservativeGC();
+    bool increasedEnoughToGC(size_t, size_t);
+    bool increasedEnoughToForceConservativeGC(size_t, size_t);
 
     // If gcRequested returns true when a thread returns to its event
     // loop the thread will initiate a garbage collection.
@@ -500,9 +503,38 @@ public:
     // the object to which it points.
     bool checkAndMarkPointer(Visitor*, Address);
 
-#if ENABLE(GC_TRACING)
+#if ENABLE(GC_PROFILE_MARKING)
     const GCInfo* findGCInfo(Address);
     static const GCInfo* findGCInfoFromAllThreads(Address);
+#endif
+
+#if ENABLE(GC_PROFILE_HEAP)
+    struct SnapshotInfo {
+        ThreadState* state;
+
+        size_t liveSize;
+        size_t deadSize;
+        size_t freeSize;
+        size_t pageCount;
+
+        // Map from base-classes to a snapshot class-ids (used as index below).
+        HashMap<const GCInfo*, size_t> classTags;
+
+        // Map from class-id (index) to count.
+        Vector<int> liveCount;
+        Vector<int> deadCount;
+
+        // Map from class-id (index) to a vector of generation counts.
+        // For i < 7, the count is the number of objects that died after surviving |i| GCs.
+        // For i == 7, the count is the number of objects that survived at least 7 GCs.
+        Vector<Vector<int, 8> > generations;
+
+        explicit SnapshotInfo(ThreadState* state) : state(state), liveSize(0), deadSize(0), freeSize(0), pageCount(0) { }
+
+        size_t getClassTag(const GCInfo*);
+    };
+
+    void snapshot();
 #endif
 
     void pushWeakObjectPointerCallback(void*, WeakPointerCallback);
@@ -547,6 +579,8 @@ private:
     void cleanup();
     void cleanupPages();
 
+    void setLowCollectionRate(bool value) { m_lowCollectionRate = value; }
+
     static WTF::ThreadSpecific<ThreadState*>* s_threadSpecific;
     static SafePointBarrier* s_safePointBarrier;
 
@@ -585,6 +619,8 @@ private:
 
     Vector<OwnPtr<CleanupTask> > m_cleanupTasks;
     bool m_isTerminating;
+
+    bool m_lowCollectionRate;
 
     CallbackStack* m_weakCallbackStack;
 

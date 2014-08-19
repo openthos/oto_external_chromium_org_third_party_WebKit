@@ -34,15 +34,13 @@
 #include "public/web/WebSettings.h"
 
 namespace blink {
+
 class InspectorController;
 class Settings;
-}
-
-namespace blink {
 
 class WebSettingsImpl FINAL : public WebSettings {
 public:
-    explicit WebSettingsImpl(blink::Settings*, blink::InspectorController*);
+    explicit WebSettingsImpl(Settings*, InspectorController*);
     virtual ~WebSettingsImpl() { }
 
     virtual bool mainFrameResizesAreOrientationChanges() const OVERRIDE;
@@ -51,7 +49,6 @@ public:
     virtual void setAccelerated2dCanvasEnabled(bool) OVERRIDE;
     virtual void setAccelerated2dCanvasMSAASampleCount(int) OVERRIDE;
     virtual void setAcceleratedCompositingEnabled(bool) OVERRIDE;
-    virtual void setAcceleratedCompositingForCanvasEnabled(bool) OVERRIDE;
     virtual void setAcceleratedCompositingForFixedPositionEnabled(bool) OVERRIDE;
     virtual void setAcceleratedCompositingForOverflowScrollEnabled(bool) OVERRIDE;
     virtual void setCompositorDrivenAcceleratedScrollingEnabled(bool) OVERRIDE;
@@ -94,6 +91,7 @@ public:
     virtual void setExperimentalWebGLEnabled(bool) OVERRIDE;
     virtual void setFantasyFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON) OVERRIDE;
     virtual void setFixedFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON) OVERRIDE;
+    virtual void setForceZeroLayoutHeight(bool) OVERRIDE;
     virtual void setFullscreenSupported(bool) OVERRIDE;
     virtual void setHyperlinkAuditingEnabled(bool) OVERRIDE;
     virtual void setIgnoreMainFrameOverflowHiddenQuirk(bool) OVERRIDE;
@@ -115,7 +113,6 @@ public:
     virtual void setMinimumFontSize(int) OVERRIDE;
     virtual void setMinimumLogicalFontSize(int) OVERRIDE;
     virtual void setMockScrollbarsEnabled(bool) OVERRIDE;
-    virtual void setNeedsSiteSpecificQuirks(bool) OVERRIDE;
     virtual void setOfflineWebApplicationCacheEnabled(bool) OVERRIDE;
     virtual void setOpenGLMultisamplingEnabled(bool) OVERRIDE;
     virtual void setPasswordEchoDurationInSeconds(double) OVERRIDE;
@@ -186,8 +183,8 @@ public:
     bool mockGestureTapHighlightsEnabled() const;
 
 private:
-    blink::Settings* m_settings;
-    blink::InspectorController* m_inspectorController;
+    Settings* m_settings;
+    InspectorController* m_inspectorController;
     bool m_showFPSCounter;
     bool m_showPaintRects;
     bool m_renderVSyncNotificationEnabled;

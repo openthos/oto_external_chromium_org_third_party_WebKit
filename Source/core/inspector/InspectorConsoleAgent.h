@@ -40,10 +40,11 @@
 
 namespace blink {
 
-class InspectorConsoleMessage;
+class ConsoleMessage;
 class DocumentLoader;
 class LocalDOMWindow;
 class LocalFrame;
+class InspectorConsoleMessage;
 class InspectorFrontend;
 class InjectedScriptManager;
 class InspectorTimelineAgent;
@@ -56,6 +57,7 @@ class ScriptArguments;
 class ScriptCallStack;
 class ScriptProfile;
 class ThreadableLoaderClient;
+class WorkerGlobalScopeProxy;
 class XMLHttpRequest;
 
 typedef String ErrorString;
@@ -79,11 +81,8 @@ public:
     virtual void restore() OVERRIDE FINAL;
 
     void addConsoleAPIMessageToConsole(MessageType, MessageLevel, const String& message, ScriptState*, PassRefPtrWillBeRawPtr<ScriptArguments>, unsigned long requestIdentifier = 0);
-    void addMessageToConsole(MessageSource, MessageType, MessageLevel, const String& message, const String& scriptId, unsigned lineNumber, unsigned columnNumber = 0, ScriptState* = 0, unsigned long requestIdentifier = 0);
-
-    // FIXME: Remove once we no longer generate stacks outside of Inspector.
-    void addMessageToConsole(MessageSource, MessageType, MessageLevel, const String& message, PassRefPtrWillBeRawPtr<ScriptCallStack>, unsigned long requestIdentifier = 0);
-
+    void addMessageToConsole(ConsoleMessage*);
+    void adoptWorkerConsoleMessages(WorkerGlobalScopeProxy*);
     Vector<unsigned> consoleMessageArgumentCounts();
 
     void consoleTime(ExecutionContext*, const String& title);

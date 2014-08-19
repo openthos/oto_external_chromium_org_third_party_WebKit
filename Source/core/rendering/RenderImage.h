@@ -37,6 +37,7 @@ class RenderImage : public RenderReplaced {
 public:
     RenderImage(Element*);
     virtual ~RenderImage();
+    virtual void destroy() OVERRIDE;
 
     static RenderImage* createAnonymous(Document*);
 
@@ -52,6 +53,8 @@ public:
 
     HTMLMapElement* imageMap() const;
     void areaElementFocusChanged(HTMLAreaElement*);
+
+    void highQualityRepaintTimerFired(Timer<RenderImage>*);
 
     void setIsGeneratedContent(bool generated = true) { m_isGeneratedContent = generated; }
 

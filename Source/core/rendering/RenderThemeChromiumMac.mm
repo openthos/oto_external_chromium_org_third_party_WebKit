@@ -640,24 +640,6 @@ void RenderThemeChromiumMac::updatePressedState(NSCell* cell, const RenderObject
         [cell setHighlighted:pressed];
 }
 
-bool RenderThemeChromiumMac::controlSupportsTints(const RenderObject* o) const
-{
-    // An alternate way to implement this would be to get the appropriate cell object
-    // and call the private _needRedrawOnWindowChangedKeyState method. An advantage of
-    // that would be that we would match AppKit behavior more closely, but a disadvantage
-    // would be that we would rely on an AppKit SPI method.
-
-    if (!isEnabled(o))
-        return false;
-
-    // Checkboxes only have tint when checked.
-    if (o->style()->appearance() == CheckboxPart)
-        return isChecked(o);
-
-    // For now assume other controls have tint if enabled.
-    return true;
-}
-
 NSControlSize RenderThemeChromiumMac::controlSizeForFont(RenderStyle* style) const
 {
     int fontSize = style->fontSize();
@@ -788,9 +770,6 @@ bool RenderThemeChromiumMac::paintTextField(RenderObject* o, const PaintInfo& pa
 
 bool RenderThemeChromiumMac::paintCapsLockIndicator(RenderObject*, const PaintInfo& paintInfo, const IntRect& r)
 {
-    if (paintInfo.context->paintingDisabled())
-        return true;
-
     // This draws the caps lock indicator as it was done by WKDrawCapsLockIndicator.
     LocalCurrentGraphicsContext localContext(paintInfo.context);
     CGContextRef c = localContext.cgContext();
@@ -1761,7 +1740,7 @@ String RenderThemeChromiumMac::fileListNameForWidth(Locale& locale, const FileLi
 
     String strToTruncate;
     if (fileList->isEmpty()) {
-        strToTruncate = locale.queryString(blink::WebLocalizedString::FileButtonNoFileSelectedLabel);
+        strToTruncate = locale.queryString(WebLocalizedString::FileButtonNoFileSelectedLabel);
     } else if (fileList->length() == 1) {
         File* file = fileList->item(0);
         if (file->userVisibility() == File::IsUserVisible)
@@ -1770,7 +1749,7 @@ String RenderThemeChromiumMac::fileListNameForWidth(Locale& locale, const FileLi
             strToTruncate = file->name();
     } else {
         // FIXME: Localization of fileList->length().
-        return StringTruncator::rightTruncate(locale.queryString(blink::WebLocalizedString::MultipleFileUploadText, String::number(fileList->length())), width, font);
+        return StringTruncator::rightTruncate(locale.queryString(WebLocalizedString::MultipleFileUploadText, String::number(fileList->length())), width, font);
     }
 
     return StringTruncator::centerTruncate(strToTruncate, width, font);

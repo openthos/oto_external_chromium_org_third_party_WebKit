@@ -53,7 +53,7 @@
 #include "core/css/CSSLineBoxContainValue.h"
 #include "core/css/parser/BisonCSSParser.h"
 #include "core/css/CSSPrimitiveValueMappings.h"
-#include "core/css/CSSProperty.h"
+#include "core/css/CSSPropertyMetadata.h"
 #include "core/css/Counter.h"
 #include "core/css/Pair.h"
 #include "core/css/Rect.h"
@@ -125,7 +125,7 @@ void StyleBuilder::applyProperty(CSSPropertyID id, StyleResolverState& state, CS
     if (primitiveValue && primitiveValue->getValueID() == CSSValueCurrentcolor)
         state.style()->setHasCurrentColor();
 
-    if (isInherit && !state.parentStyle()->hasExplicitlyInheritedProperties() && !CSSProperty::isInheritedProperty(id))
+    if (isInherit && !state.parentStyle()->hasExplicitlyInheritedProperties() && !CSSPropertyMetadata::isInheritedProperty(id))
         state.parentStyle()->setHasExplicitlyInheritedProperties();
 
     StyleBuilder::applyProperty(id, state, value, isInitial, isInherit);
@@ -305,36 +305,6 @@ void StyleBuilderFunctions::applyInheritCSSPropertyFontSize(StyleResolverState& 
 void StyleBuilderFunctions::applyValueCSSPropertyFontSize(StyleResolverState& state, CSSValue* value)
 {
     state.fontBuilder().setFontSizeValue(value, state.parentStyle(), state.rootElementStyle());
-}
-
-void StyleBuilderFunctions::applyInitialCSSPropertyFontWeight(StyleResolverState& state)
-{
-    state.fontBuilder().setWeight(FontWeightNormal);
-}
-
-void StyleBuilderFunctions::applyInheritCSSPropertyFontWeight(StyleResolverState& state)
-{
-    state.fontBuilder().setWeight(state.parentFontDescription().weight());
-}
-
-void StyleBuilderFunctions::applyValueCSSPropertyFontWeight(StyleResolverState& state, CSSValue* value)
-{
-    CSSPrimitiveValue* primitiveValue = toCSSPrimitiveValue(value);
-    switch (primitiveValue->getValueID()) {
-    case CSSValueInvalid:
-        ASSERT_NOT_REACHED();
-        break;
-    case CSSValueBolder:
-        state.fontBuilder().setWeight(state.parentStyle()->fontDescription().weight());
-        state.fontBuilder().setWeightBolder();
-        break;
-    case CSSValueLighter:
-        state.fontBuilder().setWeight(state.parentStyle()->fontDescription().weight());
-        state.fontBuilder().setWeightLighter();
-        break;
-    default:
-        state.fontBuilder().setWeight(*primitiveValue);
-    }
 }
 
 void StyleBuilderFunctions::applyValueCSSPropertyGlyphOrientationVertical(StyleResolverState& state, CSSValue* value)
@@ -902,59 +872,6 @@ void StyleBuilderFunctions::applyValueCSSPropertyWebkitFilter(StyleResolverState
         state.style()->setFilter(operations);
 }
 
-void StyleBuilderFunctions::applyValueCSSPropertyInternalMarqueeIncrement(StyleResolverState& state, CSSValue* value)
-{
-    if (!value->isPrimitiveValue())
-        return;
-
-    CSSPrimitiveValue* primitiveValue = toCSSPrimitiveValue(value);
-    if (primitiveValue->getValueID()) {
-        switch (primitiveValue->getValueID()) {
-        case CSSValueSmall:
-            state.style()->setMarqueeIncrement(Length(1, Fixed)); // 1px.
-            break;
-        case CSSValueNormal:
-            state.style()->setMarqueeIncrement(Length(6, Fixed)); // 6px. The WinIE default.
-            break;
-        case CSSValueLarge:
-            state.style()->setMarqueeIncrement(Length(36, Fixed)); // 36px.
-            break;
-        default:
-            break;
-        }
-    } else {
-        Length marqueeLength = primitiveValue->convertToLength<FixedConversion | PercentConversion>(state.cssToLengthConversionData());
-        state.style()->setMarqueeIncrement(marqueeLength);
-    }
-}
-
-void StyleBuilderFunctions::applyValueCSSPropertyInternalMarqueeSpeed(StyleResolverState& state, CSSValue* value)
-{
-    if (!value->isPrimitiveValue())
-        return;
-
-    CSSPrimitiveValue* primitiveValue = toCSSPrimitiveValue(value);
-    if (CSSValueID valueID = primitiveValue->getValueID()) {
-        switch (valueID) {
-        case CSSValueSlow:
-            state.style()->setMarqueeSpeed(500); // 500 msec.
-            break;
-        case CSSValueNormal:
-            state.style()->setMarqueeSpeed(85); // 85msec. The WinIE default.
-            break;
-        case CSSValueFast:
-            state.style()->setMarqueeSpeed(10); // 10msec. Super fast.
-            break;
-        default:
-            break;
-        }
-    } else if (primitiveValue->isTime()) {
-        state.style()->setMarqueeSpeed(static_cast<int>(primitiveValue->computeSeconds()) * 1000);
-    } else if (primitiveValue->isNumber()) { // For scrollamount support.
-        state.style()->setMarqueeSpeed(primitiveValue->getIntValue());
-    }
-}
-
 // FIXME: We should use the same system for this as the rest of the pseudo-shorthands (e.g. background-position)
 void StyleBuilderFunctions::applyInitialCSSPropertyWebkitPerspectiveOrigin(StyleResolverState& state)
 {
@@ -1289,26 +1206,6 @@ void StyleBuilderFunctions::applyValueCSSPropertyWebkitTextOrientation(StyleReso
 {
     if (value->isPrimitiveValue())
         state.setTextOrientation(*toCSSPrimitiveValue(value));
-}
-
-// FIXME: We should handle initial and inherit for font-feature-settings
-void StyleBuilderFunctions::applyInitialCSSPropertyWebkitFontFeatureSettings(StyleResolverState& state)
-{
-}
-
-void StyleBuilderFunctions::applyInheritCSSPropertyWebkitFontFeatureSettings(StyleResolverState& state)
-{
-}
-
-void StyleBuilderFunctions::applyValueCSSPropertyWebkitFontFeatureSettings(StyleResolverState& state, CSSValue* value)
-{
-    if (value->isPrimitiveValue() && toCSSPrimitiveValue(value)->getValueID() == CSSValueNormal) {
-        state.fontBuilder().setFeatureSettingsNormal();
-        return;
-    }
-
-    if (value->isValueList())
-        state.fontBuilder().setFeatureSettingsValue(value);
 }
 
 void StyleBuilderFunctions::applyInheritCSSPropertyBaselineShift(StyleResolverState& state)

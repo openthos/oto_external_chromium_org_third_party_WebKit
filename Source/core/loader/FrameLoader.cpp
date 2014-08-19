@@ -57,6 +57,7 @@
 #include "core/html/HTMLFormElement.h"
 #include "core/html/HTMLFrameOwnerElement.h"
 #include "core/html/parser/HTMLParserIdioms.h"
+#include "core/inspector/ConsoleMessage.h"
 #include "core/inspector/InspectorController.h"
 #include "core/inspector/InspectorInstrumentation.h"
 #include "core/loader/DocumentLoadTiming.h"
@@ -120,7 +121,6 @@ FrameLoader::FrameLoader(LocalFrame* frame)
     , m_inStopAllLoaders(false)
     , m_isComplete(false)
     , m_checkTimer(this, &FrameLoader::checkTimerFired)
-    , m_shouldCallCheckCompleted(false)
     , m_didAccessInitialDocument(false)
     , m_didAccessInitialDocumentTimer(this, &FrameLoader::didAccessInitialDocumentTimerFired)
     , m_forcedSandboxFlags(SandboxNone)
@@ -163,7 +163,7 @@ void FrameLoader::setDefersLoading(bool defers)
             m_deferredHistoryLoad = DeferredHistoryLoad();
         }
         m_frame->navigationScheduler().startTimer();
-        startCheckCompleteTimer();
+        scheduleCheckCompleted();
     }
 }
 
@@ -266,7 +266,6 @@ void FrameLoader::clear()
     m_frame->navigationScheduler().cancel();
 
     m_checkTimer.stop();
-    m_shouldCallCheckCompleted = false;
 
     if (m_stateMachine.isDisplayingInitialEmptyDocument())
         m_stateMachine.advanceTo(FrameLoaderStateMachine::CommittedFirstRealLoad);
@@ -440,7 +439,6 @@ bool FrameLoader::allAncestorsAreComplete() const
 void FrameLoader::checkCompleted()
 {
     RefPtr<LocalFrame> protect(m_frame);
-    m_shouldCallCheckCompleted = false;
 
     if (m_frame->view())
         m_frame->view()->handleLoadCompleted();
@@ -487,29 +485,17 @@ void FrameLoader::checkCompleted()
 
 void FrameLoader::checkTimerFired(Timer<FrameLoader>*)
 {
-    RefPtr<LocalFrame> protect(m_frame);
-
     if (Page* page = m_frame->page()) {
         if (page->defersLoading())
             return;
     }
-    if (m_shouldCallCheckCompleted)
-        checkCompleted();
-}
-
-void FrameLoader::startCheckCompleteTimer()
-{
-    if (!m_shouldCallCheckCompleted)
-        return;
-    if (m_checkTimer.isActive())
-        return;
-    m_checkTimer.startOneShot(0, FROM_HERE);
+    checkCompleted();
 }
 
 void FrameLoader::scheduleCheckCompleted()
 {
-    m_shouldCallCheckCompleted = true;
-    startCheckCompleteTimer();
+    if (!m_checkTimer.isActive())
+        m_checkTimer.startOneShot(0, FROM_HERE);
 }
 
 LocalFrame* FrameLoader::opener()
@@ -798,7 +784,7 @@ void FrameLoader::reportLocalLoadFailed(LocalFrame* frame, const String& url)
     if (!frame)
         return;
 
-    frame->document()->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, "Not allowed to load local resource: " + url);
+    frame->document()->addConsoleMessage(ConsoleMessage::create(SecurityMessageSource, ErrorMessageLevel, "Not allowed to load local resource: " + url));
 }
 
 // static
@@ -1165,7 +1151,7 @@ void FrameLoader::detachClient()
     m_progressTracker.clear();
     setOpener(0);
     // Notify ScriptController that the frame is closing, since its cleanup ends up calling
-    // back to FrameLoaderClient via V8WindowShell.
+    // back to FrameLoaderClient via WindowProxy.
     m_frame->script().clearForClose();
 
     // client() should never be null because that means we somehow re-entered
@@ -1272,7 +1258,7 @@ bool FrameLoader::shouldClose()
 bool FrameLoader::validateTransitionNavigationMode()
 {
     if (frame()->document()->inQuirksMode()) {
-        frame()->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Ignoring transition elements due to quirks mode.");
+        frame()->document()->addConsoleMessage(ConsoleMessage::create(JSMessageSource, ErrorMessageLevel, "Ignoring transition elements due to quirks mode."));
         return false;
     }
 
@@ -1405,12 +1391,18 @@ bool FrameLoader::shouldInterruptLoadForXFrameOptions(const String& content, con
         return true;
     case XFrameOptionsAllowAll:
         return false;
-    case XFrameOptionsConflict:
-        m_frame->document()->addConsoleMessageWithRequestIdentifier(JSMessageSource, ErrorMessageLevel, "Multiple 'X-Frame-Options' headers with conflicting values ('" + content + "') encountered when loading '" + url.elidedString() + "'. Falling back to 'DENY'.", requestIdentifier);
+    case XFrameOptionsConflict: {
+        RefPtrWillBeRawPtr<ConsoleMessage> consoleMessage = ConsoleMessage::create(JSMessageSource, ErrorMessageLevel, "Multiple 'X-Frame-Options' headers with conflicting values ('" + content + "') encountered when loading '" + url.elidedString() + "'. Falling back to 'DENY'.");
+        consoleMessage->setRequestIdentifier(requestIdentifier);
+        m_frame->document()->addMessage(consoleMessage.release());
         return true;
-    case XFrameOptionsInvalid:
-        m_frame->document()->addConsoleMessageWithRequestIdentifier(JSMessageSource, ErrorMessageLevel, "Invalid 'X-Frame-Options' header encountered when loading '" + url.elidedString() + "': '" + content + "' is not a recognized directive. The header will be ignored.", requestIdentifier);
+    }
+    case XFrameOptionsInvalid: {
+        RefPtrWillBeRawPtr<ConsoleMessage> consoleMessage = ConsoleMessage::create(JSMessageSource, ErrorMessageLevel, "Invalid 'X-Frame-Options' header encountered when loading '" + url.elidedString() + "': '" + content + "' is not a recognized directive. The header will be ignored.");
+        consoleMessage->setRequestIdentifier(requestIdentifier);
+        m_frame->document()->addMessage(consoleMessage.release());
         return false;
+    }
     default:
         ASSERT_NOT_REACHED();
         return false;

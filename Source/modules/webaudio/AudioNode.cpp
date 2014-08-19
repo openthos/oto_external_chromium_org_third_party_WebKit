@@ -43,6 +43,8 @@
 
 namespace blink {
 
+unsigned AudioNode::s_instanceCount = 0;
+
 AudioNode::AudioNode(AudioContext* context, float sampleRate)
     : m_isInitialized(false)
     , m_nodeType(NodeTypeUnknown)
@@ -54,8 +56,8 @@ AudioNode::AudioNode(AudioContext* context, float sampleRate)
     , m_normalRefCount(1) // start out with normal refCount == 1 (like WTF::RefCounted class)
 #endif
     , m_connectionRefCount(0)
-    , m_isMarkedForDeletion(false)
     , m_isDisabled(false)
+    , m_isDisposeCalled(false)
     , m_channelCount(2)
     , m_channelCountMode(Max)
     , m_channelInterpretation(AudioBus::Speakers)
@@ -70,10 +72,13 @@ AudioNode::AudioNode(AudioContext* context, float sampleRate)
         atexit(AudioNode::printNodeCounts);
     }
 #endif
+    ++s_instanceCount;
 }
 
 AudioNode::~AudioNode()
 {
+    ASSERT(m_isDisposeCalled);
+    --s_instanceCount;
 #if DEBUG_AUDIONODE_REFERENCES
     --s_nodeCount[nodeType()];
 #if ENABLE(OILPAN)
@@ -98,12 +103,17 @@ void AudioNode::dispose()
 {
     ASSERT(isMainThread());
     ASSERT(context()->isGraphOwner());
-#if ENABLE(OILPAN)
+
+    // This flag prevents:
+    //   - the following disconnectAll() from re-registering this AudioNode into
+    //     the m_outputs.
+    //   - this AudioNode from getting marked as dirty after calling
+    //     unmarkDirtyNode.
+    m_isDisposeCalled = true;
+
     context()->removeAutomaticPullNode(this);
     for (unsigned i = 0; i < m_outputs.size(); ++i)
         output(i)->disconnectAll();
-    m_isMarkedForDeletion = true;
-#endif
     context()->unmarkDirtyNode(*this);
 }
 
@@ -574,16 +584,12 @@ void AudioNode::breakConnection()
 
 void AudioNode::breakConnectionWithLock()
 {
-#if ENABLE(OILPAN)
     atomicDecrement(&m_connectionRefCount);
-    if (m_connectionRefCount == 0)
-        disableOutputsIfNecessary();
-#else
+#if !ENABLE(OILPAN)
     ASSERT(m_normalRefCount > 0);
-    atomicDecrement(&m_connectionRefCount);
-    if (m_connectionRefCount == 0 && m_normalRefCount > 1)
-        disableOutputsIfNecessary();
 #endif
+    if (!m_connectionRefCount)
+        disableOutputsIfNecessary();
 }
 
 #if !ENABLE(OILPAN)
@@ -598,15 +604,10 @@ void AudioNode::finishDeref()
     fprintf(stderr, "%p: %d: AudioNode::deref() %d %d\n", this, nodeType(), m_normalRefCount, m_connectionRefCount);
 #endif
 
-    if (!m_normalRefCount && !m_isMarkedForDeletion) {
-        // All references are gone - we need to go away.
-        for (unsigned i = 0; i < m_outputs.size(); ++i)
-            output(i)->disconnectAll(); // This will deref() nodes we're connected to.
-
+    if (!m_normalRefCount) {
         // Mark for deletion at end of each render quantum or when context shuts
         // down.
         context()->markForDeletion(this);
-        m_isMarkedForDeletion = true;
     }
 }
 #endif

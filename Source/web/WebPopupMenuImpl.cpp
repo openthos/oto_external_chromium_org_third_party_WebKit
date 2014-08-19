@@ -57,8 +57,6 @@
 #include "web/WebInputEventConversion.h"
 #include <skia/ext/platform_canvas.h>
 
-using namespace blink;
-
 namespace blink {
 
 // WebPopupMenu ---------------------------------------------------------------
@@ -121,7 +119,7 @@ void WebPopupMenuImpl::handleMouseMove(const WebMouseEvent& event)
 
         // We cannot call setToolTipText() in PopupContainer, because PopupContainer is in WebCore, and we cannot refer to WebKit from Webcore.
         PopupContainer* container = static_cast<PopupContainer*>(m_widget);
-        client()->setToolTipText(container->getSelectedItemToolTip(), container->menuStyle().textDirection() == blink::RTL ? WebTextDirectionRightToLeft : WebTextDirectionLeftToRight);
+        client()->setToolTipText(container->getSelectedItemToolTip(), toWebTextDirection(container->menuStyle().textDirection()));
     }
 }
 
@@ -367,7 +365,7 @@ void WebPopupMenuImpl::setTextDirection(WebTextDirection)
 
 
 //-----------------------------------------------------------------------------
-// blink::HostWindow
+// HostWindow
 
 void WebPopupMenuImpl::invalidateContentsAndRootView(const IntRect& paintRect)
 {
@@ -388,10 +386,10 @@ void WebPopupMenuImpl::scheduleAnimation()
 {
 }
 
-void WebPopupMenuImpl::scroll(const IntRect& clipRect)
+void WebPopupMenuImpl::scroll()
 {
     if (m_rootLayer)
-        m_rootLayer->layer()->invalidateRect(FloatRect(clipRect));
+        m_rootLayer->layer()->invalidate();
 }
 
 IntRect WebPopupMenuImpl::rootViewToScreen(const IntRect& rect) const
@@ -406,7 +404,7 @@ WebScreenInfo WebPopupMenuImpl::screenInfo() const
 }
 
 //-----------------------------------------------------------------------------
-// blink::FramelessScrollViewClient
+// FramelessScrollViewClient
 
 void WebPopupMenuImpl::popupClosed(FramelessScrollView* widget)
 {

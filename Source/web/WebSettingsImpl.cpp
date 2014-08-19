@@ -38,8 +38,6 @@
 #include "public/platform/WebString.h"
 #include "public/platform/WebURL.h"
 
-using namespace blink;
-
 namespace blink {
 
 WebSettingsImpl::WebSettingsImpl(Settings* settings, InspectorController* inspectorController)
@@ -72,6 +70,11 @@ void WebSettingsImpl::setFixedFontFamily(const WebString& font, UScriptCode scri
 {
     if (m_settings->genericFontFamilySettings().updateFixed(font, script))
         m_settings->notifyGenericFontFamilyChange();
+}
+
+void WebSettingsImpl::setForceZeroLayoutHeight(bool enabled)
+{
+    m_settings->setForceZeroLayoutHeight(enabled);
 }
 
 void WebSettingsImpl::setFullscreenSupported(bool enabled)
@@ -254,11 +257,6 @@ void WebSettingsImpl::setDOMPasteAllowed(bool enabled)
     m_settings->setDOMPasteAllowed(enabled);
 }
 
-void WebSettingsImpl::setNeedsSiteSpecificQuirks(bool enabled)
-{
-    m_settings->setNeedsSiteSpecificQuirks(enabled);
-}
-
 void WebSettingsImpl::setShrinksStandaloneImagesToFit(bool shrinkImages)
 {
     m_settings->setShrinksStandaloneImagesToFit(shrinkImages);
@@ -426,7 +424,7 @@ void WebSettingsImpl::setShowPaintRects(bool show)
 
 void WebSettingsImpl::setEditingBehavior(EditingBehavior behavior)
 {
-    m_settings->setEditingBehaviorType(static_cast<blink::EditingBehaviorType>(behavior));
+    m_settings->setEditingBehaviorType(static_cast<EditingBehaviorType>(behavior));
 }
 
 void WebSettingsImpl::setAcceleratedCompositingEnabled(bool enabled)
@@ -457,11 +455,6 @@ void WebSettingsImpl::setCompositorDrivenAcceleratedScrollingEnabled(bool enable
 void WebSettingsImpl::setAcceleratedCompositingForFixedRootBackgroundEnabled(bool enabled)
 {
     m_settings->setAcceleratedCompositingForFixedRootBackgroundEnabled(enabled);
-}
-
-void WebSettingsImpl::setAcceleratedCompositingForCanvasEnabled(bool enabled)
-{
-    m_settings->setAcceleratedCompositingForCanvasEnabled(enabled);
 }
 
 void WebSettingsImpl::setAccelerated2dCanvasEnabled(bool enabled)

@@ -459,9 +459,11 @@ HTMLMediaElement::~HTMLMediaElement()
     m_isFinalizing = true;
 #endif
 
-    // The m_audioSourceNode is either dead already or it is dying together with
-    // this HTMLMediaElement which it strongly keeps alive.
-#if ENABLE(WEB_AUDIO) && !ENABLE(OILPAN)
+    // m_audioSourceNode is explicitly cleared by AudioNode::dispose().
+    // Since AudioNode::dispose() is guaranteed to be always called before
+    // the AudioNode is destructed, m_audioSourceNode is explicitly cleared
+    // even if the AudioNode and the HTMLMediaElement die together.
+#if ENABLE(WEB_AUDIO)
     ASSERT(!m_audioSourceNode);
 #endif
     clearMediaPlayerAndAudioSourceProviderClientWithoutLocking();
@@ -2354,6 +2356,31 @@ void HTMLMediaElement::setMuted(bool muted)
     scheduleEvent(EventTypeNames::volumechange);
 }
 
+void HTMLMediaElement::updateVolume()
+{
+    if (webMediaPlayer())
+        webMediaPlayer()->setVolume(effectiveMediaVolume());
+
+    if (hasMediaControls())
+        mediaControls()->updateVolume();
+}
+
+double HTMLMediaElement::effectiveMediaVolume() const
+{
+    if (m_muted)
+        return 0;
+
+    if (m_mediaController && m_mediaController->muted())
+        return 0;
+
+    double volume = m_volume;
+
+    if (m_mediaController)
+        volume *= m_mediaController->volume();
+
+    return volume;
+}
+
 // The spec says to fire periodic timeupdate events (those sent while playing) every
 // "15 to 250ms", we choose the slowest frequency
 static const double maxTimeupdateEventFrequency = 0.25;
@@ -3276,28 +3303,6 @@ bool HTMLMediaElement::stoppedDueToErrors() const
     return false;
 }
 
-void HTMLMediaElement::updateVolume()
-{
-    if (webMediaPlayer())
-        webMediaPlayer()->setVolume(playerVolume());
-
-    if (hasMediaControls())
-        mediaControls()->updateVolume();
-}
-
-double HTMLMediaElement::playerVolume() const
-{
-    double volumeMultiplier = 1;
-    bool shouldMute = m_muted;
-
-    if (m_mediaController) {
-        volumeMultiplier *= m_mediaController->volume();
-        shouldMute = m_mediaController->muted();
-    }
-
-    return shouldMute ? 0 : m_volume * volumeMultiplier;
-}
-
 void HTMLMediaElement::updatePlayState()
 {
     if (!m_player)
@@ -3492,7 +3497,7 @@ void HTMLMediaElement::enterFullscreen()
 {
     WTF_LOG(Media, "HTMLMediaElement::enterFullscreen");
 
-    FullscreenElementStack::from(document()).requestFullScreenForElement(*this, FullscreenElementStack::PrefixedVideoRequest);
+    FullscreenElementStack::from(document()).requestFullscreen(*this, FullscreenElementStack::PrefixedVideoRequest);
 }
 
 void HTMLMediaElement::exitFullscreen()

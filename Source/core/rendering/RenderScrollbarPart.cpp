@@ -149,7 +149,7 @@ void RenderScrollbarPart::styleDidChange(StyleDifference diff, const RenderStyle
     clearPositionedState();
     setFloating(false);
     setHasOverflowClip(false);
-    if (oldStyle && m_scrollbar && m_part != NoPart && (diff.needsRepaint() || diff.needsLayout()))
+    if (oldStyle && m_scrollbar && m_part != NoPart && (diff.needsPaintInvalidation() || diff.needsLayout()))
         m_scrollbar->theme()->invalidatePart(m_scrollbar, m_part);
 }
 
@@ -175,9 +175,6 @@ void RenderScrollbarPart::paintIntoRect(GraphicsContext* graphicsContext, const 
     setLocation(rect.location() - toSize(paintOffset));
     setWidth(rect.width());
     setHeight(rect.height());
-
-    if (graphicsContext->paintingDisabled())
-        return;
 
     // Now do the paint.
     PaintInfo paintInfo(graphicsContext, pixelSnappedIntRect(rect), PaintPhaseBlockBackground, PaintBehaviorNormal);

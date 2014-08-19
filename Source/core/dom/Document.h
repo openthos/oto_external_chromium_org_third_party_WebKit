@@ -70,6 +70,7 @@ class CSSStyleSheet;
 class CanvasRenderingContext2D;
 class Chrome;
 class Comment;
+class ConsoleMessage;
 class ContentSecurityPolicyResponseHeaders;
 class ContextFeatures;
 class CustomElementMicrotaskRunQueue;
@@ -175,8 +176,6 @@ enum NodeListInvalidationType {
 };
 const int numNodeListInvalidationTypes = InvalidateOnAnyAttrChange + 1;
 
-typedef HashCountedSet<Node*> TouchEventTargetSet;
-
 enum DocumentClass {
     DefaultDocumentClass = 0,
     HTMLDocumentClass = 1,
@@ -205,7 +204,7 @@ public:
     void setObservedDocument(Document&);
 
 protected:
-    void trace(Visitor*);
+    virtual void trace(Visitor*);
 
 private:
     void registerObserver(Document&);
@@ -264,8 +263,6 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(touchend);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(touchmove);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(touchstart);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitfullscreenchange);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitfullscreenerror);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(wheel);
 
     bool shouldMergeWithLegacyDescription(ViewportDescription::Type);
@@ -839,7 +836,7 @@ public:
     void cancelFocusAppearanceUpdate();
 
     // Extension for manipulating canvas drawing contexts for use in CSS
-    void getCSSCanvasContext(const String& type, const String& name, int width, int height, bool&, RefPtrWillBeRawPtr<CanvasRenderingContext2D>&, bool&, RefPtrWillBeRawPtr<WebGLRenderingContext>&);
+    void getCSSCanvasContext(const String& type, const String& name, int width, int height, RefPtrWillBeRawPtr<CanvasRenderingContext2D>&, RefPtrWillBeRawPtr<WebGLRenderingContext>&);
     HTMLCanvasElement& getCSSCanvasElement(const String& name);
 
     bool isDNSPrefetchEnabled() const { return m_isDNSPrefetchEnabled; }
@@ -941,21 +938,6 @@ public:
 
     void initDNSPrefetch();
 
-    bool hasTouchEventHandlers() const { return (m_touchEventTargets.get()) ? m_touchEventTargets->size() : false; }
-
-    // Called when a single touch event handler has been added or removed for a node.
-    // The Node should always be in this Document, except for child Documents which report
-    // themselves to their parent exactly once if they have any touch handlers.
-    // Handlers added/removed from the LocalDOMWindow are reported as the Document.
-    void didAddTouchEventHandler(Node*);
-    void didRemoveTouchEventHandler(Node* handler) { didRemoveTouchEventHandler(handler, false); }
-
-    // Called whenever all touch event handlers have been removed for a node (such as when the
-    // node itself is being removed from the document).
-    void didClearTouchEventHandlers(Node* handler) { didRemoveTouchEventHandler(handler, true); }
-
-    const TouchEventTargetSet* touchEventTargets() const { return m_touchEventTargets.get(); }
-
     bool isInDocumentWrite() { return m_writeRecursionDepth > 0; }
 
     IntSize initialViewportSize() const;
@@ -964,8 +946,8 @@ public:
 
     PassRefPtrWillBeRawPtr<Element> createElement(const AtomicString& localName, const AtomicString& typeExtension, ExceptionState&);
     PassRefPtrWillBeRawPtr<Element> createElementNS(const AtomicString& namespaceURI, const AtomicString& qualifiedName, const AtomicString& typeExtension, ExceptionState&);
-    ScriptValue registerElement(blink::ScriptState*, const AtomicString& name, ExceptionState&);
-    ScriptValue registerElement(blink::ScriptState*, const AtomicString& name, const Dictionary& options, ExceptionState&, CustomElement::NameSet validNames = CustomElement::StandardNames);
+    ScriptValue registerElement(ScriptState*, const AtomicString& name, ExceptionState&);
+    ScriptValue registerElement(ScriptState*, const AtomicString& name, const Dictionary& options, ExceptionState&, CustomElement::NameSet validNames = CustomElement::StandardNames);
     CustomElementRegistrationContext* registrationContext() { return m_registrationContext.get(); }
     CustomElementMicrotaskRunQueue* customElementMicrotaskRunQueue();
 
@@ -1014,7 +996,7 @@ public:
 
     void didAssociateFormControl(Element*);
 
-    void addConsoleMessageWithRequestIdentifier(MessageSource, MessageLevel, const String& message, unsigned long requestIdentifier);
+    virtual void addMessage(PassRefPtrWillBeRawPtr<ConsoleMessage>) OVERRIDE FINAL;
 
     virtual LocalDOMWindow* executingWindow() OVERRIDE FINAL;
     LocalFrame* executingFrame();
@@ -1047,6 +1029,8 @@ public:
 
     bool hasSVGFilterElementsRequiringLayerUpdate() const { return m_layerUpdateSVGFilterElements.size(); }
     void didRecalculateStyleForElement() { ++m_styleRecalcElementCounter; }
+
+    AtomicString convertLocalName(const AtomicString&);
 
 protected:
     Document(const DocumentInit&, DocumentClassFlags = DefaultDocumentClass);
@@ -1117,8 +1101,6 @@ private:
     virtual KURL virtualCompleteURL(const String&) const OVERRIDE FINAL; // Same as completeURL() for the same reason as above.
 
     virtual void reportBlockedScriptExecutionToInspector(const String& directiveText) OVERRIDE FINAL;
-    virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, ScriptState*) OVERRIDE FINAL;
-    void internalAddMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, PassRefPtrWillBeRawPtr<ScriptCallStack>, ScriptState*);
 
     virtual double timerAlignmentInterval() const OVERRIDE FINAL;
 
@@ -1151,8 +1133,6 @@ private:
     void processHttpEquivSetCookie(const AtomicString& content);
     void processHttpEquivXFrameOptions(const AtomicString& content);
     void processHttpEquivContentSecurityPolicy(const AtomicString& equiv, const AtomicString& content);
-
-    void didRemoveTouchEventHandler(Node*, bool clearAll);
 
     bool haveStylesheetsLoaded() const;
 
@@ -1345,8 +1325,6 @@ private:
     RefPtrWillBeMember<MediaQueryMatcher> m_mediaQueryMatcher;
     bool m_writeRecursionIsTooDeep;
     unsigned m_writeRecursionDepth;
-
-    OwnPtr<TouchEventTargetSet> m_touchEventTargets;
 
     RefPtrWillBeMember<ScriptedAnimationController> m_scriptedAnimationController;
     OwnPtr<MainThreadTaskRunner> m_taskRunner;

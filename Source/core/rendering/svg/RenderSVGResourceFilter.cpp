@@ -46,7 +46,12 @@ RenderSVGResourceFilter::RenderSVGResourceFilter(SVGFilterElement* node)
 
 RenderSVGResourceFilter::~RenderSVGResourceFilter()
 {
+}
+
+void RenderSVGResourceFilter::destroy()
+{
     m_filter.clear();
+    RenderSVGResourceContainer::destroy();
 }
 
 bool RenderSVGResourceFilter::isChildAllowed(RenderObject* child, RenderStyle*) const
@@ -433,8 +438,8 @@ void RenderSVGResourceFilter::primitiveAttributeChanged(RenderObject* object, co
             return;
         builder->clearResultsRecursive(effect);
 
-        // Repaint the image on the screen.
-        markClientForInvalidation(it->key, RepaintInvalidation);
+        // Issue paint invalidations for the image on the screen.
+        markClientForInvalidation(it->key, PaintInvalidation);
     }
     markAllClientLayersForInvalidation();
 }

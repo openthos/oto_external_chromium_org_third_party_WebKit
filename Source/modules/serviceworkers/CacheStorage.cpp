@@ -7,6 +7,7 @@
 
 #include "bindings/core/v8/ScriptPromiseResolver.h"
 #include "bindings/core/v8/ScriptState.h"
+#include "modules/serviceworkers/Cache.h"
 #include "public/platform/WebServiceWorkerCacheError.h"
 #include "public/platform/WebServiceWorkerCacheStorage.h"
 
@@ -58,9 +59,7 @@ public:
 
     virtual void onSuccess(WebServiceWorkerCache* cache) OVERRIDE
     {
-        // FIXME: There should be a blink side of the Cache object implementation here, rather than
-        // this nonsensical return.
-        m_resolver->resolve("succesfully returned a cache");
+        m_resolver->resolve(Cache::fromWebServiceWorkerCache(cache));
     }
 
     virtual void onError(WebServiceWorkerCacheError* reason) OVERRIDE
@@ -78,7 +77,7 @@ public:
     explicit CacheStorageKeysCallbacks(PassRefPtr<ScriptPromiseResolver> resolver) : m_resolver(resolver) { }
     virtual ~CacheStorageKeysCallbacks() { }
 
-    virtual void onSuccess(blink::WebVector<blink::WebString>* keys) OVERRIDE
+    virtual void onSuccess(WebVector<WebString>* keys) OVERRIDE
     {
         Vector<String> wtfKeys;
         for (size_t i = 0; i < keys->size(); ++i)

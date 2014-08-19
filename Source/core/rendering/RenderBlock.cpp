@@ -160,6 +160,12 @@ RenderBlock::RenderBlock(ContainerNode* node)
     // By default, subclasses do not have inline children.
 }
 
+void RenderBlock::trace(Visitor* visitor)
+{
+    visitor->trace(m_children);
+    RenderBox::trace(visitor);
+}
+
 static void removeBlockFromDescendantAndContainerMaps(RenderBlock* block, TrackedDescendantsMap*& descendantMap, TrackedContainerMap*& containerMap)
 {
     if (OwnPtr<TrackedRendererListHashSet> descendantSet = descendantMap->take(block)) {
@@ -210,7 +216,7 @@ static void appendImagesFromStyle(Vector<ImageResource*>& images, RenderStyle& b
         appendImageIfNotNull(images, blockStyle.shapeOutside()->image());
 }
 
-RenderBlock::~RenderBlock()
+void RenderBlock::removeFromGlobalMaps()
 {
     if (hasColumns())
         gColumnInfoMap->take(this);
@@ -218,6 +224,22 @@ RenderBlock::~RenderBlock()
         removeBlockFromDescendantAndContainerMaps(this, gPercentHeightDescendantsMap, gPercentHeightContainerMap);
     if (gPositionedDescendantsMap)
         removeBlockFromDescendantAndContainerMaps(this, gPositionedDescendantsMap, gPositionedContainerMap);
+}
+
+RenderBlock::~RenderBlock()
+{
+#if !ENABLE(OILPAN)
+    removeFromGlobalMaps();
+#endif
+}
+
+void RenderBlock::destroy()
+{
+    RenderBox::destroy();
+#if ENABLE(OILPAN)
+    // RenderObject::removeChild called in destory() depends on gColumnInfoMap.
+    removeFromGlobalMaps();
+#endif
 }
 
 void RenderBlock::willBeDestroyed()
@@ -1049,7 +1071,7 @@ void RenderBlock::removeLeftoverAnonymousBlock(RenderBlock* child)
     }
 
     child->children()->setFirstChild(0);
-    child->m_next = 0;
+    child->m_next = nullptr;
 
     // Remove all the information in the flow thread associated with the leftover anonymous block.
     child->removeFromRenderFlowThread();
@@ -1796,9 +1818,6 @@ void RenderBlock::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 
 void RenderBlock::paintColumnRules(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
-    if (paintInfo.context->paintingDisabled())
-        return;
-
     const Color& ruleColor = resolveColor(CSSPropertyWebkitColumnRuleColor);
     bool ruleTransparent = style()->columnRuleIsTransparent();
     EBorderStyle ruleStyle = style()->columnRuleStyle();
@@ -3926,6 +3945,17 @@ int RenderBlock::lastLineBoxBaseline(LineDirectionMode lineDirection) const
     return -1;
 }
 
+static inline bool isRenderBlockFlowOrRenderButton(RenderObject* renderObject)
+{
+    // We include isRenderButton in this check because buttons are implemented
+    // using flex box but should still support first-line|first-letter.
+    // The flex box and grid specs require that flex box and grid do not
+    // support first-line|first-letter, though.
+    // FIXME: Remove when buttons are implemented with align-items instead
+    // of flex box.
+    return renderObject->isRenderBlockFlow() || renderObject->isRenderButton();
+}
+
 RenderBlock* RenderBlock::firstLineBlock() const
 {
     RenderBlock* firstLineBlock = const_cast<RenderBlock*>(this);
@@ -3935,15 +3965,9 @@ RenderBlock* RenderBlock::firstLineBlock() const
         if (hasPseudo)
             break;
         RenderObject* parentBlock = firstLineBlock->parent();
-        // We include isRenderButton in this check because buttons are
-        // implemented using flex box but should still support first-line. The
-        // flex box spec requires that flex box does not support first-line,
-        // though.
-        // FIXME: Remove when buttons are implemented with align-items instead
-        // of flexbox.
         if (firstLineBlock->isReplaced() || firstLineBlock->isFloating()
             || !parentBlock
-            || (!parentBlock->isRenderBlockFlow() && !parentBlock->isRenderButton()))
+            || !isRenderBlockFlowOrRenderButton(parentBlock))
             break;
         ASSERT_WITH_SECURITY_IMPLICATION(parentBlock->isRenderBlock());
         if (toRenderBlock(parentBlock)->firstChild() != firstLineBlock)
@@ -3989,21 +4013,15 @@ static inline RenderObject* findFirstLetterBlock(RenderBlock* start)
 {
     RenderObject* firstLetterBlock = start;
     while (true) {
-        // We include isRenderButton in these two checks because buttons are
-        // implemented using flex box but should still support first-letter.
-        // The flex box spec requires that flex box does not support
-        // first-letter, though.
-        // FIXME: Remove when buttons are implemented with align-items instead
-        // of flexbox.
         bool canHaveFirstLetterRenderer = firstLetterBlock->style()->hasPseudoStyle(FIRST_LETTER)
             && firstLetterBlock->canHaveGeneratedChildren()
-            && (!firstLetterBlock->isFlexibleBox() || firstLetterBlock->isRenderButton());
+            && isRenderBlockFlowOrRenderButton(firstLetterBlock);
         if (canHaveFirstLetterRenderer)
             return firstLetterBlock;
 
         RenderObject* parentBlock = firstLetterBlock->parent();
         if (firstLetterBlock->isReplaced() || !parentBlock
-            || (!parentBlock->isRenderBlockFlow() && !parentBlock->isRenderButton())) {
+            || !isRenderBlockFlowOrRenderButton(parentBlock)) {
             return 0;
         }
         ASSERT(parentBlock->isRenderBlock());
@@ -4186,7 +4204,7 @@ void RenderBlock::updateFirstLetter()
         }
     }
 
-    if (!currChild)
+    if (!currChild || !isRenderBlockFlowOrRenderButton(firstLetterBlock))
         return;
 
     // If the child already has style, then it has already been created, so we just want
@@ -4490,6 +4508,23 @@ LayoutUnit RenderBlock::nextPageLogicalTop(LayoutUnit logicalOffset, PageBoundar
     if (pageBoundaryRule == ExcludePageBoundary)
         return logicalOffset + (remainingLogicalHeight ? remainingLogicalHeight : pageLogicalHeight);
     return logicalOffset + remainingLogicalHeight;
+}
+
+LayoutUnit RenderBlock::pageLogicalTopForOffset(LayoutUnit offset) const
+{
+    RenderView* renderView = view();
+    LayoutUnit firstPageLogicalTop = isHorizontalWritingMode() ? renderView->layoutState()->pageOffset().height() : renderView->layoutState()->pageOffset().width();
+    LayoutUnit blockLogicalTop = isHorizontalWritingMode() ? renderView->layoutState()->layoutOffset().height() : renderView->layoutState()->layoutOffset().width();
+
+    LayoutUnit cumulativeOffset = offset + blockLogicalTop;
+    RenderFlowThread* flowThread = flowThreadContainingBlock();
+    if (!flowThread) {
+        LayoutUnit pageLogicalHeight = renderView->layoutState()->pageLogicalHeight();
+        if (!pageLogicalHeight)
+            return 0;
+        return cumulativeOffset - roundToInt(cumulativeOffset - firstPageLogicalTop) % roundToInt(pageLogicalHeight);
+    }
+    return flowThread->pageLogicalTopForOffset(cumulativeOffset);
 }
 
 LayoutUnit RenderBlock::pageLogicalHeightForOffset(LayoutUnit offset) const

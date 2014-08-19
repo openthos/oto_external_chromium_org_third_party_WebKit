@@ -65,12 +65,10 @@ class ConvertableToTraceFormat;
 const int kMaxRecursionDepth = 22;
 
 // Helpers for throwing JavaScript TypeErrors for arity mismatches.
-void throwArityTypeErrorForMethod(const char* method, const char* type, const char* valid, unsigned provided, v8::Isolate*);
-void throwArityTypeErrorForConstructor(const char* type, const char* valid, unsigned provided, v8::Isolate*);
-void throwArityTypeError(ExceptionState&, const char* valid, unsigned provided);
-void throwMinimumArityTypeErrorForMethod(const char* method, const char* type, unsigned expected, unsigned providedLeastNumMandatoryParams, v8::Isolate*);
-void throwMinimumArityTypeErrorForConstructor(const char* type, unsigned expected, unsigned providedLeastNumMandatoryParams, v8::Isolate*);
-void throwMinimumArityTypeError(ExceptionState&, unsigned expected, unsigned providedLeastNumMandatoryParams);
+void setArityTypeError(ExceptionState&, const char* valid, unsigned provided);
+v8::Local<v8::Value> createMinimumArityTypeErrorForMethod(const char* method, const char* type, unsigned expected, unsigned provided, v8::Isolate*);
+v8::Local<v8::Value> createMinimumArityTypeErrorForConstructor(const char* type, unsigned expected, unsigned provided, v8::Isolate*);
+void setMinimumArityTypeError(ExceptionState&, unsigned expected, unsigned provided);
 
 v8::ArrayBuffer::Allocator* v8ArrayBufferAllocator();
 
@@ -606,6 +604,14 @@ struct NativeValueTraits<v8::Handle<v8::Value> > {
     }
 };
 
+template<>
+struct NativeValueTraits<ScriptValue> {
+    static inline ScriptValue nativeValue(const v8::Handle<v8::Value>& value, v8::Isolate* isolate)
+    {
+        return ScriptValue(ScriptState::current(isolate), value);
+    }
+};
+
 v8::Handle<v8::Value> toV8Sequence(v8::Handle<v8::Value>, uint32_t& length, v8::Isolate*);
 
 // Converts a JavaScript value to an array as per the Web IDL specification:
@@ -948,18 +954,6 @@ public:
     {
         // ReThrow() is a no-op if no exception has been caught, so always call.
         m_block.ReThrow();
-    }
-
-private:
-    v8::TryCatch& m_block;
-};
-
-class V8ResetTryCatchScope FINAL {
-public:
-    explicit V8ResetTryCatchScope(v8::TryCatch& block) : m_block(block) { }
-    ~V8ResetTryCatchScope()
-    {
-        m_block.Reset();
     }
 
 private:

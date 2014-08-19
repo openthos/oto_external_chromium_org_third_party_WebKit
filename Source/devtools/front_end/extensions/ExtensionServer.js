@@ -28,11 +28,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-importScript("ExtensionAPI.js");
-importScript("ExtensionRegistryStub.js");
-importScript("ExtensionAuditCategory.js");
-
 /**
  * @constructor
  * @implements {WebInspector.ExtensionServerAPI}
@@ -697,31 +692,6 @@ WebInspector.ExtensionServer.prototype = {
             this._notifySourceFrameSelectionChanged);
         this._registerResourceContentCommittedHandler(this._notifyUISourceCodeContentCommitted);
 
-        /**
-         * @this {WebInspector.ExtensionServer}
-         */
-        function onTimelineSubscriptionStarted()
-        {
-            var mainTarget = WebInspector.targetManager.mainTarget();
-            mainTarget.timelineManager.addEventListener(WebInspector.TimelineManager.EventTypes.TimelineEventRecorded,
-                this._notifyTimelineEventRecorded, this);
-            mainTarget.timelineManager.start();
-        }
-
-        /**
-         * @this {WebInspector.ExtensionServer}
-         */
-        function onTimelineSubscriptionStopped()
-        {
-            var mainTarget = WebInspector.targetManager.mainTarget();
-            mainTarget.timelineManager.stop(function() {});
-            mainTarget.timelineManager.removeEventListener(WebInspector.TimelineManager.EventTypes.TimelineEventRecorded,
-                this._notifyTimelineEventRecorded, this);
-        }
-
-        this._registerSubscriptionHandler(WebInspector.extensionAPI.Events.TimelineEventRecorded,
-            onTimelineSubscriptionStarted.bind(this), onTimelineSubscriptionStopped.bind(this));
-
         WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.InspectedURLChanged,
             this._inspectedURLChanged, this);
 
@@ -779,11 +749,6 @@ WebInspector.ExtensionServer.prototype = {
     _notifyElementsSelectionChanged: function()
     {
         this._postNotification(WebInspector.extensionAPI.Events.PanelObjectSelected + "elements");
-    },
-
-    _notifyTimelineEventRecorded: function(event)
-    {
-        this._postNotification(WebInspector.extensionAPI.Events.TimelineEventRecorded, event.data);
     },
 
     /**
@@ -1100,6 +1065,3 @@ WebInspector.ExtensionStatus.Record;
 
 WebInspector.extensionAPI = {};
 defineCommonExtensionSymbols(WebInspector.extensionAPI);
-
-importScript("ExtensionPanel.js");
-importScript("ExtensionView.js");

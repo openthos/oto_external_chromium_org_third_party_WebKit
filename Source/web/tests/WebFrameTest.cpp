@@ -82,6 +82,7 @@
 #include "public/web/WebFormElement.h"
 #include "public/web/WebFrameClient.h"
 #include "public/web/WebHistoryItem.h"
+#include "public/web/WebPrintParams.h"
 #include "public/web/WebRange.h"
 #include "public/web/WebRemoteFrame.h"
 #include "public/web/WebScriptSource.h"
@@ -1375,6 +1376,86 @@ TEST_F(WebFrameTest, WideViewportInitialScaleDoesNotExpandFixedLayoutWidth)
     webViewHelper.webView()->layout();
     EXPECT_EQ(2000, webViewHelper.webViewImpl()->mainFrameImpl()->frameView()->layoutSize().width());
     EXPECT_EQ(0.5f, webViewHelper.webView()->pageScaleFactor());
+}
+
+TEST_F(WebFrameTest, SetForceZeroLayoutHeight)
+{
+    UseMockScrollbarSettings mockScrollbarSettings;
+    registerMockedHttpURLLoad("200-by-300.html");
+
+    FixedLayoutTestWebViewClient client;
+    client.m_screenInfo.deviceScaleFactor = 1;
+    int viewportWidth = 640;
+    int viewportHeight = 480;
+
+    FrameTestHelpers::WebViewHelper webViewHelper;
+
+    webViewHelper.initializeAndLoad(m_baseURL + "200-by-300.html", true, 0, &client, enableViewportSettings);
+    webViewHelper.webView()->resize(WebSize(viewportWidth, viewportHeight));
+    webViewHelper.webView()->layout();
+
+    EXPECT_LE(viewportHeight, webViewHelper.webViewImpl()->mainFrameImpl()->frameView()->layoutSize().height());
+    webViewHelper.webView()->settings()->setForceZeroLayoutHeight(true);
+    EXPECT_TRUE(webViewHelper.webViewImpl()->mainFrameImpl()->frameView()->needsLayout());
+
+    EXPECT_EQ(0, webViewHelper.webViewImpl()->mainFrameImpl()->frameView()->layoutSize().height());
+
+    webViewHelper.webView()->resize(WebSize(viewportWidth, viewportHeight * 2));
+    EXPECT_FALSE(webViewHelper.webViewImpl()->mainFrameImpl()->frameView()->needsLayout());
+    EXPECT_EQ(0, webViewHelper.webViewImpl()->mainFrameImpl()->frameView()->layoutSize().height());
+
+    webViewHelper.webView()->resize(WebSize(viewportWidth * 2, viewportHeight));
+    webViewHelper.webView()->layout();
+    EXPECT_EQ(0, webViewHelper.webViewImpl()->mainFrameImpl()->frameView()->layoutSize().height());
+
+    webViewHelper.webView()->settings()->setForceZeroLayoutHeight(false);
+    EXPECT_LE(viewportHeight, webViewHelper.webViewImpl()->mainFrameImpl()->frameView()->layoutSize().height());
+}
+
+TEST_F(WebFrameTest, SetForceZeroLayoutHeightWorksAcrossNavigations)
+{
+    UseMockScrollbarSettings mockScrollbarSettings;
+    registerMockedHttpURLLoad("200-by-300.html");
+    registerMockedHttpURLLoad("large-div.html");
+
+    FixedLayoutTestWebViewClient client;
+    client.m_screenInfo.deviceScaleFactor = 1;
+    int viewportWidth = 640;
+    int viewportHeight = 480;
+
+    FrameTestHelpers::WebViewHelper webViewHelper;
+
+    webViewHelper.initializeAndLoad(m_baseURL + "200-by-300.html", true, 0, &client, enableViewportSettings);
+    webViewHelper.webView()->settings()->setForceZeroLayoutHeight(true);
+    webViewHelper.webView()->resize(WebSize(viewportWidth, viewportHeight));
+    webViewHelper.webView()->layout();
+
+    FrameTestHelpers::loadFrame(webViewHelper.webView()->mainFrame(), m_baseURL + "large-div.html");
+    webViewHelper.webView()->layout();
+
+    EXPECT_EQ(0, webViewHelper.webViewImpl()->mainFrameImpl()->frameView()->layoutSize().height());
+}
+
+TEST_F(WebFrameTest, SetForceZeroLayoutHeightWithWideViewportQuirk)
+{
+    UseMockScrollbarSettings mockScrollbarSettings;
+    registerMockedHttpURLLoad("200-by-300.html");
+
+    FixedLayoutTestWebViewClient client;
+    client.m_screenInfo.deviceScaleFactor = 1;
+    int viewportWidth = 640;
+    int viewportHeight = 480;
+
+    FrameTestHelpers::WebViewHelper webViewHelper;
+
+    webViewHelper.initializeAndLoad(m_baseURL + "200-by-300.html", true, 0, &client, enableViewportSettings);
+    webViewHelper.webView()->settings()->setWideViewportQuirkEnabled(true);
+    webViewHelper.webView()->settings()->setUseWideViewport(true);
+    webViewHelper.webView()->settings()->setForceZeroLayoutHeight(true);
+    webViewHelper.webView()->resize(WebSize(viewportWidth, viewportHeight));
+    webViewHelper.webView()->layout();
+
+    EXPECT_EQ(0, webViewHelper.webViewImpl()->mainFrameImpl()->frameView()->layoutSize().height());
 }
 
 TEST_F(WebFrameTest, WideViewportAndWideContentWithInitialScale)
@@ -5541,7 +5622,7 @@ TEST_F(WebFrameTest, FullscreenLayerNonScrollable)
     Document* document = toWebLocalFrameImpl(webViewImpl->mainFrame())->frame()->document();
     blink::UserGestureIndicator gesture(blink::DefinitelyProcessingUserGesture);
     Element* divFullscreen = document->getElementById("div1");
-    divFullscreen->webkitRequestFullscreen();
+    FullscreenElementStack::from(*document).requestFullscreen(*divFullscreen, FullscreenElementStack::PrefixedRequest);
     webViewImpl->willEnterFullScreen();
     webViewImpl->didEnterFullScreen();
     webViewImpl->layout();
@@ -5573,7 +5654,7 @@ TEST_F(WebFrameTest, FullscreenMainFrameScrollable)
 
     Document* document = toWebLocalFrameImpl(webViewImpl->mainFrame())->frame()->document();
     blink::UserGestureIndicator gesture(blink::DefinitelyProcessingUserGesture);
-    document->documentElement()->webkitRequestFullscreen();
+    FullscreenElementStack::from(*document).requestFullscreen(*document->documentElement(), FullscreenElementStack::PrefixedRequest);
     webViewImpl->willEnterFullScreen();
     webViewImpl->didEnterFullScreen();
     webViewImpl->layout();
@@ -5719,6 +5800,27 @@ TEST_F(WebFrameTest, NodeImageTestFloatLeft)
     EXPECT_TRUE(dragImage);
 
     nodeImageTestValidation(blink::IntSize(40, 40), dragImage.get());
+}
+
+// Crashes on Android: http://crbug.com/403804
+#if OS(ANDROID)
+TEST_F(WebFrameTest, DISABLED_PrintingBasic)
+#else
+TEST_F(WebFrameTest, PrintingBasic)
+#endif
+{
+    FrameTestHelpers::WebViewHelper webViewHelper;
+    webViewHelper.initializeAndLoad("data:text/html,Hello, world.");
+
+    WebFrame* frame = webViewHelper.webView()->mainFrame();
+
+    WebPrintParams printParams;
+    printParams.printContentArea.width = 500;
+    printParams.printContentArea.height = 500;
+
+    int pageCount = frame->printBegin(printParams);
+    EXPECT_EQ(1, pageCount);
+    frame->printEnd();
 }
 
 class ThemeColorTestWebFrameClient : public FrameTestHelpers::TestWebFrameClient {

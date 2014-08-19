@@ -51,6 +51,7 @@
 #include "core/events/TouchEvent.h"
 #include "core/events/WheelEvent.h"
 #include "core/fetch/ImageResource.h"
+#include "core/frame/EventHandlerRegistry.h"
 #include "core/frame/FrameView.h"
 #include "core/frame/LocalFrame.h"
 #include "core/frame/Settings.h"
@@ -3585,7 +3586,7 @@ bool EventHandler::handleTouchEvent(const PlatformTouchEvent& event)
     // If there's no document receiving touch events, or no handlers on the
     // document set to receive the events, then we can skip all the rest of
     // this work.
-    if (!m_touchSequenceDocument || !m_touchSequenceDocument->hasTouchEventHandlers() || !m_touchSequenceDocument->frame()) {
+    if (!m_touchSequenceDocument || !m_touchSequenceDocument->frameHost() || !m_touchSequenceDocument->frameHost()->eventHandlerRegistry().hasEventHandlers(EventHandlerRegistry::TouchEvent) || !m_touchSequenceDocument->frame()) {
         if (allTouchReleased) {
             m_touchSequenceDocument.clear();
             m_touchSequenceUserGestureToken.clear();
@@ -3748,11 +3749,6 @@ TouchAction EventHandler::intersectTouchAction(TouchAction action1, TouchAction 
 
 TouchAction EventHandler::computeEffectiveTouchAction(const Node& node)
 {
-    // Optimization to minimize risk of this new feature (behavior should be identical
-    // since there's no way to get non-default touch-action values).
-    if (!RuntimeEnabledFeatures::cssTouchActionEnabled())
-        return TouchActionAuto;
-
     // Start by permitting all actions, then walk the elements supporting
     // touch-action from the target node up to the nearest scrollable ancestor
     // and exclude any prohibited actions.

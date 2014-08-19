@@ -36,6 +36,7 @@
 #include "core/dom/Attribute.h"
 #include "core/dom/ElementTraversal.h"
 #include "core/dom/NodeListsNodeData.h"
+#include "core/dom/NodeRenderStyle.h"
 #include "core/dom/NodeTraversal.h"
 #include "core/events/GestureEvent.h"
 #include "core/events/KeyboardEvent.h"
@@ -174,6 +175,18 @@ bool HTMLSelectElement::valueMissing() const
 
     // If a non-placeholer label option is selected (firstSelectionIndex > 0), it's not value-missing.
     return firstSelectionIndex < 0 || (!firstSelectionIndex && hasPlaceholderLabelOption());
+}
+
+void HTMLSelectElement::listBoxSelectItem(int listIndex, bool allowMultiplySelections, bool shift, bool fireOnChangeNow)
+{
+    if (!multiple())
+        optionSelectedByUser(listToOptionIndex(listIndex), fireOnChangeNow, false);
+    else {
+        updateSelectedState(listIndex, allowMultiplySelections, shift);
+        setNeedsValidityCheck();
+        if (fireOnChangeNow)
+            listBoxOnChange();
+    }
 }
 
 bool HTMLSelectElement::usesMenuList() const
@@ -523,6 +536,8 @@ int HTMLSelectElement::nextValidIndex(int listIndex, SkipDirection direction, in
         --skip;
         HTMLElement* element = listItems[listIndex];
         if (!isHTMLOptionElement(*element))
+            continue;
+        if (toHTMLOptionElement(*element).isDisplayNone())
             continue;
         if (element->isDisabledFormControl())
             continue;

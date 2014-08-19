@@ -71,8 +71,7 @@ public:
 
     enum DisabledMode {
         NothingDisabled = 0, // Run as normal.
-        PaintingDisabled = 1, // Do not issue painting calls to the canvas but maintain state correctly.
-        FullyDisabled = 2 // Do absolutely minimal work to remove the cost of the context from performance tests.
+        FullyDisabled = 1 // Do absolutely minimal work to remove the cost of the context from performance tests.
     };
 
     explicit GraphicsContext(SkCanvas*, DisabledMode = NothingDisabled);
@@ -83,8 +82,6 @@ public:
     // so it should be avoided. Use the corresponding draw/matrix/clip methods instead.
     SkCanvas* canvas()
     {
-        ASSERT(!paintingDisabled());
-
         // Flush any pending saves.
         realizeCanvasSave();
 
@@ -92,13 +89,11 @@ public:
     }
     const SkCanvas* canvas() const
     {
-        ASSERT(!paintingDisabled());
         return m_canvas;
     }
 
     void resetCanvas(SkCanvas*);
 
-    bool paintingDisabled() const { return m_disabledState & PaintingDisabled; }
     bool contextDisabled() const { return m_disabledState; }
 
     // ---------- State management methods -----------------
@@ -186,9 +181,9 @@ public:
     void setImageInterpolationQuality(InterpolationQuality quality) { mutableState()->setInterpolationQuality(quality); }
     InterpolationQuality imageInterpolationQuality() const { return immutableState()->interpolationQuality(); }
 
-    void setCompositeOperation(CompositeOperator, blink::WebBlendMode = blink::WebBlendModeNormal);
+    void setCompositeOperation(CompositeOperator, WebBlendMode = WebBlendModeNormal);
     CompositeOperator compositeOperation() const { return immutableState()->compositeOperator(); }
-    blink::WebBlendMode blendModeOperation() const { return immutableState()->blendMode(); }
+    WebBlendMode blendModeOperation() const { return immutableState()->blendMode(); }
 
     // Speicy the device scale factor which may change the way document markers
     // and fonts are rendered.
@@ -226,9 +221,6 @@ public:
     // It is never clerared by the context.
     void setTrackTextRegion(bool track) { m_trackTextRegion = track; }
     const SkRect& textRegion() const { return m_textRegion; }
-
-    bool updatingControlTints() const { return m_updatingControlTints; }
-    void setUpdatingControlTints(bool updatingTints) { m_updatingControlTints = updatingTints; }
 
     AnnotationModeFlags annotationMode() const { return m_annotationMode; }
     void setAnnotationMode(const AnnotationModeFlags mode) { m_annotationMode = mode; }
@@ -281,17 +273,17 @@ public:
     void drawImage(Image*, const IntRect&, CompositeOperator = CompositeSourceOver, RespectImageOrientationEnum = DoNotRespectImageOrientation);
     void drawImage(Image*, const FloatRect& destRect);
     void drawImage(Image*, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator = CompositeSourceOver, RespectImageOrientationEnum = DoNotRespectImageOrientation);
-    void drawImage(Image*, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator, blink::WebBlendMode, RespectImageOrientationEnum = DoNotRespectImageOrientation);
+    void drawImage(Image*, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator, WebBlendMode, RespectImageOrientationEnum = DoNotRespectImageOrientation);
 
     void drawTiledImage(Image*, const IntRect& destRect, const IntPoint& srcPoint, const IntSize& tileSize,
-        CompositeOperator = CompositeSourceOver, blink::WebBlendMode = blink::WebBlendModeNormal, const IntSize& repeatSpacing = IntSize());
+        CompositeOperator = CompositeSourceOver, WebBlendMode = WebBlendModeNormal, const IntSize& repeatSpacing = IntSize());
     void drawTiledImage(Image*, const IntRect& destRect, const IntRect& srcRect,
         const FloatSize& tileScaleFactor, Image::TileRule hRule = Image::StretchTile, Image::TileRule vRule = Image::StretchTile,
         CompositeOperator = CompositeSourceOver);
 
     void drawImageBuffer(ImageBuffer*, const FloatRect& destRect, const FloatRect* srcRect = 0, CompositeOperator = CompositeSourceOver, WebBlendMode = WebBlendModeNormal);
 
-    void drawPicture(PassRefPtr<SkPicture>, const FloatRect& dest, const FloatRect& src, CompositeOperator, blink::WebBlendMode);
+    void drawPicture(PassRefPtr<SkPicture>, const FloatRect& dest, const FloatRect& src, CompositeOperator, WebBlendMode);
 
     // These methods write to the canvas and modify the opaque region, if tracked.
     // Also drawLine(const IntPoint& point1, const IntPoint& point2) and fillRoundedRect
@@ -412,7 +404,7 @@ public:
         const SkRect& srcRect,
         const SkRect& destRect,
         CompositeOperator,
-        blink::WebBlendMode,
+        WebBlendMode,
         bool isLazyDecoded = false,
         bool isDataComplete = true) const;
 
@@ -539,8 +531,6 @@ private:
     unsigned m_regionTrackingMode : 2;
     bool m_trackTextRegion : 1;
 
-    // FIXME: Make this go away: crbug.com/236892
-    bool m_updatingControlTints : 1;
     bool m_accelerated : 1;
     bool m_isCertainlyOpaque : 1;
     bool m_printing : 1;

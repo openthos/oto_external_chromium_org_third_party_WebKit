@@ -34,6 +34,7 @@
 #include "core/frame/DOMWindowBase64.h"
 #include "core/frame/UseCounter.h"
 #include "core/frame/csp/ContentSecurityPolicy.h"
+#include "core/inspector/ConsoleMessage.h"
 #include "core/workers/WorkerEventQueue.h"
 #include "platform/heap/Handle.h"
 #include "platform/network/ContentSecurityPolicyParsers.h"
@@ -64,12 +65,12 @@ namespace blink {
         virtual ~WorkerGlobalScope();
 
         virtual bool isWorkerGlobalScope() const OVERRIDE FINAL { return true; }
+        virtual bool isSharedWorkerGlobalScope() const OVERRIDE { return false; }
+        virtual bool isDedicatedWorkerGlobalScope() const OVERRIDE { return false; }
+        virtual bool isServiceWorkerGlobalScope() const OVERRIDE { return false; }
 
         virtual ExecutionContext* executionContext() const OVERRIDE FINAL;
 
-        virtual bool isSharedWorkerGlobalScope() const { return false; }
-        virtual bool isDedicatedWorkerGlobalScope() const { return false; }
-        virtual bool isServiceWorkerGlobalScope() const { return false; }
         virtual void countFeature(UseCounter::Feature) const;
         virtual void countDeprecation(UseCounter::Feature) const;
 
@@ -143,7 +144,7 @@ namespace blink {
         void applyContentSecurityPolicyFromString(const String& contentSecurityPolicy, ContentSecurityPolicyHeaderType);
 
         virtual void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtrWillBeRawPtr<ScriptCallStack>) OVERRIDE;
-        void addMessageToWorkerConsole(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, PassRefPtrWillBeRawPtr<ScriptCallStack>, ScriptState*);
+        void addMessageToWorkerConsole(PassRefPtrWillBeRawPtr<ConsoleMessage>);
 
     private:
 #if !ENABLE(OILPAN)
@@ -155,7 +156,7 @@ namespace blink {
         virtual KURL virtualCompleteURL(const String&) const OVERRIDE FINAL;
 
         virtual void reportBlockedScriptExecutionToInspector(const String& directiveText) OVERRIDE FINAL;
-        virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, ScriptState* = 0) OVERRIDE FINAL;
+        virtual void addMessage(PassRefPtrWillBeRawPtr<ConsoleMessage>) OVERRIDE FINAL;
 
         virtual EventTarget* errorEventTarget() OVERRIDE FINAL;
         virtual void didUpdateSecurityOrigin() OVERRIDE FINAL { }

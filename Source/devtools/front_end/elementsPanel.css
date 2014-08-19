@@ -191,6 +191,7 @@
     background-clip: padding;
     -webkit-user-select: text;
     border-bottom: 1px solid rgb(191, 191, 191);
+    position: relative;
 }
 
 .styles-pane .sidebar-separator {
@@ -598,6 +599,7 @@
 }
 
 .sidebar-pane .style-panes-wrapper {
+    transform: translateZ(0);
     flex: 1;
     overflow-y: auto;
     position: relative;
@@ -643,10 +645,6 @@
 
 .sidebar-pane.composite .platform-fonts .stats-section {
     margin-bottom: 5px;
-}
-
-.sidebar-pane.composite .platform-fonts .css-font-value {
-    margin-left: 1ex;
 }
 
 .sidebar-pane.composite .platform-fonts .font-stats-item {

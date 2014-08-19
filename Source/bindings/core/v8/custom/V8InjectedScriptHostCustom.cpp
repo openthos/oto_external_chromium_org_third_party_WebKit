@@ -37,6 +37,7 @@
 #include "bindings/core/v8/ScriptValue.h"
 #include "bindings/core/v8/V8AbstractEventListener.h"
 #include "bindings/core/v8/V8Binding.h"
+#include "bindings/core/v8/V8DOMTokenList.h"
 #include "bindings/core/v8/V8EventTarget.h"
 #include "bindings/core/v8/V8HTMLAllCollection.h"
 #include "bindings/core/v8/V8HTMLCollection.h"
@@ -164,7 +165,7 @@ void V8InjectedScriptHost::typeMethodCustom(const v8::FunctionCallbackInfo<v8::V
         v8SetReturnValue(info, v8AtomicString(isolate, "string"));
         return;
     }
-    if (value->IsArray()) {
+    if (value->IsArray() || value->IsTypedArray()) {
         v8SetReturnValue(info, v8AtomicString(isolate, "array"));
         return;
     }
@@ -188,27 +189,10 @@ void V8InjectedScriptHost::typeMethodCustom(const v8::FunctionCallbackInfo<v8::V
         v8SetReturnValue(info, v8AtomicString(isolate, "node"));
         return;
     }
-    if (V8NodeList::hasInstance(value, isolate)) {
-        v8SetReturnValue(info, v8AtomicString(isolate, "array"));
-        return;
-    }
-    if (V8HTMLCollection::hasInstance(value, isolate)) {
-        v8SetReturnValue(info, v8AtomicString(isolate, "array"));
-        return;
-    }
-    if (V8Int8Array::hasInstance(value, isolate) || V8Int16Array::hasInstance(value, isolate) || V8Int32Array::hasInstance(value, isolate)) {
-        v8SetReturnValue(info, v8AtomicString(isolate, "array"));
-        return;
-    }
-    if (V8Uint8Array::hasInstance(value, isolate) || V8Uint16Array::hasInstance(value, isolate) || V8Uint32Array::hasInstance(value, isolate)) {
-        v8SetReturnValue(info, v8AtomicString(isolate, "array"));
-        return;
-    }
-    if (V8Float32Array::hasInstance(value, isolate) || V8Float64Array::hasInstance(value, isolate)) {
-        v8SetReturnValue(info, v8AtomicString(isolate, "array"));
-        return;
-    }
-    if (V8Uint8ClampedArray::hasInstance(value, isolate)) {
+    if (V8NodeList::hasInstance(value, isolate)
+        || V8DOMTokenList::hasInstance(value, isolate)
+        || V8HTMLCollection::hasInstance(value, isolate)
+        || V8HTMLAllCollection::hasInstance(value, isolate)) {
         v8SetReturnValue(info, v8AtomicString(isolate, "array"));
         return;
     }
@@ -473,25 +457,46 @@ void V8InjectedScriptHost::unmonitorFunctionMethodCustom(const v8::FunctionCallb
     host->unmonitorFunction(scriptId, lineNumber, columnNumber);
 }
 
-void V8InjectedScriptHost::suppressWarningsAndCallMethodCustom(const v8::FunctionCallbackInfo<v8::Value>& info)
+void V8InjectedScriptHost::callFunctionMethodCustom(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    if (info.Length() < 2 || !info[0]->IsObject() || !info[1]->IsFunction())
+    if (info.Length() < 2 || info.Length() > 3 || !info[0]->IsFunction()) {
+        ASSERT_NOT_REACHED();
         return;
+    }
 
+    v8::Handle<v8::Function> function = v8::Handle<v8::Function>::Cast(info[0]);
+    v8::Handle<v8::Value> receiver = info[1];
+
+    if (info.Length() < 3 || info[2]->IsUndefined()) {
+        v8::Local<v8::Value> result = function->Call(receiver, 0, 0);
+        v8SetReturnValue(info, result);
+        return;
+    }
+
+    if (!info[2]->IsArray()) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    v8::Handle<v8::Array> arguments = v8::Handle<v8::Array>::Cast(info[2]);
+    size_t argc = arguments->Length();
+    OwnPtr<v8::Handle<v8::Value>[]> argv = adoptArrayPtr(new v8::Handle<v8::Value>[argc]);
+    for (size_t i = 0; i < argc; ++i)
+        argv[i] = arguments->Get(i);
+
+    v8::Local<v8::Value> result = function->Call(receiver, argc, argv.get());
+    v8SetReturnValue(info, result);
+}
+
+void V8InjectedScriptHost::suppressWarningsAndCallFunctionMethodCustom(const v8::FunctionCallbackInfo<v8::Value>& info)
+{
     InjectedScriptHost* host = V8InjectedScriptHost::toNative(info.Holder());
     ScriptDebugServer& debugServer = host->scriptDebugServer();
     debugServer.muteWarningsAndDeprecations();
 
-    v8::Handle<v8::Object> receiver = v8::Handle<v8::Object>::Cast(info[0]);
-    v8::Handle<v8::Function> function = v8::Handle<v8::Function>::Cast(info[1]);
-    size_t argc = info.Length() - 2;
-    OwnPtr<v8::Handle<v8::Value>[]> argv = adoptArrayPtr(new v8::Handle<v8::Value>[argc]);
-    for (size_t i = 0; i < argc; ++i)
-        argv[i] = info[i + 2];
+    callFunctionMethodCustom(info);
 
-    v8::Local<v8::Value> result = function->Call(receiver, argc, argv.get());
     debugServer.unmuteWarningsAndDeprecations();
-    v8SetReturnValue(info, result);
 }
 
 } // namespace blink

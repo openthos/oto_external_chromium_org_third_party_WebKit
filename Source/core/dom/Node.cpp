@@ -45,7 +45,6 @@
 #include "core/dom/ElementTraversal.h"
 #include "core/dom/ExceptionCode.h"
 #include "core/dom/LiveNodeList.h"
-#include "core/dom/NoEventDispatchAssertion.h"
 #include "core/dom/NodeRareData.h"
 #include "core/dom/NodeRenderingTraversal.h"
 #include "core/dom/NodeTraversal.h"
@@ -87,6 +86,7 @@
 #include "core/rendering/FlowThreadController.h"
 #include "core/rendering/RenderBox.h"
 #include "core/svg/graphics/SVGImage.h"
+#include "platform/EventDispatchForbiddenScope.h"
 #include "platform/Partitions.h"
 #include "platform/TraceEvent.h"
 #include "platform/TracedValue.h"
@@ -327,10 +327,8 @@ void Node::willBeDeletedFromDocument()
 
     Document& document = this->document();
 
-    if (hasEventTargetData()) {
+    if (hasEventTargetData())
         clearEventTargetData();
-        document.didClearTouchEventHandlers(this);
-    }
 
     if (document.frameHost())
         document.frameHost()->eventHandlerRegistry().didRemoveAllEventHandlers(*this);
@@ -1271,8 +1269,8 @@ bool Node::isDefaultNamespace(const AtomicString& namespaceURIMaybeEmpty) const
                 return element.namespaceURI() == namespaceURI;
 
             AttributeCollection attributes = element.attributes();
-            AttributeCollection::const_iterator end = attributes.end();
-            for (AttributeCollection::const_iterator it = attributes.begin(); it != end; ++it) {
+            AttributeCollection::iterator end = attributes.end();
+            for (AttributeCollection::iterator it = attributes.begin(); it != end; ++it) {
                 if (it->localName() == xmlnsAtom)
                     return it->value() == namespaceURI;
             }
@@ -1354,8 +1352,8 @@ const AtomicString& Node::lookupNamespaceURI(const String& prefix) const
                 return element.namespaceURI();
 
             AttributeCollection attributes = element.attributes();
-            AttributeCollection::const_iterator end = attributes.end();
-            for (AttributeCollection::const_iterator it = attributes.begin(); it != end; ++it) {
+            AttributeCollection::iterator end = attributes.end();
+            for (AttributeCollection::iterator it = attributes.begin(); it != end; ++it) {
                 if (it->prefix() == xmlnsAtom && it->localName() == prefix) {
                     if (!it->value().isEmpty())
                         return it->value();
@@ -1515,8 +1513,8 @@ unsigned short Node::compareDocumentPosition(const Node* otherNode, ShadowTreesT
         // We are comparing two attributes on the same node. Crawl our attribute map and see which one we hit first.
         const Element* owner1 = attr1->ownerElement();
         AttributeCollection attributes = owner1->attributes();
-        AttributeCollection::const_iterator end = attributes.end();
-        for (AttributeCollection::const_iterator it = attributes.begin(); it != end; ++it) {
+        AttributeCollection::iterator end = attributes.end();
+        for (AttributeCollection::iterator it = attributes.begin(); it != end; ++it) {
             // If neither of the two determining nodes is a child node and nodeType is the same for both determining nodes, then an
             // implementation-dependent order between the determining nodes is returned. This order is stable as long as no nodes of
             // the same nodeType are inserted into or removed from the direct container. This would be the case, for example,
@@ -1857,19 +1855,12 @@ void Node::didMoveToNewDocument(Document& oldDocument)
 
     oldDocument.markers().removeMarkers(this);
     oldDocument.updateRangesAfterNodeMovedToAnotherDocument(*this);
-
-    if (const TouchEventTargetSet* touchHandlers = oldDocument.touchEventTargets()) {
-        while (touchHandlers->contains(this)) {
-            oldDocument.didRemoveTouchEventHandler(this);
-            document().didAddTouchEventHandler(this);
-        }
-    }
-    if (oldDocument.frameHost() != document().frameHost()) {
-        if (oldDocument.frameHost())
-            oldDocument.frameHost()->eventHandlerRegistry().didMoveOutOfFrameHost(*this);
-        if (document().frameHost())
-            document().frameHost()->eventHandlerRegistry().didMoveIntoFrameHost(*this);
-    }
+    if (oldDocument.frameHost() && !document().frameHost())
+        oldDocument.frameHost()->eventHandlerRegistry().didMoveOutOfFrameHost(*this);
+    else if (document().frameHost() && !oldDocument.frameHost())
+        document().frameHost()->eventHandlerRegistry().didMoveIntoFrameHost(*this);
+    else if (oldDocument.frameHost() != document().frameHost())
+        EventHandlerRegistry::didMoveBetweenFrameHosts(*this, oldDocument.frameHost(), document().frameHost());
 
     if (WillBeHeapVector<OwnPtrWillBeMember<MutationObserverRegistration> >* registry = mutationObserverRegistry()) {
         for (size_t i = 0; i < registry->size(); ++i) {
@@ -1891,8 +1882,6 @@ static inline bool tryAddEventListener(Node* targetNode, const AtomicString& eve
 
     Document& document = targetNode->document();
     document.addListenerTypeIfNeeded(eventType);
-    if (isTouchEventType(eventType))
-        document.didAddTouchEventHandler(targetNode);
     if (document.frameHost())
         document.frameHost()->eventHandlerRegistry().didAddEventHandler(*targetNode, eventType);
 
@@ -1912,8 +1901,6 @@ static inline bool tryRemoveEventListener(Node* targetNode, const AtomicString& 
     // FIXME: Notify Document that the listener has vanished. We need to keep track of a number of
     // listeners for each type, not just a bool - see https://bugs.webkit.org/show_bug.cgi?id=33861
     Document& document = targetNode->document();
-    if (isTouchEventType(eventType))
-        document.didRemoveTouchEventHandler(targetNode);
     if (document.frameHost())
         document.frameHost()->eventHandlerRegistry().didRemoveEventHandler(*targetNode, eventType);
 
@@ -1930,7 +1917,6 @@ void Node::removeAllEventListeners()
     if (hasEventListeners() && document().frameHost())
         document().frameHost()->eventHandlerRegistry().didRemoveAllEventHandlers(*this);
     EventTarget::removeAllEventListeners();
-    document().didClearTouchEventHandlers(this);
 }
 
 void Node::removeAllEventListenersRecursively()
@@ -2132,7 +2118,7 @@ void Node::dispatchSubtreeModifiedEvent()
     if (isInShadowTree())
         return;
 
-    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT(!EventDispatchForbiddenScope::isEventDispatchForbidden());
 
     if (!document().hasListenerType(Document::DOMSUBTREEMODIFIED_LISTENER))
         return;
@@ -2142,7 +2128,7 @@ void Node::dispatchSubtreeModifiedEvent()
 
 bool Node::dispatchDOMActivateEvent(int detail, PassRefPtrWillBeRawPtr<Event> underlyingEvent)
 {
-    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT(!EventDispatchForbiddenScope::isEventDispatchForbidden());
     RefPtrWillBeRawPtr<UIEvent> event = UIEvent::create(EventTypeNames::DOMActivate, true, true, document().domWindow(), detail);
     event->setUnderlyingEvent(underlyingEvent);
     dispatchScopedEvent(event);
@@ -2441,8 +2427,12 @@ void Node::trace(Visitor* visitor)
     visitor->trace(m_parentOrShadowHostNode);
     visitor->trace(m_previous);
     visitor->trace(m_next);
+    // rareData() and m_data.m_renderer share their storage. We have to trace
+    // only one of them.
     if (hasRareData())
         visitor->trace(rareData());
+    else
+        visitor->trace(m_data.m_renderer);
     visitor->trace(m_treeScope);
 #endif
     EventTarget::trace(visitor);

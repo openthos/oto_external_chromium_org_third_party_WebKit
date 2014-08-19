@@ -948,8 +948,8 @@ public:
     const FilterOperations& filter() const { return rareNonInheritedData->m_filter->m_operations; }
     bool hasFilter() const { return !rareNonInheritedData->m_filter->m_operations.operations().isEmpty(); }
 
-    blink::WebBlendMode blendMode() const;
-    void setBlendMode(blink::WebBlendMode v);
+    WebBlendMode blendMode() const;
+    void setBlendMode(WebBlendMode v);
     bool hasBlendMode() const;
 
     EIsolation isolation() const;
@@ -1085,6 +1085,13 @@ public:
     void setOutlineStyleIsAuto(OutlineIsAuto isAuto) { SET_VAR(m_background, m_outline.m_isAuto, isAuto); }
     void setOutlineStyle(EBorderStyle v) { SET_VAR(m_background, m_outline.m_style, v); }
     void setOutlineColor(const StyleColor& v) { SET_BORDERVALUE_COLOR(m_background, m_outline, v); }
+    bool isOutlineEquivalent(const RenderStyle* otherStyle) const
+    {
+        // No other style, so we don't have an outline then we consider them to be the same.
+        if (!otherStyle)
+            return !hasOutline();
+        return m_background->outline().visuallyEqual(otherStyle->m_background->outline());
+    }
 
     void setOverflowX(EOverflow v) { noninherited_flags.overflowX = v; }
     void setOverflowY(EOverflow v) { noninherited_flags.overflowY = v; }
@@ -1719,7 +1726,7 @@ public:
     static ETextSecurity initialTextSecurity() { return TSNONE; }
     static Color initialTapHighlightColor();
     static const FilterOperations& initialFilter() { DEFINE_STATIC_LOCAL(FilterOperations, ops, ()); return ops; }
-    static blink::WebBlendMode initialBlendMode() { return blink::WebBlendModeNormal; }
+    static WebBlendMode initialBlendMode() { return WebBlendModeNormal; }
     static EIsolation initialIsolation() { return IsolationAuto; }
 private:
     void setVisitedLinkColor(const Color&);
@@ -1805,10 +1812,10 @@ private:
     void appendContent(PassOwnPtr<ContentData>);
     void addAppliedTextDecoration(const AppliedTextDecoration&);
 
-    bool diffNeedsFullLayoutAndRepaint(const RenderStyle& other) const;
+    bool diffNeedsFullLayoutAndPaintInvalidation(const RenderStyle& other) const;
     bool diffNeedsFullLayout(const RenderStyle& other) const;
-    bool diffNeedsRepaintLayer(const RenderStyle& other) const;
-    bool diffNeedsRepaintObject(const RenderStyle& other) const;
+    bool diffNeedsPaintInvalidationLayer(const RenderStyle& other) const;
+    bool diffNeedsPaintInvalidationObject(const RenderStyle& other) const;
     bool diffNeedsRecompositeLayer(const RenderStyle& other) const;
     void updatePropertySpecificDifferences(const RenderStyle& other, StyleDifference&) const;
 };

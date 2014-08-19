@@ -39,7 +39,7 @@ Design doc: http://www.chromium.org/developers/design-documents/idl-compiler
 
 import posixpath
 
-from idl_types import IdlType, IdlUnionType
+from idl_types import IdlTypeBase, IdlType, IdlUnionType, IdlArrayOrSequenceType
 import v8_attributes  # for IdlType.constructor_type_name
 from v8_globals import includes
 
@@ -72,11 +72,12 @@ TYPED_ARRAYS = {
     'Uint32Array': ('unsigned int', 'v8::kExternalUnsignedIntArray'),
 }
 
+IdlTypeBase.is_typed_array_element_type = False
 IdlType.is_typed_array_element_type = property(
     lambda self: self.base_type in TYPED_ARRAYS)
-IdlUnionType.is_typed_array_element_type = False
 
 
+IdlTypeBase.is_wrapper_type = False
 IdlType.is_wrapper_type = property(
     lambda self: (self.is_interface_type and
                   self.base_type not in NON_WRAPPER_TYPES))
@@ -151,7 +152,7 @@ def cpp_type(idl_type, extended_attributes=None, raw_type=False, used_as_rvalue_
     extended_attributes = extended_attributes or {}
     idl_type = idl_type.preprocessed_type
 
-    # Composite types
+    # Array or sequence types
     if used_as_variadic_argument:
         native_array_element_type = idl_type
     else:
@@ -210,7 +211,9 @@ def cpp_type_initializer(idl_type):
 
 
 def cpp_type_union(idl_type, extended_attributes=None, raw_type=False):
-    return (member_type.cpp_type for member_type in idl_type.member_types)
+    # FIXME: Need to revisit the design of union support.
+    # http://crbug.com/240176
+    return None
 
 
 def cpp_type_initializer_union(idl_type):
@@ -218,12 +221,17 @@ def cpp_type_initializer_union(idl_type):
 
 
 # Allow access as idl_type.cpp_type if no arguments
-IdlType.cpp_type = property(cpp_type)
-IdlType.cpp_type_initializer = property(cpp_type_initializer)
+IdlTypeBase.cpp_type = property(cpp_type)
+IdlTypeBase.cpp_type_initializer = property(cpp_type_initializer)
+IdlTypeBase.cpp_type_args = cpp_type
 IdlUnionType.cpp_type = property(cpp_type_union)
 IdlUnionType.cpp_type_initializer = property(cpp_type_initializer_union)
-IdlType.cpp_type_args = cpp_type
 IdlUnionType.cpp_type_args = cpp_type_union
+
+
+IdlTypeBase.native_array_element_type = None
+IdlArrayOrSequenceType.native_array_element_type = property(
+    lambda self: self.element_type)
 
 
 def cpp_template_type(template, inner_type):
@@ -277,6 +285,7 @@ IdlType.set_implemented_as_interfaces = classmethod(
 # [GarbageCollected]
 IdlType.garbage_collected_types = set()
 
+IdlTypeBase.is_garbage_collected = False
 IdlType.is_garbage_collected = property(
     lambda self: self.base_type in IdlType.garbage_collected_types)
 
@@ -288,6 +297,7 @@ IdlType.set_garbage_collected_types = classmethod(
 # [WillBeGarbageCollected]
 IdlType.will_be_garbage_collected_types = set()
 
+IdlTypeBase.is_will_be_garbage_collected = False
 IdlType.is_will_be_garbage_collected = property(
     lambda self: self.base_type in IdlType.will_be_garbage_collected_types)
 
@@ -303,7 +313,7 @@ def gc_type(idl_type):
         return 'WillBeGarbageCollectedObject'
     return 'RefCountedObject'
 
-IdlType.gc_type = property(gc_type)
+IdlTypeBase.gc_type = property(gc_type)
 
 
 ################################################################################
@@ -344,11 +354,6 @@ INCLUDES_FOR_TYPE = {
 def includes_for_type(idl_type):
     idl_type = idl_type.preprocessed_type
 
-    # Composite types
-    native_array_element_type = idl_type.native_array_element_type
-    if native_array_element_type:
-        return includes_for_type(native_array_element_type)
-
     # Simple types
     base_idl_type = idl_type.base_type
     if base_idl_type in INCLUDES_FOR_TYPE:
@@ -376,13 +381,14 @@ IdlType.includes_for_type = property(includes_for_type)
 IdlUnionType.includes_for_type = property(
     lambda self: set.union(*[includes_for_type(member_type)
                              for member_type in self.member_types]))
+IdlArrayOrSequenceType.includes_for_type = property(
+    lambda self: self.element_type.includes_for_type)
 
 
 def add_includes_for_type(idl_type):
     includes.update(idl_type.includes_for_type)
 
-IdlType.add_includes_for_type = add_includes_for_type
-IdlUnionType.add_includes_for_type = add_includes_for_type
+IdlTypeBase.add_includes_for_type = add_includes_for_type
 
 
 def includes_for_interface(interface_name):
@@ -394,9 +400,9 @@ def add_includes_for_interface(interface_name):
 
 
 def impl_should_use_nullable_container(idl_type):
-    return idl_type.native_array_element_type or idl_type.is_primitive_type
+    return not(idl_type.cpp_type_has_null_value)
 
-IdlType.impl_should_use_nullable_container = property(
+IdlTypeBase.impl_should_use_nullable_container = property(
     impl_should_use_nullable_container)
 
 
@@ -419,7 +425,7 @@ def impl_includes_for_type(idl_type, interfaces_info):
         includes_for_type.add(interface_info['include_path'])
     return includes_for_type
 
-IdlType.impl_includes_for_type = impl_includes_for_type
+IdlTypeBase.impl_includes_for_type = impl_includes_for_type
 
 
 component_dir = {}
@@ -470,7 +476,7 @@ def v8_value_to_cpp_value(idl_type, extended_attributes, v8_value, index, isolat
     if idl_type.name == 'void':
         return ''
 
-    # Composite types
+    # Array or sequence types
     native_array_element_type = idl_type.native_array_element_type
     if native_array_element_type:
         return v8_value_to_cpp_value_array_or_sequence(native_array_element_type, v8_value, index)
@@ -523,7 +529,7 @@ def v8_value_to_cpp_value_array_or_sequence(native_array_element_type, v8_value,
     return expression
 
 
-def v8_value_to_local_cpp_value(idl_type, extended_attributes, v8_value, variable_name, index=None, declare_variable=True, isolate='info.GetIsolate()', used_in_private_script=False):
+def v8_value_to_local_cpp_value(idl_type, extended_attributes, v8_value, variable_name, index=None, declare_variable=True, isolate='info.GetIsolate()', used_in_private_script=False, return_promise=False):
     """Returns an expression that converts a V8 value to a C++ value and stores it as a local value."""
 
     # FIXME: Support union type.
@@ -535,7 +541,7 @@ def v8_value_to_local_cpp_value(idl_type, extended_attributes, v8_value, variabl
     idl_type = idl_type.preprocessed_type
     cpp_value = v8_value_to_cpp_value(idl_type, extended_attributes, v8_value, index, isolate)
     args = [variable_name, cpp_value]
-    if idl_type.base_type == 'DOMString' and not idl_type.native_array_element_type:
+    if idl_type.base_type == 'DOMString':
         macro = 'TOSTRING_DEFAULT' if used_in_private_script else 'TOSTRING_VOID'
     elif idl_type.may_raise_exception_on_conversion:
         macro = 'TONATIVE_DEFAULT_EXCEPTIONSTATE' if used_in_private_script else 'TONATIVE_VOID_EXCEPTIONSTATE'
@@ -550,6 +556,12 @@ def v8_value_to_local_cpp_value(idl_type, extended_attributes, v8_value, variabl
     # v8::TryCatch.
     suffix = ''
 
+    if return_promise:
+        suffix += '_PROMISE'
+        args.append('info')
+        if macro == 'TONATIVE_VOID_EXCEPTIONSTATE':
+            args.append('ScriptState::current(%s)' % isolate)
+
     if declare_variable:
         args.insert(0, this_cpp_type)
     else:
@@ -557,9 +569,7 @@ def v8_value_to_local_cpp_value(idl_type, extended_attributes, v8_value, variabl
 
     return '%s(%s)' % (macro + suffix, ', '.join(args))
 
-
-IdlType.v8_value_to_local_cpp_value = v8_value_to_local_cpp_value
-IdlUnionType.v8_value_to_local_cpp_value = v8_value_to_local_cpp_value
+IdlTypeBase.v8_value_to_local_cpp_value = v8_value_to_local_cpp_value
 
 
 ################################################################################
@@ -574,8 +584,7 @@ def preprocess_idl_type(idl_type):
         return IdlType('ScriptValue')
     return idl_type
 
-IdlType.preprocessed_type = property(preprocess_idl_type)
-IdlUnionType.preprocessed_type = property(preprocess_idl_type)
+IdlTypeBase.preprocessed_type = property(preprocess_idl_type)
 
 
 def preprocess_idl_type_and_value(idl_type, cpp_value, extended_attributes):
@@ -609,7 +618,11 @@ def v8_conversion_type(idl_type, extended_attributes):
     """
     extended_attributes = extended_attributes or {}
 
-    # Composite types
+    # FIXME: Support union type.
+    if idl_type.is_union_type:
+        return ''
+
+    # Array or sequence types
     native_array_element_type = idl_type.native_array_element_type
     if native_array_element_type:
         if native_array_element_type.is_interface_type:
@@ -645,7 +658,7 @@ def v8_conversion_type(idl_type, extended_attributes):
     # Pointer type
     return 'DOMWrapper'
 
-IdlType.v8_conversion_type = v8_conversion_type
+IdlTypeBase.v8_conversion_type = v8_conversion_type
 
 
 V8_SET_RETURN_VALUE = {
@@ -707,27 +720,19 @@ def v8_set_return_value(idl_type, cpp_value, extended_attributes=None, script_wr
 
 
 def v8_set_return_value_union(idl_type, cpp_value, extended_attributes=None, script_wrappable='', release=False, for_main_world=False):
-    """
-    release: can be either False (False for all member types) or
-             a sequence (list or tuple) of booleans (if specified individually).
-    """
+    # FIXME: Need to revisit the design of union support.
+    # http://crbug.com/240176
+    return None
 
-    return [
-        member_type.v8_set_return_value(cpp_value + str(i),
-                                        extended_attributes,
-                                        script_wrappable,
-                                        release and release[i],
-                                        for_main_world)
-            for i, member_type in
-            enumerate(idl_type.member_types)]
 
-IdlType.v8_set_return_value = v8_set_return_value
+IdlTypeBase.v8_set_return_value = v8_set_return_value
 IdlUnionType.v8_set_return_value = v8_set_return_value_union
 
 IdlType.release = property(lambda self: self.is_interface_type)
 IdlUnionType.release = property(
     lambda self: [member_type.is_interface_type
                   for member_type in self.member_types])
+IdlArrayOrSequenceType.release = False
 
 
 CPP_VALUE_TO_V8_VALUE = {
@@ -766,7 +771,7 @@ def cpp_value_to_v8_value(idl_type, cpp_value, isolate='info.GetIsolate()', crea
     statement = format_string.format(cpp_value=cpp_value, isolate=isolate, creation_context=creation_context)
     return statement
 
-IdlType.cpp_value_to_v8_value = cpp_value_to_v8_value
+IdlTypeBase.cpp_value_to_v8_value = cpp_value_to_v8_value
 
 
 def literal_cpp_value(idl_type, idl_literal):
@@ -785,15 +790,19 @@ IdlType.literal_cpp_value = literal_cpp_value
 ################################################################################
 
 
-def is_implicit_nullable(idl_type):
-    # Nullable type where the corresponding C++ type supports a null value.
+def cpp_type_has_null_value(idl_type):
     # - String types (String/AtomicString) represent null as a null string,
     #   i.e. one for which String::isNull() returns true.
     # - Wrapper types (raw pointer or RefPtr/PassRefPtr) represent null as
     #   a null pointer.
-    return idl_type.is_nullable and (
-        (idl_type.is_string_type or idl_type.is_wrapper_type) and
-        not idl_type.native_array_element_type)
+    return idl_type.is_string_type or idl_type.is_wrapper_type
+
+IdlTypeBase.cpp_type_has_null_value = property(cpp_type_has_null_value)
+
+
+def is_implicit_nullable(idl_type):
+    # Nullable type where the corresponding C++ type supports a null value.
+    return idl_type.is_nullable and idl_type.cpp_type_has_null_value
 
 
 def is_explicit_nullable(idl_type):
@@ -801,7 +810,6 @@ def is_explicit_nullable(idl_type):
     # we use Nullable<T> or similar explicit ways to represent a null value.
     return idl_type.is_nullable and not idl_type.is_implicit_nullable
 
-IdlType.is_implicit_nullable = property(is_implicit_nullable)
-IdlType.is_explicit_nullable = property(is_explicit_nullable)
+IdlTypeBase.is_implicit_nullable = property(is_implicit_nullable)
 IdlUnionType.is_implicit_nullable = False
-IdlUnionType.is_explicit_nullable = property(is_explicit_nullable)
+IdlTypeBase.is_explicit_nullable = property(is_explicit_nullable)

@@ -80,6 +80,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/html/HTMLMediaElement.cpp \
 	third_party/WebKit/Source/core/html/HTMLMediaSource.cpp \
 	third_party/WebKit/Source/core/html/HTMLMenuElement.cpp \
+	third_party/WebKit/Source/core/html/HTMLMenuItemElement.cpp \
 	third_party/WebKit/Source/core/html/HTMLMeterElement.cpp \
 	third_party/WebKit/Source/core/html/HTMLModElement.cpp \
 	third_party/WebKit/Source/core/html/HTMLNameCollection.cpp \
@@ -343,7 +344,6 @@ MY_CFLAGS_Debug := \
 
 MY_DEFS_Debug := \
 	'-DV8_DEPRECATION_WARNINGS' \
-	'-DBLINK_SCALE_FILTERS_AT_RECORD_TIME' \
 	'-D_FILE_OFFSET_BITS=64' \
 	'-DNO_TCMALLOC' \
 	'-DDISABLE_NACL' \
@@ -505,7 +505,6 @@ MY_CFLAGS_Release := \
 
 MY_DEFS_Release := \
 	'-DV8_DEPRECATION_WARNINGS' \
-	'-DBLINK_SCALE_FILTERS_AT_RECORD_TIME' \
 	'-D_FILE_OFFSET_BITS=64' \
 	'-DNO_TCMALLOC' \
 	'-DDISABLE_NACL' \

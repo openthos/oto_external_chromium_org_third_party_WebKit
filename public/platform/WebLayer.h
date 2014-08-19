@@ -42,6 +42,7 @@ class SkMatrix44;
 class SkImageFilter;
 
 namespace blink {
+
 class WebFilterOperations;
 class WebLayerClient;
 class WebLayerScrollClient;

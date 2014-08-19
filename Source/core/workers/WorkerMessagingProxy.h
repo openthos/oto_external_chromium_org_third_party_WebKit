@@ -60,6 +60,7 @@ public:
     virtual void connectToInspector(WorkerGlobalScopeProxy::PageInspector*) OVERRIDE;
     virtual void disconnectFromInspector() OVERRIDE;
     virtual void sendMessageToInspector(const String&) OVERRIDE;
+    virtual void writeTimelineStartedEvent(const String& sessionId) OVERRIDE;
 
     // These methods come from worker context thread via WorkerObjectProxy
     // and are called on the worker object thread (e.g. main thread).
@@ -70,7 +71,7 @@ public:
     void confirmMessageFromWorkerObject(bool hasPendingActivity);
     void reportPendingActivity(bool hasPendingActivity);
     void workerGlobalScopeClosed();
-    void workerGlobalScopeDestroyed();
+    void workerThreadTerminated();
 
     // Implementation of WorkerLoaderProxy.
     // These methods are called on different threads to schedule loading
@@ -85,6 +86,7 @@ protected:
 
 private:
     static void workerObjectDestroyedInternal(ExecutionContext*, WorkerMessagingProxy*);
+    void terminateInternally();
 
     RefPtrWillBePersistent<ExecutionContext> m_executionContext;
     OwnPtr<WorkerObjectProxy> m_workerObjectProxy;

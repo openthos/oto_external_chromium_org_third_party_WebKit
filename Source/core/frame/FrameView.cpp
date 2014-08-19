@@ -112,7 +112,7 @@ FrameView::FrameView(LocalFrame* frame)
     , m_inProgrammaticScroll(false)
     , m_safeToPropagateScrollToParent(true)
     , m_isTrackingPaintInvalidations(false)
-    , m_scrollCorner(0)
+    , m_scrollCorner(nullptr)
     , m_shouldAutoSize(false)
     , m_inAutoSize(false)
     , m_didRunAutosize(false)
@@ -274,7 +274,7 @@ void FrameView::detachCustomScrollbars()
 
     if (m_scrollCorner) {
         m_scrollCorner->destroy();
-        m_scrollCorner = 0;
+        m_scrollCorner = nullptr;
     }
 }
 
@@ -657,14 +657,6 @@ GraphicsLayer* FrameView::layerForScrollCorner() const
     return renderView->compositor()->layerForScrollCorner();
 }
 
-bool FrameView::hasCompositedContent() const
-{
-    // FIXME: change to inCompositingMode. Fails fast/repaint/iframe-scroll-repaint.html.
-    if (RenderView* renderView = this->renderView())
-        return renderView->compositor()->staleInCompositingMode();
-    return false;
-}
-
 bool FrameView::isEnclosedInCompositingLayer() const
 {
     // FIXME: It's a bug that compositing state isn't always up to date when this is called. crbug.com/366314
@@ -1003,6 +995,9 @@ void FrameView::invalidateTreeIfNeeded()
 #ifndef NDEBUG
     renderView()->assertSubtreeClearedPaintInvalidationState();
 #endif
+
+    if (m_frame->selection().isCaretBoundsDirty())
+        m_frame->selection().invalidateCaretRect();
 }
 
 DocumentLifecycle& FrameView::lifecycle() const
@@ -1067,7 +1062,7 @@ void FrameView::removeWidget(RenderWidget* object)
 
 void FrameView::updateWidgetPositions()
 {
-    Vector<RefPtr<RenderWidget> > widgets;
+    WillBeHeapVector<RefPtrWillBeMember<RenderWidget> > widgets;
     copyToVector(m_widgets, widgets);
 
     // Script or plugins could detach the frame so abort processing if that happens.
@@ -1260,19 +1255,15 @@ void FrameView::scrollContentsIfNeeded()
         updateFixedElementPaintInvalidationRectsAfterScroll();
 }
 
-bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& unusedClipRect)
+bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect& rectToScroll)
 {
-    // FIXME: once we can switch plugins to a unified scrolling scheme, then
-    // we can do away with this parameter. Leaving as an empty rect for now to
-    // document the uselessness of the parameter to hostWindow.
-    static const IntRect dummyScrollRect;
+    if (!contentsInCompositedLayer() || hasSlowRepaintObjects())
+        return false;
 
     if (!m_viewportConstrainedObjects || m_viewportConstrainedObjects->isEmpty()) {
-        hostWindow()->scroll(dummyScrollRect);
+        hostWindow()->scroll();
         return true;
     }
-
-    const bool isCompositedContentLayer = contentsInCompositedLayer();
 
     // Get the rects of the fixed objects visible in the rectToScroll
     Region regionToUpdate;
@@ -1292,45 +1283,34 @@ bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect
         if (layer->compositingState() == PaintsIntoOwnBacking)
             continue;
 
-        if (layer->viewportConstrainedNotCompositedReason() == RenderLayer::NotCompositedForBoundsOutOfView
-            || layer->viewportConstrainedNotCompositedReason() == RenderLayer::NotCompositedForNoVisibleContent) {
-            // Don't invalidate for invisible fixed layers.
-            continue;
-        }
-
         if (layer->hasAncestorWithFilterOutsets()) {
             // If the fixed layer has a blur/drop-shadow filter applied on at least one of its parents, we cannot
             // scroll using the fast path, otherwise the outsets of the filter will be moved around the page.
             return false;
         }
 
-        IntRect updateRect = pixelSnappedIntRect(layer->repainter().repaintRectIncludingNonCompositingDescendants());
+        IntRect updateRect = pixelSnappedIntRect(layer->paintInvalidator().repaintRectIncludingNonCompositingDescendants());
 
         const RenderLayerModelObject* repaintContainer = layer->renderer()->containerForPaintInvalidation();
         if (repaintContainer && !repaintContainer->isRenderView()) {
-            // If the fixed-position layer is contained by a composited layer that is not its containing block,
-            // then we have to invalidate that enclosing layer, not the RenderView.
-            // FIXME: Why do we need to issue this invalidation? Won't the fixed position element just scroll
-            //        with the enclosing layer.
+            // Invalidate the old and new locations of fixed position elements that are not drawn into the RenderView.
             updateRect.moveBy(scrollPosition());
             IntRect previousRect = updateRect;
             previousRect.move(scrollDelta);
+            // FIXME: Rather than uniting the rects, we should just issue both invalidations.
             updateRect.unite(previousRect);
             layer->renderer()->invalidatePaintUsingContainer(repaintContainer, updateRect, InvalidationScroll);
         } else {
             // Coalesce the paint invalidations that will be issued to the renderView.
             updateRect = contentsToRootView(updateRect);
-            if (!isCompositedContentLayer && clipsPaintInvalidations())
-                updateRect.intersect(rectToScroll);
             if (!updateRect.isEmpty())
                 regionToUpdate.unite(updateRect);
         }
     }
 
-    // 1) scroll
-    hostWindow()->scroll(dummyScrollRect);
+    hostWindow()->scroll();
 
-    // 2) update the area of fixed objects that has been invalidated
+    // Invalidate the old and new locations of fixed position elements that are drawn into the RenderView.
     Vector<IntRect> subRectsToUpdate = regionToUpdate.rects();
     size_t viewportConstrainedObjectsCount = subRectsToUpdate.size();
     for (size_t i = 0; i < viewportConstrainedObjectsCount; ++i) {
@@ -1338,15 +1318,8 @@ bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect
         IntRect scrolledRect = updateRect;
         scrolledRect.move(-scrollDelta);
         updateRect.unite(scrolledRect);
-        if (isCompositedContentLayer) {
-            updateRect = rootViewToContents(updateRect);
-            ASSERT(renderView());
-            renderView()->layer()->repainter().setBackingNeedsRepaintInRect(updateRect);
-            continue;
-        }
-        if (clipsPaintInvalidations())
-            updateRect.intersect(rectToScroll);
-        hostWindow()->invalidateContentsAndRootView(updateRect);
+        // FIXME: We should be able to issue these invalidations separately and before we actually scroll.
+        renderView()->layer()->paintInvalidator().setBackingNeedsRepaintInRect(rootViewToContents(updateRect));
     }
 
     return true;
@@ -1357,7 +1330,7 @@ void FrameView::scrollContentsSlowPath(const IntRect& updateRect)
     if (contentsInCompositedLayer()) {
         IntRect updateRect = visibleContentRect();
         ASSERT(renderView());
-        renderView()->layer()->repainter().setBackingNeedsRepaintInRect(updateRect);
+        renderView()->layer()->paintInvalidator().setBackingNeedsRepaintInRect(updateRect);
     }
     if (RenderPart* frameRenderer = m_frame->ownerRenderer()) {
         if (isEnclosedInCompositingLayer()) {
@@ -1600,12 +1573,7 @@ void FrameView::updateFixedElementPaintInvalidationRectsAfterScroll()
         if (layer->compositingState() == PaintsIntoOwnBacking)
             continue;
 
-        // Also don't need to do this for invisible items.
-        if (layer->viewportConstrainedNotCompositedReason() == RenderLayer::NotCompositedForBoundsOutOfView
-            || layer->viewportConstrainedNotCompositedReason() == RenderLayer::NotCompositedForNoVisibleContent)
-            continue;
-
-        layer->repainter().computeRepaintRectsIncludingNonCompositingDescendants();
+        layer->paintInvalidator().computePaintInvalidationRectsIncludingNonCompositingDescendants();
     }
 }
 
@@ -1852,7 +1820,7 @@ void FrameView::setBaseBackgroundColor(const Color& backgroundColor)
     m_baseBackgroundColor = backgroundColor;
 
     if (renderView() && renderView()->layer()->hasCompositedLayerMapping()) {
-        CompositedLayerMappingPtr compositedLayerMapping = renderView()->layer()->compositedLayerMapping();
+        CompositedLayerMapping* compositedLayerMapping = renderView()->layer()->compositedLayerMapping();
         compositedLayerMapping->updateContentsOpaque();
         if (compositedLayerMapping->mainGraphicsLayer())
             compositedLayerMapping->mainGraphicsLayer()->setNeedsDisplay();
@@ -2457,7 +2425,7 @@ void FrameView::updateScrollCorner()
         invalidateScrollCorner(cornerRect);
     } else if (m_scrollCorner) {
         m_scrollCorner->destroy();
-        m_scrollCorner = 0;
+        m_scrollCorner = nullptr;
     }
 
     ScrollView::updateScrollCorner();
@@ -2465,11 +2433,6 @@ void FrameView::updateScrollCorner()
 
 void FrameView::paintScrollCorner(GraphicsContext* context, const IntRect& cornerRect)
 {
-    if (context->updatingControlTints()) {
-        updateScrollCorner();
-        return;
-    }
-
     if (m_scrollCorner) {
         bool needsBackgorund = m_frame->isMainFrame();
         if (needsBackgorund)
@@ -2552,31 +2515,6 @@ FrameView* FrameView::parentFrameView() const
     return 0;
 }
 
-void FrameView::updateControlTints()
-{
-    // This is called when control tints are changed from aqua/graphite to clear and vice versa.
-    // We do a "fake" paint, and when the theme gets a paint call, it can then do an invalidate.
-    // This is only done if the theme supports control tinting. It's up to the theme and platform
-    // to define when controls get the tint and to call this function when that changes.
-
-    // Optimize the common case where we bring a window to the front while it's still empty.
-    if (m_frame->document()->url().isEmpty())
-        return;
-
-    // FIXME: We shouldn't rely on the paint code to implement :window-inactive on custom scrollbars.
-    if (!RenderTheme::theme().supportsControlTints() && !hasCustomScrollbars())
-        return;
-
-    // Updating layout can run script, which can tear down the FrameView.
-    RefPtr<FrameView> protector(this);
-    updateLayoutAndStyleForPainting();
-
-    // FIXME: The use of paint seems like overkill: crbug.com/236892
-    GraphicsContext context(0); // NULL canvas to get a non-painting context.
-    context.setUpdatingControlTints(true);
-    paint(&context, frameRect());
-}
-
 bool FrameView::wasScrolledByUser() const
 {
     return m_wasScrolledByUser;
@@ -2619,9 +2557,8 @@ void FrameView::paintContents(GraphicsContext* p, const IntRect& rect)
         return;
     }
 
-    ASSERT(!needsLayout());
-    if (needsLayout())
-        return;
+    RELEASE_ASSERT(!needsLayout());
+    ASSERT(document->lifecycle().state() >= DocumentLifecycle::CompositingClean);
 
     TRACE_EVENT1(TRACE_DISABLED_BY_DEFAULT("devtools.timeline"), "Paint", "data", InspectorPaintEvent::data(renderView, rect, 0));
     TRACE_EVENT_INSTANT1(TRACE_DISABLED_BY_DEFAULT("devtools.timeline.stack"), "CallStack", "stack", InspectorCallStackEvent::currentCallStack());
@@ -2704,9 +2641,6 @@ void FrameView::setNodeToDraw(Node* node)
 
 void FrameView::paintOverhangAreas(GraphicsContext* context, const IntRect& horizontalOverhangArea, const IntRect& verticalOverhangArea, const IntRect& dirtyRect)
 {
-    if (context->paintingDisabled())
-        return;
-
     if (m_frame->document()->printing())
         return;
 
@@ -3044,7 +2978,7 @@ void FrameView::setTracksPaintInvalidations(bool trackPaintInvalidations)
         if (!frame->isLocalFrame())
             continue;
         if (RenderView* renderView = toLocalFrame(frame)->contentRenderer())
-            renderView->compositor()->setTracksRepaints(trackPaintInvalidations);
+            renderView->compositor()->setTracksPaintInvalidations(trackPaintInvalidations);
     }
 
     TRACE_EVENT_INSTANT1(TRACE_DISABLED_BY_DEFAULT("blink.invalidation"),
@@ -3058,7 +2992,7 @@ void FrameView::resetTrackedPaintInvalidations()
 {
     m_trackedPaintInvalidationRects.clear();
     if (RenderView* renderView = this->renderView())
-        renderView->compositor()->resetTrackedRepaintRects();
+        renderView->compositor()->resetTrackedPaintInvalidationRects();
 }
 
 String FrameView::trackedPaintInvalidationRectsAsText() const

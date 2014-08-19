@@ -147,6 +147,9 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/clipboard/ClipboardMimeTypes.cpp \
 	third_party/WebKit/Source/platform/clipboard/ClipboardUtilities.cpp \
 	third_party/WebKit/Source/platform/clipboard/ClipboardUtilitiesPosix.cpp \
+	third_party/WebKit/Source/platform/credentialmanager/PlatformCredential.cpp \
+	third_party/WebKit/Source/platform/credentialmanager/PlatformFederatedCredential.cpp \
+	third_party/WebKit/Source/platform/credentialmanager/PlatformLocalCredential.cpp \
 	third_party/WebKit/Source/platform/exported/Platform.cpp \
 	third_party/WebKit/Source/platform/exported/WebActiveGestureAnimation.cpp \
 	third_party/WebKit/Source/platform/exported/WebArrayBuffer.cpp \
@@ -157,6 +160,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/exported/WebContentDecryptionModuleResult.cpp \
 	third_party/WebKit/Source/platform/exported/WebContentDecryptionModuleSession.cpp \
 	third_party/WebKit/Source/platform/exported/WebConvertableToTraceFormat.cpp \
+	third_party/WebKit/Source/platform/exported/WebCredential.cpp \
 	third_party/WebKit/Source/platform/exported/WebCryptoAlgorithm.cpp \
 	third_party/WebKit/Source/platform/exported/WebCryptoKeyAlgorithm.cpp \
 	third_party/WebKit/Source/platform/exported/WebCryptoKey.cpp \
@@ -165,11 +169,13 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/exported/WebData.cpp \
 	third_party/WebKit/Source/platform/exported/WebDeviceMotionData.cpp \
 	third_party/WebKit/Source/platform/exported/WebDeviceOrientationData.cpp \
+	third_party/WebKit/Source/platform/exported/WebFederatedCredential.cpp \
 	third_party/WebKit/Source/platform/exported/WebFileSystemCallbacks.cpp \
 	third_party/WebKit/Source/platform/exported/WebFilterKeyframe.cpp \
 	third_party/WebKit/Source/platform/exported/WebHTTPBody.cpp \
 	third_party/WebKit/Source/platform/exported/WebHTTPLoadInfo.cpp \
 	third_party/WebKit/Source/platform/exported/WebImageSkia.cpp \
+	third_party/WebKit/Source/platform/exported/WebLocalCredential.cpp \
 	third_party/WebKit/Source/platform/exported/WebMediaConstraints.cpp \
 	third_party/WebKit/Source/platform/exported/WebMediaDeviceInfo.cpp \
 	third_party/WebKit/Source/platform/exported/WebMediaStream.cpp \
@@ -193,6 +199,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/exported/WebScrollbarThemeGeometryNative.cpp \
 	third_party/WebKit/Source/platform/exported/WebSerializedOrigin.cpp \
 	third_party/WebKit/Source/platform/exported/WebServiceWorkerProxy.cpp \
+	third_party/WebKit/Source/platform/exported/WebServiceWorkerRegistrationProxy.cpp \
 	third_party/WebKit/Source/platform/exported/WebServiceWorkerRequest.cpp \
 	third_party/WebKit/Source/platform/exported/WebServiceWorkerResponse.cpp \
 	third_party/WebKit/Source/platform/exported/WebSocketHandshakeRequestInfo.cpp \
@@ -471,7 +478,6 @@ MY_CFLAGS_Debug := \
 
 MY_DEFS_Debug := \
 	'-DV8_DEPRECATION_WARNINGS' \
-	'-DBLINK_SCALE_FILTERS_AT_RECORD_TIME' \
 	'-D_FILE_OFFSET_BITS=64' \
 	'-DNO_TCMALLOC' \
 	'-DDISABLE_NACL' \
@@ -630,7 +636,6 @@ MY_CFLAGS_Release := \
 
 MY_DEFS_Release := \
 	'-DV8_DEPRECATION_WARNINGS' \
-	'-DBLINK_SCALE_FILTERS_AT_RECORD_TIME' \
 	'-D_FILE_OFFSET_BITS=64' \
 	'-DNO_TCMALLOC' \
 	'-DDISABLE_NACL' \

@@ -33,7 +33,7 @@ except ImportError:
     print "ERROR: Add the TestResultServer, google_appengine and yaml/lib directories to your PYTHONPATH"
     raise
 
-import master_config
+from handlers import master_config
 
 import json
 import logging
@@ -1161,6 +1161,15 @@ class JsonResultsTest(unittest.TestCase):
             self.assertItemsEqual(j[builder]['blinkRevision'], ['12345', '54321'])
 
         tb.deactivate()
+
+    def test_normalize_results_with_top_level_results_key_does_not_crash(self):
+        aggregated_json = {
+            'Linux Tests': {
+                'results': {'foo': {'results': [(1, 'P')],
+                                    'times': [(1, 1)]}},
+            }
+        }
+        JsonResults._normalize_results(aggregated_json, 1, 2)
 
 if __name__ == '__main__':
     unittest.main()

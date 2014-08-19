@@ -97,8 +97,6 @@
 #include "wtf/text/WTFString.h"
 #include <v8.h>
 
-using namespace blink;
-
 namespace blink {
 
 FrameLoaderClientImpl::FrameLoaderClientImpl(WebLocalFrameImpl* frame)
@@ -169,6 +167,13 @@ void FrameLoaderClientImpl::didUpdateCurrentHistoryItem()
 {
     if (m_webFrame->client())
         m_webFrame->client()->didUpdateCurrentHistoryItem(m_webFrame);
+}
+
+void FrameLoaderClientImpl::didRemoveAllPendingStylesheet()
+{
+    WebViewImpl* webview = m_webFrame->viewImpl();
+    if (webview)
+        webview->didRemoveAllPendingStylesheet(m_webFrame);
 }
 
 bool FrameLoaderClientImpl::allowScript(bool enabledPerSettings)
@@ -247,7 +252,7 @@ bool FrameLoaderClientImpl::hasWebView() const
 
 Frame* FrameLoaderClientImpl::opener() const
 {
-    return toWebCoreFrame(m_webFrame->opener());
+    return toCoreFrame(m_webFrame->opener());
 }
 
 void FrameLoaderClientImpl::setOpener(Frame* opener)
@@ -258,32 +263,32 @@ void FrameLoaderClientImpl::setOpener(Frame* opener)
 
 Frame* FrameLoaderClientImpl::parent() const
 {
-    return toWebCoreFrame(m_webFrame->parent());
+    return toCoreFrame(m_webFrame->parent());
 }
 
 Frame* FrameLoaderClientImpl::top() const
 {
-    return toWebCoreFrame(m_webFrame->top());
+    return toCoreFrame(m_webFrame->top());
 }
 
 Frame* FrameLoaderClientImpl::previousSibling() const
 {
-    return toWebCoreFrame(m_webFrame->previousSibling());
+    return toCoreFrame(m_webFrame->previousSibling());
 }
 
 Frame* FrameLoaderClientImpl::nextSibling() const
 {
-    return toWebCoreFrame(m_webFrame->nextSibling());
+    return toCoreFrame(m_webFrame->nextSibling());
 }
 
 Frame* FrameLoaderClientImpl::firstChild() const
 {
-    return toWebCoreFrame(m_webFrame->firstChild());
+    return toCoreFrame(m_webFrame->firstChild());
 }
 
 Frame* FrameLoaderClientImpl::lastChild() const
 {
-    return toWebCoreFrame(m_webFrame->lastChild());
+    return toCoreFrame(m_webFrame->lastChild());
 }
 
 void FrameLoaderClientImpl::detachedFromParent()
@@ -303,9 +308,9 @@ void FrameLoaderClientImpl::detachedFromParent()
     m_webFrame->setClient(0);
 
     client->frameDetached(m_webFrame);
-    // Clear our reference to blink::LocalFrame at the very end, in case the client
+    // Clear our reference to LocalFrame at the very end, in case the client
     // refers to it.
-    m_webFrame->setWebCoreFrame(nullptr);
+    m_webFrame->setCoreFrame(nullptr);
 }
 
 void FrameLoaderClientImpl::dispatchWillSendRequest(
@@ -334,7 +339,7 @@ void FrameLoaderClientImpl::dispatchDidReceiveResponse(DocumentLoader* loader,
 void FrameLoaderClientImpl::dispatchDidChangeResourcePriority(unsigned long identifier, ResourceLoadPriority priority, int intraPriorityValue)
 {
     if (m_webFrame->client())
-        m_webFrame->client()->didChangeResourcePriority(m_webFrame, identifier, static_cast<blink::WebURLRequest::Priority>(priority), intraPriorityValue);
+        m_webFrame->client()->didChangeResourcePriority(m_webFrame, identifier, static_cast<WebURLRequest::Priority>(priority), intraPriorityValue);
 }
 
 // Called when a particular resource load completes
@@ -395,7 +400,7 @@ void FrameLoaderClientImpl::dispatchDidReceiveTitle(const String& title)
         m_webFrame->client()->didReceiveTitle(m_webFrame, title, WebTextDirectionLeftToRight);
 }
 
-void FrameLoaderClientImpl::dispatchDidChangeIcons(blink::IconType type)
+void FrameLoaderClientImpl::dispatchDidChangeIcons(IconType type)
 {
     if (m_webFrame->client())
         m_webFrame->client()->didChangeIcon(m_webFrame, static_cast<WebIconURL::Type>(type));
@@ -595,7 +600,7 @@ String FrameLoaderClientImpl::userAgent(const KURL& url)
     if (!override.isEmpty())
         return override;
 
-    return blink::Platform::current()->userAgent();
+    return Platform::current()->userAgent();
 }
 
 String FrameLoaderClientImpl::doNotTrackValue()
@@ -758,12 +763,12 @@ void FrameLoaderClientImpl::dispatchWillOpenSocketStream(SocketStreamHandle* han
     m_webFrame->client()->willOpenSocketStream(SocketStreamHandleInternal::toWebSocketStreamHandle(handle));
 }
 
-void FrameLoaderClientImpl::dispatchWillOpenWebSocket(blink::WebSocketHandle* handle)
+void FrameLoaderClientImpl::dispatchWillOpenWebSocket(WebSocketHandle* handle)
 {
     m_webFrame->client()->willOpenWebSocket(handle);
 }
 
-void FrameLoaderClientImpl::dispatchWillStartUsingPeerConnectionHandler(blink::WebRTCPeerConnectionHandler* handler)
+void FrameLoaderClientImpl::dispatchWillStartUsingPeerConnectionHandler(WebRTCPeerConnectionHandler* handler)
 {
     m_webFrame->client()->willStartUsingPeerConnectionHandler(webFrame(), handler);
 }
