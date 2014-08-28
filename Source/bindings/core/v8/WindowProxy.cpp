@@ -45,6 +45,7 @@
 #include "bindings/core/v8/V8Window.h"
 #include "core/frame/LocalFrame.h"
 #include "core/frame/csp/ContentSecurityPolicy.h"
+#include "core/html/DocumentNameCollection.h"
 #include "core/html/HTMLCollection.h"
 #include "core/html/HTMLIFrameElement.h"
 #include "core/inspector/InspectorInstrumentation.h"
@@ -417,19 +418,19 @@ static v8::Handle<v8::Value> getNamedProperty(HTMLDocument* htmlDocument, const 
     if (!htmlDocument->hasNamedItem(key) && !htmlDocument->hasExtraNamedItem(key))
         return v8Undefined();
 
-    RefPtrWillBeRawPtr<HTMLCollection> items = htmlDocument->documentNamedItems(key);
+    RefPtrWillBeRawPtr<DocumentNameCollection> items = htmlDocument->documentNamedItems(key);
     if (items->isEmpty())
         return v8Undefined();
 
     if (items->hasExactlyOneItem()) {
-        Element* element = items->item(0);
+        HTMLElement* element = items->item(0);
         ASSERT(element);
         Frame* frame = isHTMLIFrameElement(*element) ? toHTMLIFrameElement(*element).contentFrame() : 0;
         if (frame)
             return toV8(frame->domWindow(), creationContext, isolate);
         return toV8(element, creationContext, isolate);
     }
-    return toV8(items.release(), creationContext, isolate);
+    return toV8(PassRefPtrWillBeRawPtr<HTMLCollection>(items.release()), creationContext, isolate);
 }
 
 static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInfo<v8::Value>& info)

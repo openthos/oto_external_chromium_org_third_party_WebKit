@@ -49,7 +49,7 @@ WebInspector.TimelinePanel = function()
 
     // Create model.
     if (WebInspector.experimentsSettings.timelineOnTraceEvents.isEnabled()) {
-        this._tracingModel = new WebInspector.TracingModel(WebInspector.targetManager.mainTarget());
+        this._tracingModel = new WebInspector.TracingModel();
         this._tracingModel.addEventListener(WebInspector.TracingModel.Events.BufferUsage, this._onTracingBufferUsage, this);
 
         this._uiUtils = new WebInspector.TracingTimelineUIUtils();
@@ -97,8 +97,8 @@ WebInspector.TimelinePanel = function()
     this._createFileSelector();
     this._registerShortcuts();
 
-    WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.WillReloadPage, this._willReloadPage, this);
-    WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.Load, this._loadEventFired, this);
+    WebInspector.targetManager.addEventListener(WebInspector.TargetManager.Events.WillReloadPage, this._willReloadPage, this);
+    WebInspector.targetManager.addEventListener(WebInspector.TargetManager.Events.Load, this._loadEventFired, this);
 
     // Create top level properties splitter.
     this._detailsSplitView = new WebInspector.SplitView(false, true, "timelinePanelDetailsSplitViewState");
@@ -1151,12 +1151,15 @@ WebInspector.TimelineDetailsView.prototype = {
     },
 
     /**
+     * @override
      * @param {string} id
      * @param {string} tabTitle
      * @param {!WebInspector.View} view
      * @param {string=} tabTooltip
+     * @param {boolean=} userGesture
+     * @param {boolean=} isCloseable
      */
-    appendTab: function(id, tabTitle, view, tabTooltip)
+    appendTab: function(id, tabTitle, view, tabTooltip, userGesture, isCloseable)
     {
         WebInspector.TabbedPane.prototype.appendTab.call(this, id, tabTitle, view, tabTooltip);
         if (this._lastUserSelectedTabId === id)

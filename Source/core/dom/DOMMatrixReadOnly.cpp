@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include "config.h"
-#include "core/dom/DOMMatrixReadOnly.h"
+#include "core/dom/DOMMatrix.h"
 
 namespace blink {
 
@@ -14,10 +14,28 @@ bool DOMMatrixReadOnly::is2D() const
 
 bool DOMMatrixReadOnly::isIdentity() const
 {
-    return m11() == 1 && m21() == 0 && m31() == 0 && m41() == 0
-        && m12() == 0 && m22() == 1 && m32() == 0 && m42() == 0
-        && m13() == 0 && m23() == 0 && m33() == 1 && m43() == 0
-        && m14() == 0 && m24() == 0 && m34() == 0 && m44() == 1;
+    return m_matrix.isIdentity();
+}
+
+DOMMatrix* DOMMatrixReadOnly::translate(double tx, double ty, double tz)
+{
+    return DOMMatrix::create(this)->translateSelf(tx, ty, tz);
+}
+
+DOMMatrix* DOMMatrixReadOnly::scale(double scale, double ox, double oy)
+{
+    return DOMMatrix::create(this)->scaleSelf(scale, ox, oy);
+}
+
+DOMMatrix* DOMMatrixReadOnly::scale3d(double scale, double ox, double oy, double oz)
+{
+    return DOMMatrix::create(this)->scale3dSelf(scale, ox, oy, oz);
+}
+
+DOMMatrix* DOMMatrixReadOnly::scaleNonUniform(double sx, double sy, double sz,
+    double ox, double oy, double oz)
+{
+    return DOMMatrix::create(this)->scaleNonUniformSelf(sx, sy, sz, ox, oy, oz);
 }
 
 } // namespace blink

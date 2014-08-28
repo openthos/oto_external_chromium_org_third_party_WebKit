@@ -58,7 +58,7 @@ namespace blink {
     class WorkerNavigator;
     class WorkerThread;
 
-    class WorkerGlobalScope : public RefCountedWillBeRefCountedGarbageCollected<WorkerGlobalScope>, public SecurityContext, public ExecutionContext, public ExecutionContextClient, public WillBeHeapSupplementable<WorkerGlobalScope>, public EventTargetWithInlineData, public DOMWindowBase64 {
+    class WorkerGlobalScope : public RefCountedWillBeGarbageCollectedFinalized<WorkerGlobalScope>, public SecurityContext, public ExecutionContext, public ExecutionContextClient, public WillBeHeapSupplementable<WorkerGlobalScope>, public EventTargetWithInlineData, public DOMWindowBase64 {
         WILL_BE_USING_GARBAGE_COLLECTED_MIXIN(WorkerGlobalScope);
         REFCOUNTED_EVENT_TARGET(WorkerGlobalScope);
     public:
@@ -137,6 +137,8 @@ namespace blink {
         using SecurityContext::securityOrigin;
         using SecurityContext::contentSecurityPolicy;
 
+        virtual void addMessage(PassRefPtrWillBeRawPtr<ConsoleMessage>) OVERRIDE FINAL;
+
         virtual void trace(Visitor*) OVERRIDE;
 
     protected:
@@ -156,7 +158,6 @@ namespace blink {
         virtual KURL virtualCompleteURL(const String&) const OVERRIDE FINAL;
 
         virtual void reportBlockedScriptExecutionToInspector(const String& directiveText) OVERRIDE FINAL;
-        virtual void addMessage(PassRefPtrWillBeRawPtr<ConsoleMessage>) OVERRIDE FINAL;
 
         virtual EventTarget* errorEventTarget() OVERRIDE FINAL;
         virtual void didUpdateSecurityOrigin() OVERRIDE FINAL { }

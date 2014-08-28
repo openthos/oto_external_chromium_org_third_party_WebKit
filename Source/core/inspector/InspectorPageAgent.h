@@ -83,6 +83,7 @@ public:
     // Settings overrides.
     void setTextAutosizingEnabled(bool);
     void setDeviceScaleAdjustment(float);
+    void setPreferCompositingToLCDTextEnabled(bool);
 
     static Vector<Document*> importsForFrame(LocalFrame*);
     static bool cachedResourceContent(Resource*, String* result, bool* base64Encoded);
@@ -211,9 +212,11 @@ private:
     bool m_originalTouchEnabled;
     bool m_originalDeviceSupportsMouse;
     bool m_originalDeviceSupportsTouch;
+    int m_originalMaxTouchPoints;
 
     bool m_embedderTextAutosizingEnabled;
     double m_embedderFontScaleFactor;
+    bool m_embedderPreferCompositingToLCDTextEnabled;
 
     OwnPtr<InspectorResourceContentLoader> m_inspectorResourceContentLoader;
     HashMap<String, String> m_editedResourceContent;

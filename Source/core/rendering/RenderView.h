@@ -80,7 +80,7 @@ public:
 
     FrameView* frameView() const { return m_frameView; }
 
-    virtual void mapRectToPaintInvalidationBacking(const RenderLayerModelObject* paintInvalidationContainer, LayoutRect&, bool fixed = false, const PaintInvalidationState* = 0) const OVERRIDE;
+    virtual void mapRectToPaintInvalidationBacking(const RenderLayerModelObject* paintInvalidationContainer, LayoutRect&, ViewportConstrainedPosition, const PaintInvalidationState*) const OVERRIDE;
     void invalidatePaintForRectangle(const LayoutRect&) const;
 
     void invalidatePaintForViewAndCompositedLayers();
@@ -88,8 +88,8 @@ public:
     virtual void paint(PaintInfo&, const LayoutPoint&) OVERRIDE;
     virtual void paintBoxDecorationBackground(PaintInfo&, const LayoutPoint&) OVERRIDE;
 
-    enum SelectionRepaintMode { RepaintNewXOROld, RepaintNewMinusOld, RepaintNothing };
-    void setSelection(RenderObject* start, int startPos, RenderObject* end, int endPos, SelectionRepaintMode = RepaintNewXOROld);
+    enum SelectionPaintInvalidationMode { PaintInvalidationNewXOROld, PaintInvalidationNewMinusOld, PaintInvalidationNothing };
+    void setSelection(RenderObject* start, int startPos, RenderObject*, int endPos, SelectionPaintInvalidationMode = PaintInvalidationNewXOROld);
     void getSelection(RenderObject*& startRenderer, int& startOffset, RenderObject*& endRenderer, int& endOffset) const;
     void clearSelection();
     RenderObject* selectionStart() const { return m_selectionStart; }
@@ -156,6 +156,7 @@ public:
 
     void pushLayoutState(LayoutState&);
     void popLayoutState();
+    virtual void invalidateTreeIfNeeded(const PaintInvalidationState&) OVERRIDE FINAL;
 
 private:
     virtual void mapLocalToContainer(const RenderLayerModelObject* paintInvalidationContainer, TransformState&, MapCoordinatesFlags = ApplyContainerFlip, bool* wasFixed = 0, const PaintInvalidationState* = 0) const OVERRIDE;
@@ -163,7 +164,6 @@ private:
     virtual void mapAbsoluteToLocalPoint(MapCoordinatesFlags, TransformState&) const OVERRIDE;
     virtual void computeSelfHitTestRects(Vector<LayoutRect>&, const LayoutPoint& layerOffset) const OVERRIDE;
 
-    virtual void invalidateTreeIfNeeded(const PaintInvalidationState&) OVERRIDE FINAL;
 
     bool shouldInvalidatePaint(const LayoutRect&) const;
 
@@ -208,7 +208,7 @@ DEFINE_RENDER_OBJECT_TYPE_CASTS(RenderView, isRenderView());
 
 // Suspends the LayoutState cached offset and clipRect optimization. Used under transforms
 // that cannot be represented by LayoutState (common in SVG) and when manipulating the render
-// tree during layout in ways that can trigger repaint of a non-child (e.g. when a list item
+// tree during layout in ways that can trigger paint invalidation of a non-child (e.g. when a list item
 // moves its list marker around). Note that even when disabled, LayoutState is still used to
 // store layoutDelta.
 class ForceHorriblySlowRectMapping {

@@ -586,9 +586,12 @@ ThreadHeap<Header>::ThreadHeap(ThreadState* state, int index)
     , m_remainingAllocationSize(0)
     , m_firstPage(0)
     , m_firstLargeHeapObject(0)
+    , m_firstPageAllocatedDuringSweeping(0)
+    , m_lastPageAllocatedDuringSweeping(0)
     , m_biggestFreeListIndex(0)
     , m_threadState(state)
     , m_index(index)
+    , m_numberOfNormalPages(0)
 {
     clearFreeLists();
 }
@@ -671,6 +674,10 @@ template<typename Header>
 BaseHeapPage* ThreadHeap<Header>::heapPageFromAddress(Address address)
 {
     for (HeapPage<Header>* page = m_firstPage; page; page = page->next()) {
+        if (page->contains(address))
+            return page;
+    }
+    for (HeapPage<Header>* page = m_firstPageAllocatedDuringSweeping; page; page = page->next()) {
         if (page->contains(address))
             return page;
     }
@@ -759,6 +766,8 @@ void ThreadHeap<Header>::addToFreeList(Address address, size_t size)
 #endif
     int index = bucketIndexForSize(size);
     entry->link(&m_freeLists[index]);
+    if (!m_lastFreeListEntries[index])
+        m_lastFreeListEntries[index] = entry;
     if (index > m_biggestFreeListIndex)
         m_biggestFreeListIndex = index;
 }
@@ -1008,9 +1017,9 @@ void ThreadHeap<HeapObjectHeader>::addPageToHeap(const GCInfo* gcInfo)
 template <typename Header>
 void ThreadHeap<Header>::removePageFromHeap(HeapPage<Header>* page)
 {
+    MutexLocker locker(m_threadState->sweepMutex());
     flushHeapContainsCache();
     if (page->terminating()) {
-        ASSERT(ThreadState::current()->isTerminating());
         // The thread is shutting down so this page is being removed as part
         // of a thread local GC. In that case the page could be accessed in the
         // next global GC either due to a dead object being traced via a
@@ -1022,7 +1031,6 @@ void ThreadHeap<Header>::removePageFromHeap(HeapPage<Header>* page)
         // pointers refer to it.
         Heap::orphanedPagePool()->addOrphanedPage(m_index, page);
     } else {
-        ASSERT(!ThreadState::current()->isTerminating());
         PageMemory* memory = page->storage();
         page->~HeapPage<Header>();
         Heap::freePagePool()->addFreePage(m_index, memory);
@@ -1054,20 +1062,45 @@ void ThreadHeap<Header>::allocatePage(const GCInfo* gcInfo)
         pageMemory = Heap::freePagePool()->takeFreePage(m_index);
     }
     HeapPage<Header>* page = new (pageMemory->writableStart()) HeapPage<Header>(pageMemory, this, gcInfo);
-    // FIXME: Oilpan: Linking new pages into the front of the list is
-    // crucial when performing allocations during finalization because
-    // it ensures that those pages are not swept in the current GC
-    // round. We should create a separate page list for that to
-    // separate out the pages allocated during finalization clearly
-    // from the pages currently being swept.
-    page->link(&m_firstPage);
+    // Use a separate list for pages allocated during sweeping to make
+    // sure that we do not accidentally sweep objects that have been
+    // allocated during sweeping.
+    if (m_threadState->isSweepInProgress()) {
+        if (!m_lastPageAllocatedDuringSweeping)
+            m_lastPageAllocatedDuringSweeping = page;
+        page->link(&m_firstPageAllocatedDuringSweeping);
+    } else {
+        page->link(&m_firstPage);
+    }
+    ++m_numberOfNormalPages;
     addToFreeList(page->payload(), HeapPage<Header>::payloadSize());
 }
 
 #if ENABLE(ASSERT)
 template<typename Header>
+bool ThreadHeap<Header>::pagesToBeSweptContains(Address address)
+{
+    for (HeapPage<Header>* page = m_firstPage; page; page = page->next()) {
+        if (page->contains(address))
+            return true;
+    }
+    return false;
+}
+
+template<typename Header>
+bool ThreadHeap<Header>::pagesAllocatedDuringSweepingContains(Address address)
+{
+    for (HeapPage<Header>* page = m_firstPageAllocatedDuringSweeping; page; page = page->next()) {
+        if (page->contains(address))
+            return true;
+    }
+    return false;
+}
+
+template<typename Header>
 void ThreadHeap<Header>::getScannedStats(HeapStats& scannedStats)
 {
+    ASSERT(!m_firstPageAllocatedDuringSweeping);
     for (HeapPage<Header>* page = m_firstPage; page; page = page->next())
         page->getStats(scannedStats);
     for (LargeHeapObject<Header>* current = m_firstLargeHeapObject; current; current = current->next())
@@ -1075,43 +1108,37 @@ void ThreadHeap<Header>::getScannedStats(HeapStats& scannedStats)
 }
 #endif
 
-// STRICT_ASAN_FINALIZATION_CHECKING turns on poisoning of all objects during
-// sweeping to catch cases where dead objects touch eachother. This is not
-// turned on by default because it also triggers for cases that are safe.
-// Examples of such safe cases are context life cycle observers and timers
-// embedded in garbage collected objects.
-#define STRICT_ASAN_FINALIZATION_CHECKING 0
-
 template<typename Header>
-void ThreadHeap<Header>::sweep()
+void ThreadHeap<Header>::sweepNormalPages(HeapStats* stats)
 {
-    ASSERT(isConsistentForGC());
-#if defined(ADDRESS_SANITIZER) && STRICT_ASAN_FINALIZATION_CHECKING
-    // When using ASan do a pre-sweep where all unmarked objects are poisoned before
-    // calling their finalizer methods. This can catch the cases where one objects
-    // finalizer tries to modify another object as part of finalization.
-    for (HeapPage<Header>* page = m_firstPage; page; page = page->next())
-        page->poisonUnmarkedObjects();
-#endif
     HeapPage<Header>* page = m_firstPage;
-    HeapPage<Header>** previous = &m_firstPage;
+    HeapPage<Header>** previousNext = &m_firstPage;
+    HeapPage<Header>* previous = 0;
     while (page) {
         if (page->isEmpty()) {
             HeapPage<Header>* unused = page;
+            if (unused == m_mergePoint)
+                m_mergePoint = previous;
             page = page->next();
-            HeapPage<Header>::unlink(unused, previous);
+            HeapPage<Header>::unlink(this, unused, previousNext);
+            --m_numberOfNormalPages;
         } else {
-            page->sweep();
-            previous = &page->m_next;
+            page->sweep(stats, this);
+            previousNext = &page->m_next;
+            previous = page;
             page = page->next();
         }
     }
+}
 
+template<typename Header>
+void ThreadHeap<Header>::sweepLargePages(HeapStats* stats)
+{
     LargeHeapObject<Header>** previousNext = &m_firstLargeHeapObject;
     for (LargeHeapObject<Header>* current = m_firstLargeHeapObject; current;) {
         if (current->isMarked()) {
-            stats().increaseAllocatedSpace(current->size());
-            stats().increaseObjectSpace(current->payloadSize());
+            stats->increaseAllocatedSpace(current->size());
+            stats->increaseObjectSpace(current->payloadSize());
             current->unmark();
             previousNext = &current->m_next;
             current = current->next();
@@ -1123,18 +1150,69 @@ void ThreadHeap<Header>::sweep()
     }
 }
 
+
+// STRICT_ASAN_FINALIZATION_CHECKING turns on poisoning of all objects during
+// sweeping to catch cases where dead objects touch each other. This is not
+// turned on by default because it also triggers for cases that are safe.
+// Examples of such safe cases are context life cycle observers and timers
+// embedded in garbage collected objects.
+#define STRICT_ASAN_FINALIZATION_CHECKING 0
+
 template<typename Header>
-bool ThreadHeap<Header>::isConsistentForGC()
+void ThreadHeap<Header>::sweep(HeapStats* stats)
 {
-    for (size_t i = 0; i < blinkPageSizeLog2; i++) {
-        if (m_freeLists[i])
-            return false;
-    }
-    return !ownsNonEmptyAllocationArea();
+    ASSERT(isConsistentForSweeping());
+#if defined(ADDRESS_SANITIZER) && STRICT_ASAN_FINALIZATION_CHECKING
+    // When using ASan do a pre-sweep where all unmarked objects are
+    // poisoned before calling their finalizer methods. This can catch
+    // the case where the finalizer of an object tries to modify
+    // another object as part of finalization.
+    for (HeapPage<Header>* page = m_firstPage; page; page = page->next())
+        page->poisonUnmarkedObjects();
+#endif
+    sweepNormalPages(stats);
+    sweepLargePages(stats);
 }
 
 template<typename Header>
-void ThreadHeap<Header>::makeConsistentForGC()
+void ThreadHeap<Header>::postSweepProcessing()
+{
+    // If pages have been allocated during sweeping, link them into
+    // the list of pages.
+    if (m_firstPageAllocatedDuringSweeping) {
+        m_lastPageAllocatedDuringSweeping->m_next = m_firstPage;
+        m_firstPage = m_firstPageAllocatedDuringSweeping;
+        m_lastPageAllocatedDuringSweeping = 0;
+        m_firstPageAllocatedDuringSweeping = 0;
+    }
+}
+
+#if ENABLE(ASSERT)
+template<typename Header>
+bool ThreadHeap<Header>::isConsistentForSweeping()
+{
+    // A thread heap is consistent for sweeping if none of the pages to
+    // be swept contain a freelist block or the current allocation
+    // point.
+    for (size_t i = 0; i < blinkPageSizeLog2; i++) {
+        for (FreeListEntry* freeListEntry = m_freeLists[i]; freeListEntry; freeListEntry = freeListEntry->next()) {
+            if (pagesToBeSweptContains(freeListEntry->address())) {
+                return false;
+            }
+            ASSERT(pagesAllocatedDuringSweepingContains(freeListEntry->address()));
+        }
+    }
+    if (ownsNonEmptyAllocationArea()) {
+        ASSERT(pagesToBeSweptContains(currentAllocationPoint())
+            || pagesAllocatedDuringSweepingContains(currentAllocationPoint()));
+        return !pagesToBeSweptContains(currentAllocationPoint());
+    }
+    return true;
+}
+#endif
+
+template<typename Header>
+void ThreadHeap<Header>::makeConsistentForSweeping()
 {
     if (ownsNonEmptyAllocationArea())
         addToFreeList(currentAllocationPoint(), remainingAllocationSize());
@@ -1145,7 +1223,7 @@ void ThreadHeap<Header>::makeConsistentForGC()
 template<typename Header>
 void ThreadHeap<Header>::clearLiveAndMarkDead()
 {
-    ASSERT(isConsistentForGC());
+    ASSERT(isConsistentForSweeping());
     for (HeapPage<Header>* page = m_firstPage; page; page = page->next())
         page->clearLiveAndMarkDead();
     for (LargeHeapObject<Header>* current = m_firstLargeHeapObject; current; current = current->next()) {
@@ -1159,8 +1237,10 @@ void ThreadHeap<Header>::clearLiveAndMarkDead()
 template<typename Header>
 void ThreadHeap<Header>::clearFreeLists()
 {
-    for (size_t i = 0; i < blinkPageSizeLog2; i++)
+    for (size_t i = 0; i < blinkPageSizeLog2; i++) {
         m_freeLists[i] = 0;
+        m_lastFreeListEntries[i] = 0;
+    }
 }
 
 int BaseHeap::bucketIndexForSize(size_t size)
@@ -1178,7 +1258,6 @@ template<typename Header>
 HeapPage<Header>::HeapPage(PageMemory* storage, ThreadHeap<Header>* heap, const GCInfo* gcInfo)
     : BaseHeapPage(storage, gcInfo, heap->threadState())
     , m_next(0)
-    , m_heap(heap)
 {
     COMPILE_ASSERT(!(sizeof(HeapPage<Header>) & allocationMask), page_header_incorrectly_aligned);
     m_objectStartBitMapComputed = false;
@@ -1194,10 +1273,10 @@ void HeapPage<Header>::link(HeapPage** prevNext)
 }
 
 template<typename Header>
-void HeapPage<Header>::unlink(HeapPage* unused, HeapPage** prevNext)
+void HeapPage<Header>::unlink(ThreadHeap<Header>* heap, HeapPage* unused, HeapPage** prevNext)
 {
     *prevNext = unused->m_next;
-    unused->heap()->removePageFromHeap(unused);
+    heap->removePageFromHeap(unused);
 }
 
 template<typename Header>
@@ -1224,10 +1303,10 @@ bool HeapPage<Header>::isEmpty()
 }
 
 template<typename Header>
-void HeapPage<Header>::sweep()
+void HeapPage<Header>::sweep(HeapStats* stats, ThreadHeap<Header>* heap)
 {
     clearObjectStartBitMap();
-    heap()->stats().increaseAllocatedSpace(blinkPageSize);
+    stats->increaseAllocatedSpace(blinkPageSize);
     Address startOfGap = payload();
     for (Address headerAddress = startOfGap; headerAddress < end(); ) {
         BasicObjectHeader* basicHeader = reinterpret_cast<BasicObjectHeader*>(headerAddress);
@@ -1270,14 +1349,14 @@ void HeapPage<Header>::sweep()
         }
 
         if (startOfGap != headerAddress)
-            heap()->addToFreeList(startOfGap, headerAddress - startOfGap);
+            heap->addToFreeList(startOfGap, headerAddress - startOfGap);
         header->unmark();
         headerAddress += header->size();
-        heap()->stats().increaseObjectSpace(header->payloadSize());
+        stats->increaseObjectSpace(header->payloadSize());
         startOfGap = headerAddress;
     }
     if (startOfGap != end())
-        heap()->addToFreeList(startOfGap, end() - startOfGap);
+        heap->addToFreeList(startOfGap, end() - startOfGap);
 }
 
 template<typename Header>
@@ -1428,14 +1507,14 @@ void HeapPage<Header>::snapshot(TracedValue* json, ThreadState::SnapshotInfo* in
             json->pushInteger(tag);
         if (header->isMarked()) {
             info->liveCount[tag] += 1;
-            info->liveSize += header->size();
+            info->liveSize[tag] += header->size();
             // Count objects that are live when promoted to the final generation.
             if (age == maxHeapObjectAge - 1)
                 info->generations[tag][maxHeapObjectAge] += 1;
             header->incAge();
         } else {
             info->deadCount[tag] += 1;
-            info->deadSize += header->size();
+            info->deadSize[tag] += header->size();
             // Count objects that are dead before the final generation.
             if (age < maxHeapObjectAge)
                 info->generations[tag][age] += 1;
@@ -1514,14 +1593,14 @@ void LargeHeapObject<Header>::snapshot(TracedValue* json, ThreadState::SnapshotI
     size_t age = header->age();
     if (isMarked()) {
         info->liveCount[tag] += 1;
-        info->liveSize += header->size();
+        info->liveSize[tag] += header->size();
         // Count objects that are live when promoted to the final generation.
         if (age == maxHeapObjectAge - 1)
             info->generations[tag][maxHeapObjectAge] += 1;
         header->incAge();
     } else {
         info->deadCount[tag] += 1;
-        info->deadSize += header->size();
+        info->deadSize[tag] += header->size();
         // Count objects that are dead before the final generation.
         if (age < maxHeapObjectAge)
             info->generations[tag][age] += 1;
@@ -2319,6 +2398,55 @@ void ThreadHeap<Header>::prepareHeapForTermination()
     }
 }
 
+template<typename Header>
+BaseHeap* ThreadHeap<Header>::split(int numberOfNormalPages)
+{
+    // Create a new split off thread heap containing
+    // |numberOfNormalPages| of the pages of this ThreadHeap for
+    // parallel sweeping. The split off thread heap will be merged
+    // with this heap at the end of sweeping and the temporary
+    // ThreadHeap object will be deallocated after the merge.
+    ASSERT(numberOfNormalPages > 0);
+    ThreadHeap<Header>* splitOff = new ThreadHeap(m_threadState, m_index);
+    HeapPage<Header>* splitPoint = m_firstPage;
+    for (int i = 1; i < numberOfNormalPages; i++)
+        splitPoint = splitPoint->next();
+    splitOff->m_firstPage = m_firstPage;
+    m_firstPage = splitPoint->m_next;
+    splitOff->m_mergePoint = splitPoint;
+    splitOff->m_numberOfNormalPages = numberOfNormalPages;
+    m_numberOfNormalPages -= numberOfNormalPages;
+    splitPoint->m_next = 0;
+    return splitOff;
+}
+
+template<typename Header>
+void ThreadHeap<Header>::merge(BaseHeap* splitOffBase)
+{
+    ThreadHeap<Header>* splitOff = static_cast<ThreadHeap<Header>*>(splitOffBase);
+    // If the mergePoint is zero all split off pages became empty in
+    // this round and we don't have to merge. There are no pages and
+    // nothing on the freelists.
+    ASSERT(splitOff->m_mergePoint || splitOff->m_numberOfNormalPages == 0);
+    if (splitOff->m_mergePoint) {
+        // Link the split off pages into the beginning of the list again.
+        splitOff->m_mergePoint->m_next = m_firstPage;
+        m_firstPage = splitOff->m_firstPage;
+        m_numberOfNormalPages += splitOff->m_numberOfNormalPages;
+        splitOff->m_firstPage = 0;
+        // Merge free lists.
+        for (size_t i = 0; i < blinkPageSizeLog2; i++) {
+            if (!m_freeLists[i]) {
+                m_freeLists[i] = splitOff->m_freeLists[i];
+            } else if (splitOff->m_freeLists[i]) {
+                m_lastFreeListEntries[i]->append(splitOff->m_freeLists[i]);
+                m_lastFreeListEntries[i] = splitOff->m_lastFreeListEntries[i];
+            }
+        }
+    }
+    delete splitOffBase;
+}
+
 void Heap::getHeapSpaceSize(uint64_t* objectSpaceSize, uint64_t* allocatedSpaceSize)
 {
     *objectSpaceSize = 0;
@@ -2345,23 +2473,25 @@ void Heap::getStats(HeapStats* stats)
     }
 }
 
-bool Heap::isConsistentForGC()
+#if ENABLE(ASSERT)
+bool Heap::isConsistentForSweeping()
 {
     ASSERT(ThreadState::isAnyThreadInGC());
     ThreadState::AttachedThreadStateSet& threads = ThreadState::attachedThreads();
     for (ThreadState::AttachedThreadStateSet::iterator it = threads.begin(), end = threads.end(); it != end; ++it) {
-        if (!(*it)->isConsistentForGC())
+        if (!(*it)->isConsistentForSweeping())
             return false;
     }
     return true;
 }
+#endif
 
-void Heap::makeConsistentForGC()
+void Heap::makeConsistentForSweeping()
 {
     ASSERT(ThreadState::isAnyThreadInGC());
     ThreadState::AttachedThreadStateSet& threads = ThreadState::attachedThreads();
     for (ThreadState::AttachedThreadStateSet::iterator it = threads.begin(), end = threads.end(); it != end; ++it)
-        (*it)->makeConsistentForGC();
+        (*it)->makeConsistentForSweeping();
 }
 
 // Force template instantiations for the types that we need.

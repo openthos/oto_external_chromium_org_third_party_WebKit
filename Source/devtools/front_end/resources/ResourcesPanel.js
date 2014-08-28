@@ -31,6 +31,7 @@
 /**
  * @constructor
  * @extends {WebInspector.PanelWithSidebarTree}
+ * @implements {WebInspector.TargetManager.Observer}
  */
 WebInspector.ResourcesPanel = function(database)
 {
@@ -105,18 +106,48 @@ WebInspector.ResourcesPanel = function(database)
     }
     WebInspector.GoToLineDialog.install(this, sourceFrameGetter.bind(this));
 
-    if (WebInspector.resourceTreeModel.cachedResourcesLoaded())
-        this._cachedResourcesLoaded();
-
-    WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.Load, this._loadEventFired, this);
-    WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.CachedResourcesLoaded, this._cachedResourcesLoaded, this);
-    WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.WillLoadCachedResources, this._resetWithFrames, this);
-
-    WebInspector.databaseModel.databases().forEach(this._addDatabase.bind(this));
-    WebInspector.databaseModel.addEventListener(WebInspector.DatabaseModel.Events.DatabaseAdded, this._databaseAdded, this);
+    WebInspector.targetManager.observeTargets(this);
 }
 
 WebInspector.ResourcesPanel.prototype = {
+    /**
+     * @param {!WebInspector.Target} target
+     */
+    targetAdded: function(target)
+    {
+        if (this._target)
+            return;
+
+        if (target.resourceTreeModel.cachedResourcesLoaded())
+            this._cachedResourcesLoaded();
+
+        target.databaseModel.databases().forEach(this._addDatabase.bind(this));
+
+        target.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.Load, this._loadEventFired, this);
+        target.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.CachedResourcesLoaded, this._cachedResourcesLoaded, this);
+        target.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.WillLoadCachedResources, this._resetWithFrames, this);
+        target.databaseModel.addEventListener(WebInspector.DatabaseModel.Events.DatabaseAdded, this._databaseAdded, this);
+
+        this._target = target;
+    },
+
+    /**
+     * @param {!WebInspector.Target} target
+     */
+    targetRemoved: function(target)
+    {
+        if (target !== this._target)
+            return;
+        delete this._target;
+
+        target.resourceTreeModel.removeEventListener(WebInspector.ResourceTreeModel.EventTypes.Load, this._loadEventFired, this);
+        target.resourceTreeModel.removeEventListener(WebInspector.ResourceTreeModel.EventTypes.CachedResourcesLoaded, this._cachedResourcesLoaded, this);
+        target.resourceTreeModel.removeEventListener(WebInspector.ResourceTreeModel.EventTypes.WillLoadCachedResources, this._resetWithFrames, this);
+        target.databaseModel.removeEventListener(WebInspector.DatabaseModel.Events.DatabaseAdded, this._databaseAdded, this);
+
+        this._resetWithFrames();
+    },
+
     /**
      * @return {boolean}
      */
@@ -316,7 +347,7 @@ WebInspector.ResourcesPanel.prototype = {
     _addDatabase: function(database)
     {
         var databaseTreeElement = new WebInspector.DatabaseTreeElement(this, database);
-        this._databaseTreeElements.put(database, databaseTreeElement);
+        this._databaseTreeElements.set(database, databaseTreeElement);
         this.databasesListTreeElement.appendChild(databaseTreeElement);
     },
 
@@ -352,7 +383,7 @@ WebInspector.ResourcesPanel.prototype = {
         console.assert(!this._domStorageTreeElements.get(domStorage));
 
         var domStorageTreeElement = new WebInspector.DOMStorageTreeElement(this, domStorage, (domStorage.isLocalStorage ? "local-storage" : "session-storage"));
-        this._domStorageTreeElements.put(domStorage, domStorageTreeElement);
+        this._domStorageTreeElements.set(domStorage, domStorageTreeElement);
         if (domStorage.isLocalStorage)
             this.localStorageListTreeElement.appendChild(domStorageTreeElement);
         else
@@ -478,7 +509,7 @@ WebInspector.ResourcesPanel.prototype = {
             var tableViews = this._databaseTableViews.get(database);
             if (!tableViews) {
                 tableViews = /** @type {!Object.<string, !WebInspector.DatabaseTableView>} */ ({});
-                this._databaseTableViews.put(database, tableViews);
+                this._databaseTableViews.set(database, tableViews);
             }
             view = tableViews[tableName];
             if (!view) {
@@ -489,7 +520,7 @@ WebInspector.ResourcesPanel.prototype = {
             view = this._databaseQueryViews.get(database);
             if (!view) {
                 view = new WebInspector.DatabaseQueryView(database);
-                this._databaseQueryViews.put(database, view);
+                this._databaseQueryViews.set(database, view);
                 view.addEventListener(WebInspector.DatabaseQueryView.Events.SchemaUpdated, this._updateDatabaseTables, this);
             }
         }
@@ -517,7 +548,7 @@ WebInspector.ResourcesPanel.prototype = {
         view = this._domStorageViews.get(domStorage);
         if (!view) {
             view = new WebInspector.DOMStorageItemsView(domStorage);
-            this._domStorageViews.put(domStorage, view);
+            this._domStorageViews.set(domStorage, view);
         }
 
         this._innerShowView(view);

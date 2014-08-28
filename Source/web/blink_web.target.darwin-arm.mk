@@ -53,7 +53,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/web/GraphicsLayerFactoryChromium.cpp \
 	third_party/WebKit/Source/web/IndexedDBClientImpl.cpp \
 	third_party/WebKit/Source/web/InspectorClientImpl.cpp \
-	third_party/WebKit/Source/web/InspectorFrontendClientImpl.cpp \
 	third_party/WebKit/Source/web/LinkHighlight.cpp \
 	third_party/WebKit/Source/web/LocalFileSystemClient.cpp \
 	third_party/WebKit/Source/web/MediaKeysClientImpl.cpp \
@@ -272,6 +271,10 @@ MY_DEFS_Debug := \
 	'-DVIDEO_HOLE=1' \
 	'-DBLINK_IMPLEMENTATION=1' \
 	'-DINSIDE_BLINK' \
+	'-DCHROME_PNG_WRITE_SUPPORT' \
+	'-DPNG_USER_CONFIG' \
+	'-DCHROME_PNG_READ_PACK_SUPPORT' \
+	'-DUSE_SYSTEM_LIBJPEG' \
 	'-DENABLE_CUSTOM_SCHEME_HANDLER=0' \
 	'-DENABLE_SVG_FONTS=1' \
 	'-DWTF_USE_CONCATENATED_IMPULSE_RESPONSES=1' \
@@ -324,6 +327,12 @@ LOCAL_C_INCLUDES_Debug := \
 	$(LOCAL_PATH)/third_party/WebKit \
 	$(gyp_shared_intermediate_dir)/blink \
 	$(LOCAL_PATH)/third_party/openmax_dl \
+	$(LOCAL_PATH)/third_party/libpng \
+	$(LOCAL_PATH)/third_party/zlib \
+	$(LOCAL_PATH)/third_party/libwebp \
+	$(LOCAL_PATH)/third_party/ots/include \
+	$(LOCAL_PATH)/third_party/iccjpeg \
+	$(PWD)/external/jpeg \
 	$(PWD)/external/icu/icu4c/source/common \
 	$(PWD)/external/icu/icu4c/source/i18n \
 	$(LOCAL_PATH)/third_party/qcms/src \
@@ -427,6 +436,10 @@ MY_DEFS_Release := \
 	'-DVIDEO_HOLE=1' \
 	'-DBLINK_IMPLEMENTATION=1' \
 	'-DINSIDE_BLINK' \
+	'-DCHROME_PNG_WRITE_SUPPORT' \
+	'-DPNG_USER_CONFIG' \
+	'-DCHROME_PNG_READ_PACK_SUPPORT' \
+	'-DUSE_SYSTEM_LIBJPEG' \
 	'-DENABLE_CUSTOM_SCHEME_HANDLER=0' \
 	'-DENABLE_SVG_FONTS=1' \
 	'-DWTF_USE_CONCATENATED_IMPULSE_RESPONSES=1' \
@@ -480,6 +493,12 @@ LOCAL_C_INCLUDES_Release := \
 	$(LOCAL_PATH)/third_party/WebKit \
 	$(gyp_shared_intermediate_dir)/blink \
 	$(LOCAL_PATH)/third_party/openmax_dl \
+	$(LOCAL_PATH)/third_party/libpng \
+	$(LOCAL_PATH)/third_party/zlib \
+	$(LOCAL_PATH)/third_party/libwebp \
+	$(LOCAL_PATH)/third_party/ots/include \
+	$(LOCAL_PATH)/third_party/iccjpeg \
+	$(PWD)/external/jpeg \
 	$(PWD)/external/icu/icu4c/source/common \
 	$(PWD)/external/icu/icu4c/source/i18n \
 	$(LOCAL_PATH)/third_party/qcms/src \

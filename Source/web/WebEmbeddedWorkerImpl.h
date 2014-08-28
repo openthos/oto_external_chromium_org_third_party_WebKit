@@ -41,6 +41,7 @@ namespace blink {
 class ServiceWorkerGlobalScopeProxy;
 class WebServiceWorkerNetworkProvider;
 class WebView;
+class WorkerInspectorProxy;
 class WorkerScriptLoader;
 class WorkerThread;
 
@@ -64,10 +65,16 @@ public:
     virtual void resumeAfterDownload() OVERRIDE;
     virtual void terminateWorkerContext() OVERRIDE;
     virtual void resumeWorkerContext() OVERRIDE;
+    // FIXME: Remove this once chromium uses the one that receives hostId as a parameter.
     virtual void attachDevTools() OVERRIDE;
+    virtual void attachDevTools(const WebString& hostId) OVERRIDE;
+    // FIXME: Remove this once chromium uses the one that receives hostId as a parameter.
     virtual void reattachDevTools(const WebString& savedState) OVERRIDE;
+    virtual void reattachDevTools(const WebString& hostId, const WebString& savedState) OVERRIDE;
     virtual void detachDevTools() OVERRIDE;
     virtual void dispatchDevToolsMessage(const WebString&) OVERRIDE;
+
+    void postMessageToPageInspector(const WTF::String&);
 
 private:
     class Loader;
@@ -102,6 +109,7 @@ private:
     RefPtr<WorkerThread> m_workerThread;
     OwnPtr<LoaderProxy> m_loaderProxy;
     OwnPtr<ServiceWorkerGlobalScopeProxy> m_workerGlobalScopeProxy;
+    OwnPtr<WorkerInspectorProxy> m_workerInspectorProxy;
 
     // 'shadow page' - created to proxy loading requests from the worker.
     // Both WebView and WebFrame objects are close()'ed (where they're

@@ -39,7 +39,8 @@ WebInspector.MediaQueryInspector.Section = {
 }
 
 WebInspector.MediaQueryInspector.Events = {
-    HeightUpdated: "HeightUpdated"
+    HeightUpdated: "HeightUpdated",
+    CountUpdated: "CountUpdated"
 }
 
 WebInspector.MediaQueryInspector.prototype = {
@@ -324,7 +325,7 @@ WebInspector.MediaQueryInspector.prototype = {
                 markers.push(lastMarker);
             }
         }
-        var heightChanges = this.element.children.length !== markers.length;
+        var countChanges = this.element.children.length !== markers.length;
 
         var scrollTop = this.element.scrollTop;
         this.element.removeChildren();
@@ -337,8 +338,10 @@ WebInspector.MediaQueryInspector.prototype = {
         }
         this.element.scrollTop = scrollTop;
         this.element.classList.toggle("media-inspector-view-empty", !this.element.children.length);
-        if (heightChanges)
+        if (countChanges) {
+            this.dispatchEventToListeners(WebInspector.MediaQueryInspector.Events.CountUpdated, markers.length);
             this.dispatchEventToListeners(WebInspector.MediaQueryInspector.Events.HeightUpdated);
+        }
     },
 
     /**
@@ -357,6 +360,7 @@ WebInspector.MediaQueryInspector.prototype = {
         var thresholds = this._mediaQueryThresholds();
         for (var i = 0; i < thresholds.length; ++i) {
             var thresholdElement = this._rulerDecorationLayer.createChild("div", "media-inspector-threshold-serif");
+            thresholdElement.title = thresholds[i] + "px";
             thresholdElement._value = thresholds[i];
             thresholdElement.style.left = (thresholds[i] - this._offset) / zoomFactor + "px";
         }

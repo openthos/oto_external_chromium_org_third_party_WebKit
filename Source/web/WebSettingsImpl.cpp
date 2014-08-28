@@ -51,7 +51,6 @@ WebSettingsImpl::WebSettingsImpl(Settings* settings, InspectorController* inspec
     , m_doubleTapToZoomEnabled(false)
     , m_supportDeprecatedTargetDensityDPI(false)
     , m_shrinksViewportContentToFit(false)
-    , m_useExpandedHeuristicsForGpuRasterization(false)
     , m_viewportMetaLayoutSizeQuirk(false)
     , m_viewportMetaNonUserScalableQuirk(false)
     , m_clobberUserAgentInitialScaleQuirk(false)
@@ -292,11 +291,6 @@ void WebSettingsImpl::setAllowScriptsToCloseWindows(bool allow)
     m_settings->setAllowScriptsToCloseWindows(allow);
 }
 
-void WebSettingsImpl::setUseExpandedHeuristicsForGpuRasterization(bool useExpandedHeuristics)
-{
-    m_useExpandedHeuristicsForGpuRasterization = useExpandedHeuristics;
-}
-
 void WebSettingsImpl::setUseLegacyBackgroundSizeShorthandBehavior(bool useLegacyBackgroundSizeShorthandBehavior)
 {
     m_settings->setUseLegacyBackgroundSizeShorthandBehavior(useLegacyBackgroundSizeShorthandBehavior);
@@ -442,21 +436,6 @@ void WebSettingsImpl::setMockGestureTapHighlightsEnabled(bool enabled)
     m_settings->setMockGestureTapHighlightsEnabled(enabled);
 }
 
-void WebSettingsImpl::setAcceleratedCompositingForOverflowScrollEnabled(bool enabled)
-{
-    m_settings->setAcceleratedCompositingForOverflowScrollEnabled(enabled);
-}
-
-void WebSettingsImpl::setCompositorDrivenAcceleratedScrollingEnabled(bool enabled)
-{
-    m_settings->setCompositorDrivenAcceleratedScrollingEnabled(enabled);
-}
-
-void WebSettingsImpl::setAcceleratedCompositingForFixedRootBackgroundEnabled(bool enabled)
-{
-    m_settings->setAcceleratedCompositingForFixedRootBackgroundEnabled(enabled);
-}
-
 void WebSettingsImpl::setAccelerated2dCanvasEnabled(bool enabled)
 {
     m_settings->setAccelerated2dCanvasEnabled(enabled);
@@ -488,9 +467,9 @@ void WebSettingsImpl::setDeferredFiltersEnabled(bool enabled)
     m_settings->setDeferredFiltersEnabled(enabled);
 }
 
-void WebSettingsImpl::setAcceleratedCompositingForFixedPositionEnabled(bool enabled)
+void WebSettingsImpl::setPreferCompositingToLCDTextEnabled(bool enabled)
 {
-    m_settings->setAcceleratedCompositingForFixedPositionEnabled(enabled);
+    m_inspectorController->setPreferCompositingToLCDTextEnabled(enabled);
 }
 
 void WebSettingsImpl::setMinimumAccelerated2dCanvasSize(int numPixels)
@@ -641,11 +620,6 @@ void WebSettingsImpl::setNavigateOnDragDrop(bool enabled)
 void WebSettingsImpl::setAllowCustomScrollbarInMainFrame(bool enabled)
 {
     m_settings->setAllowCustomScrollbarInMainFrame(enabled);
-}
-
-void WebSettingsImpl::setCompositedScrollingForFramesEnabled(bool enabled)
-{
-    m_settings->setCompositedScrollingForFramesEnabled(enabled);
 }
 
 void WebSettingsImpl::setSelectTrailingWhitespaceEnabled(bool enabled)

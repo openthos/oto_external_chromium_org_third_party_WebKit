@@ -83,7 +83,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/dom/ElementRareData.cpp \
 	third_party/WebKit/Source/core/dom/EmptyNodeList.cpp \
 	third_party/WebKit/Source/core/dom/ExecutionContext.cpp \
-	third_party/WebKit/Source/core/dom/FullscreenElementStack.cpp \
+	third_party/WebKit/Source/core/dom/Fullscreen.cpp \
 	third_party/WebKit/Source/core/dom/IconURL.cpp \
 	third_party/WebKit/Source/core/dom/IdTargetObserver.cpp \
 	third_party/WebKit/Source/core/dom/IdTargetObserverRegistry.cpp \
@@ -103,7 +103,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/dom/Node.cpp \
 	third_party/WebKit/Source/core/dom/NodeChildRemovalTracker.cpp \
 	third_party/WebKit/Source/core/dom/NodeFilter.cpp \
-	third_party/WebKit/Source/core/dom/NodeFilterCondition.cpp \
 	third_party/WebKit/Source/core/dom/NodeIterator.cpp \
 	third_party/WebKit/Source/core/dom/NodeIteratorBase.cpp \
 	third_party/WebKit/Source/core/dom/NodeListsNodeData.cpp \

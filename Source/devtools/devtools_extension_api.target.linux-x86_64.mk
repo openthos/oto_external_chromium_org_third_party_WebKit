@@ -14,14 +14,14 @@ gyp_shared_intermediate_dir := $(call intermediates-dir-for,GYP,shared,,,$(GYP_V
 # Make sure our deps are built first.
 GYP_TARGET_DEPENDENCIES :=
 
-### Rules for action "devtools_html":
+### Rules for action "devtools_extension_api":
 $(gyp_shared_intermediate_dir)/resources/inspector/devtools_extension_api.js: gyp_local_path := $(LOCAL_PATH)
 $(gyp_shared_intermediate_dir)/resources/inspector/devtools_extension_api.js: gyp_var_prefix := $(GYP_VAR_PREFIX)
 $(gyp_shared_intermediate_dir)/resources/inspector/devtools_extension_api.js: gyp_intermediate_dir := $(abspath $(gyp_intermediate_dir))
 $(gyp_shared_intermediate_dir)/resources/inspector/devtools_extension_api.js: gyp_shared_intermediate_dir := $(abspath $(gyp_shared_intermediate_dir))
 $(gyp_shared_intermediate_dir)/resources/inspector/devtools_extension_api.js: export PATH := $(subst $(ANDROID_BUILD_PATHS),,$(PATH))
 $(gyp_shared_intermediate_dir)/resources/inspector/devtools_extension_api.js: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/scripts/generate_devtools_extension_api.py $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/extensions/ExtensionAPI.js $(GYP_TARGET_DEPENDENCIES)
-	@echo "Gyp action: third_party_WebKit_Source_devtools_devtools_gyp_devtools_extension_api_target_devtools_html ($@)"
+	@echo "Gyp action: third_party_WebKit_Source_devtools_devtools_gyp_devtools_extension_api_target_devtools_extension_api ($@)"
 	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/devtools; mkdir -p $(gyp_shared_intermediate_dir)/resources/inspector; python scripts/generate_devtools_extension_api.py "$(gyp_shared_intermediate_dir)/resources/inspector/devtools_extension_api.js" front_end/extensions/ExtensionAPI.js
 
 

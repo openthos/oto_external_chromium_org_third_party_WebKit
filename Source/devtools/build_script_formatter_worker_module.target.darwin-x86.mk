@@ -15,19 +15,19 @@ gyp_shared_intermediate_dir := $(call intermediates-dir-for,GYP,shared,,,$(GYP_V
 GYP_TARGET_DEPENDENCIES :=
 
 ### Rules for action "build_script_formatter_worker_module":
-$(gyp_shared_intermediate_dir)/resources/inspector/script_formatter_worker/_module.js: gyp_local_path := $(LOCAL_PATH)
-$(gyp_shared_intermediate_dir)/resources/inspector/script_formatter_worker/_module.js: gyp_var_prefix := $(GYP_VAR_PREFIX)
-$(gyp_shared_intermediate_dir)/resources/inspector/script_formatter_worker/_module.js: gyp_intermediate_dir := $(abspath $(gyp_intermediate_dir))
-$(gyp_shared_intermediate_dir)/resources/inspector/script_formatter_worker/_module.js: gyp_shared_intermediate_dir := $(abspath $(gyp_shared_intermediate_dir))
-$(gyp_shared_intermediate_dir)/resources/inspector/script_formatter_worker/_module.js: export PATH := $(subst $(ANDROID_BUILD_PATHS),,$(PATH))
-$(gyp_shared_intermediate_dir)/resources/inspector/script_formatter_worker/_module.js: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/scripts/inline_js_imports.py $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/script_formatter_worker/_module.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/UglifyJS/parse-js.js $(GYP_TARGET_DEPENDENCIES)
+$(gyp_shared_intermediate_dir)/resources/inspector/script_formatter_worker.js: gyp_local_path := $(LOCAL_PATH)
+$(gyp_shared_intermediate_dir)/resources/inspector/script_formatter_worker.js: gyp_var_prefix := $(GYP_VAR_PREFIX)
+$(gyp_shared_intermediate_dir)/resources/inspector/script_formatter_worker.js: gyp_intermediate_dir := $(abspath $(gyp_intermediate_dir))
+$(gyp_shared_intermediate_dir)/resources/inspector/script_formatter_worker.js: gyp_shared_intermediate_dir := $(abspath $(gyp_shared_intermediate_dir))
+$(gyp_shared_intermediate_dir)/resources/inspector/script_formatter_worker.js: export PATH := $(subst $(ANDROID_BUILD_PATHS),,$(PATH))
+$(gyp_shared_intermediate_dir)/resources/inspector/script_formatter_worker.js: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/scripts/concatenate_module_scripts.py $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/script_formatter_worker/module.json $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/cm/css.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/cm/headlesscodemirror.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/cm/htmlmixed.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/cm/javascript.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/cm/xml.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/common/WebInspector.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/common/utilities.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/script_formatter_worker/CSSFormatter.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/script_formatter_worker/JavaScriptFormatter.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/script_formatter_worker/ScriptFormatterWorker.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/UglifyJS/parse-js.js $(GYP_TARGET_DEPENDENCIES)
 	@echo "Gyp action: third_party_WebKit_Source_devtools_devtools_gyp_build_script_formatter_worker_module_target_build_script_formatter_worker_module ($@)"
-	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/devtools; mkdir -p $(gyp_shared_intermediate_dir)/resources/inspector/script_formatter_worker; python scripts/inline_js_imports.py front_end/script_formatter_worker/_module.js "$(gyp_shared_intermediate_dir)/resources/inspector/script_formatter_worker/_module.js"
+	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/devtools; mkdir -p $(gyp_shared_intermediate_dir)/resources/inspector; python scripts/concatenate_module_scripts.py front_end/script_formatter_worker/module.json "$(gyp_shared_intermediate_dir)/resources/inspector/script_formatter_worker.js"
 
 
 
 GYP_GENERATED_OUTPUTS := \
-	$(gyp_shared_intermediate_dir)/resources/inspector/script_formatter_worker/_module.js
+	$(gyp_shared_intermediate_dir)/resources/inspector/script_formatter_worker.js
 
 # Make sure our deps and generated files are built first.
 LOCAL_ADDITIONAL_DEPENDENCIES := $(GYP_TARGET_DEPENDENCIES) $(GYP_GENERATED_OUTPUTS)

@@ -355,6 +355,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/frame/FrameDestructionObserver.cpp \
 	third_party/WebKit/Source/core/frame/FrameHost.cpp \
 	third_party/WebKit/Source/core/frame/FrameView.cpp \
+	third_party/WebKit/Source/core/frame/FrameViewAutoSizeInfo.cpp \
 	third_party/WebKit/Source/core/frame/History.cpp \
 	third_party/WebKit/Source/core/frame/ImageBitmap.cpp \
 	third_party/WebKit/Source/core/frame/LocalDOMWindow.cpp \
@@ -539,6 +540,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/workers/WorkerEventQueue.cpp \
 	third_party/WebKit/Source/core/workers/WorkerGlobalScope.cpp \
 	third_party/WebKit/Source/core/workers/WorkerGlobalScopeProxyProvider.cpp \
+	third_party/WebKit/Source/core/workers/WorkerInspectorProxy.cpp \
 	third_party/WebKit/Source/core/workers/WorkerMessagingProxy.cpp \
 	third_party/WebKit/Source/core/workers/WorkerNavigator.cpp \
 	third_party/WebKit/Source/core/workers/WorkerObjectProxy.cpp \

@@ -42,7 +42,7 @@ void webCoreInitializeScriptWrappableForInterface(blink::TestSpecialOperations* 
 }
 
 namespace blink {
-const WrapperTypeInfo V8TestSpecialOperations::wrapperTypeInfo = { gin::kEmbedderBlink, V8TestSpecialOperations::domTemplate, V8TestSpecialOperations::derefObject, 0, 0, 0, V8TestSpecialOperations::installConditionallyEnabledMethods, 0, WrapperTypeObjectPrototype, RefCountedObject };
+const WrapperTypeInfo V8TestSpecialOperations::wrapperTypeInfo = { gin::kEmbedderBlink, V8TestSpecialOperations::domTemplate, V8TestSpecialOperations::derefObject, 0, 0, 0, V8TestSpecialOperations::installConditionallyEnabledMethods, V8TestSpecialOperations::installConditionallyEnabledProperties, 0, WrapperTypeObjectPrototype, RefCountedObject };
 
 namespace TestSpecialOperationsV8Internal {
 
@@ -59,8 +59,8 @@ static void namedItemMethod(const v8::FunctionCallbackInfo<v8::Value>& info)
     {
         TOSTRING_VOID_INTERNAL(name, info[0]);
     }
-    RefPtrWillBeRawPtr<Node> result0;
-    RefPtrWillBeRawPtr<NodeList> result1;
+    RefPtrWillBeRawPtr<Node> result0 = nullptr;
+    RefPtrWillBeRawPtr<NodeList> result1 = nullptr;
     impl->getItem(name, result0, result1);
     if (result0) {
         v8SetReturnValue(info, result0.release());
@@ -84,8 +84,8 @@ static void namedPropertyGetter(v8::Local<v8::String> name, const v8::PropertyCa
 {
     TestSpecialOperations* impl = V8TestSpecialOperations::toNative(info.Holder());
     AtomicString propertyName = toCoreAtomicString(name);
-    RefPtrWillBeRawPtr<Node> result0;
-    RefPtrWillBeRawPtr<NodeList> result1;
+    RefPtrWillBeRawPtr<Node> result0 = nullptr;
+    RefPtrWillBeRawPtr<NodeList> result1 = nullptr;
     impl->getItem(propertyName, result0, result1);
     if (!(result0 || result1))
         return;

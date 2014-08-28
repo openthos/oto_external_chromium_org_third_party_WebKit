@@ -32,6 +32,7 @@
 #include "core/frame/LocalFrame.h"
 #include "core/html/HTMLCollection.h"
 #include "core/html/HTMLDataListElement.h"
+#include "core/html/HTMLDataListOptionsCollection.h"
 #include "core/html/HTMLFormControlElement.h"
 #include "core/html/HTMLInputElement.h"
 #include "core/html/HTMLMeterElement.h"
@@ -593,7 +594,7 @@ bool RenderTheme::isControlStyled(const RenderStyle* style, const CachedUAStyle*
     }
 }
 
-void RenderTheme::adjustRepaintRect(const RenderObject* o, IntRect& r)
+void RenderTheme::adjustPaintInvalidationRect(const RenderObject* o, IntRect& r)
 {
 #if USE(NEW_THEME)
     m_platformTheme->inflateControlPaintRect(o->style()->appearance(), controlStatesForRenderer(o), r, o->style()->effectiveZoom());
@@ -631,8 +632,7 @@ bool RenderTheme::stateChanged(RenderObject* o, ControlState state) const
     if (state == PressedControlState && !isEnabled(o))
         return false;
 
-    // Repaint the control.
-    o->paintInvalidationForWholeRenderer();
+    o->setShouldDoFullPaintInvalidation(true);
     return true;
 }
 
@@ -878,13 +878,11 @@ void RenderTheme::paintSliderTicks(RenderObject* o, const PaintInfo& paintInfo, 
         tickRegionSideMargin = trackBounds.y() + (thumbSize.width() - tickSize.width() * zoomFactor) / 2.0;
         tickRegionWidth = trackBounds.height() - thumbSize.width();
     }
-    RefPtrWillBeRawPtr<HTMLCollection> options = dataList->options();
+    RefPtrWillBeRawPtr<HTMLDataListOptionsCollection> options = dataList->options();
     GraphicsContextStateSaver stateSaver(*paintInfo.context);
     paintInfo.context->setFillColor(o->resolveColor(CSSPropertyColor));
-    for (unsigned i = 0; Element* element = options->item(i); i++) {
-        ASSERT(isHTMLOptionElement(*element));
-        HTMLOptionElement& optionElement = toHTMLOptionElement(*element);
-        String value = optionElement.value();
+    for (unsigned i = 0; HTMLOptionElement* optionElement = options->item(i); i++) {
+        String value = optionElement->value();
         if (!input->isValidValue(value))
             continue;
         double parsedValue = parseToDoubleForNumberType(input->sanitizeValue(value));

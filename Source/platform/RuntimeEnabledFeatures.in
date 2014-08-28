@@ -43,13 +43,12 @@ CSSMaskSourceType status=experimental
 CSSOMSmoothScroll status=experimental
 CSSTouchActionDelay status=test
 CSSViewport status=experimental
-CSSWillChange status=stable
 CSS3Text status=experimental
 CSS3TextDecorations status=experimental
 CompositedSelectionUpdates
 CustomSchemeHandler depends_on=NavigatorContentUtils, status=experimental
 Database status=stable
-DeviceLight status=test
+DeviceLight status=experimental
 DialogElement status=stable
 DisplayList2dCanvas
 SVGFontsOnNonGDIPlatforms
@@ -63,13 +62,10 @@ FastMobileScrolling
 FileAPIBlobClose status=experimental
 FileConstructor status=stable
 FileSystem status=stable
-FontLoadEvents status=stable
 FullscreenUnprefixed status=test
 Gamepad status=stable
 Geofencing status=test
 GeometryInterfaces status=test
-HTMLImports status=stable
-HighResolutionTimeInWorkers status=stable
 IMEAPI status=experimental
 ImageDataConstructor status=experimental
 ImageRenderingPixelated status=stable
@@ -97,7 +93,6 @@ OrientationEvent
 // Only enabled on Android, and for certain layout tests on Linux.
 OverlayFullscreenVideo
 PagePopup status=stable
-Path2D status=stable
 PathOpsSVGClipping status=stable
 PeerConnection depends_on=MediaStream, status=stable
 PreciseMemoryInfo
@@ -126,7 +121,6 @@ ShowModalDialog status=deprecated
 // Lax Mixed Content checking for WebSockets, XHR, etc. is deprecated and slated for removal. crbug.com/389089
 LaxMixedContentChecking status=deprecated
 
-SpeechSynthesis status=stable
 Stream status=experimental
 SubpixelFontScaling status=stable
 SubresourceIntegrity status=test
@@ -148,8 +142,7 @@ TouchIconLoading
 ThreadedParserDataReceiver status=experimental
 UserSelectAll status=experimental
 WebAnimationsSVG
-WebAnimationsElementAnimate status=stable
-WebAnimationsAPI status=experimental, depends_on=WebAnimationsElementAnimate
+WebAnimationsAPI status=experimental
 WebAudio condition=WEB_AUDIO, status=stable
 WebGLDraftExtensions status=experimental
 WebGLImageChromium

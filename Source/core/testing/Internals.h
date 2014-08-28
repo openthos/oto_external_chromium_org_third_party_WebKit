@@ -54,6 +54,7 @@ class Element;
 class ExceptionState;
 class ExecutionContext;
 class GCObservation;
+class HTMLElement;
 class HTMLMediaElement;
 class InternalProfilers;
 class InternalRuntimeFlags;
@@ -86,12 +87,6 @@ public:
 
     bool isPreloaded(const String& url);
     bool isLoadingFromMemoryCache(const String& url);
-
-    void crash();
-
-    void setStyleResolverStatsEnabled(bool);
-    String styleResolverStatsReport(ExceptionState&) const;
-    String styleResolverStatsTotalsReport(ExceptionState&) const;
 
     bool isSharingStyle(Element*, Element*) const;
 
@@ -139,8 +134,6 @@ public:
     void setFormControlStateOfHistoryItem(const Vector<String>&, ExceptionState&);
     void setEnableMockPagePopup(bool, ExceptionState&);
     PassRefPtrWillBeRawPtr<PagePopupController> pagePopupController();
-
-    PassRefPtrWillBeRawPtr<ClientRect> unscaledViewportRect(ExceptionState&);
 
     PassRefPtrWillBeRawPtr<ClientRect> absoluteCaretBounds(ExceptionState&);
 
@@ -191,9 +184,6 @@ public:
     // This is used to test rect based hit testing like what's done on touch screens.
     PassRefPtrWillBeRawPtr<StaticNodeList> nodesFromRect(Document*, int x, int y, unsigned topPadding, unsigned rightPadding,
         unsigned bottomPadding, unsigned leftPadding, bool ignoreClipping, bool allowChildFrameContent, ExceptionState&) const;
-
-    void emitInspectorDidBeginFrame(int frameId = 0);
-    void emitInspectorDidCancelFrame();
 
     bool hasSpellingMarker(Document*, int from, int length);
     bool hasGrammarMarker(Document*, int from, int length);
@@ -289,7 +279,6 @@ public:
     int selectPopupItemStyleFontHeight(Node*, int);
 
     PassRefPtrWillBeRawPtr<ClientRect> selectionBounds(ExceptionState&);
-    String baseURL(Document*);
 
     bool loseSharedGraphicsContext3D();
 
@@ -323,6 +312,8 @@ public:
     void hideAllTransitionElements();
 
     unsigned countHitRegions(CanvasRenderingContext2D*);
+
+    void forcePluginPlaceholder(HTMLElement* plugin, const String& htmlSource, ExceptionState&);
 
 private:
     explicit Internals(Document*);

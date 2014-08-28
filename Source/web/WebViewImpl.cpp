@@ -84,6 +84,7 @@
 #include "core/rendering/RenderWidget.h"
 #include "core/rendering/TextAutosizer.h"
 #include "core/rendering/compositing/RenderLayerCompositor.h"
+#include "modules/credentialmanager/CredentialManagerClient.h"
 #include "modules/device_orientation/DeviceOrientationInspectorAgent.h"
 #include "modules/encryptedmedia/MediaKeysController.h"
 #include "modules/filesystem/InspectorFileSystemAgent.h"
@@ -327,6 +328,12 @@ void WebViewImpl::setMainFrame(WebFrame* frame)
 void WebViewImpl::setAutofillClient(WebAutofillClient* autofillClient)
 {
     m_autofillClient = autofillClient;
+}
+
+void WebViewImpl::setCredentialManagerClient(WebCredentialManagerClient* webCredentialManagerClient)
+{
+    ASSERT(m_page);
+    provideCredentialManagerClientTo(*m_page, new CredentialManagerClient(webCredentialManagerClient));
 }
 
 void WebViewImpl::setDevToolsAgentClient(WebDevToolsAgentClient* devToolsClient)
@@ -1049,7 +1056,7 @@ WebRect WebViewImpl::computeBlockBounds(const WebRect& rect, bool ignoreClipping
 
     // Find the block type node based on the hit node.
     while (node && (!node->renderer() || node->renderer()->isInline()))
-        node = node->parentNode();
+        node = NodeRenderingTraversal::parent(node);
 
     // Return the bounding box in the window coordinate system.
     if (node) {
@@ -1173,7 +1180,7 @@ static Node* findCursorDefiningAncestor(Node* node, LocalFrame* frame)
             if (cursor != CURSOR_AUTO || frame->eventHandler().useHandCursor(node, node->isLink()))
                 break;
         }
-        node = node->parentNode();
+        node = NodeRenderingTraversal::parent(node);
     }
 
     return node;
@@ -1204,7 +1211,7 @@ Node* WebViewImpl::bestTapNode(const PlatformGestureEvent& tapEvent)
     // We might hit something like an image map that has no renderer on it
     // Walk up the tree until we have a node with an attached renderer
     while (bestTouchNode && !bestTouchNode->renderer())
-        bestTouchNode = bestTouchNode->parentNode();
+        bestTouchNode = NodeRenderingTraversal::parent(bestTouchNode);
 
     Node* cursorDefiningAncestor =
         findCursorDefiningAncestor(bestTouchNode, m_page->deprecatedLocalMainFrame());
@@ -1219,7 +1226,8 @@ Node* WebViewImpl::bestTapNode(const PlatformGestureEvent& tapEvent)
     // has hand cursor set.
     do {
         bestTouchNode = cursorDefiningAncestor;
-        cursorDefiningAncestor = findCursorDefiningAncestor(bestTouchNode->parentNode(), m_page->deprecatedLocalMainFrame());
+        cursorDefiningAncestor = findCursorDefiningAncestor(NodeRenderingTraversal::parent(bestTouchNode),
+            m_page->deprecatedLocalMainFrame());
     } while (cursorDefiningAncestor && showsHandCursor(cursorDefiningAncestor, m_page->deprecatedLocalMainFrame()));
 
     return bestTouchNode;
@@ -3047,19 +3055,9 @@ void WebViewImpl::updatePageDefinedViewportConstraints(const ViewportDescription
 
     Document* document = page()->deprecatedLocalMainFrame()->document();
 
-    if (settingsImpl()->useExpandedHeuristicsForGpuRasterization()) {
-        m_matchesHeuristicsForGpuRasterization = description.maxWidth == Length(DeviceWidth)
-            && description.minZoom == 1.0
-            && description.minZoomIsExplicit;
-    } else {
-        m_matchesHeuristicsForGpuRasterization = description.maxWidth == Length(DeviceWidth)
-            && description.minZoom == 1.0
-            && description.minZoomIsExplicit
-            && description.zoom == 1.0
-            && description.zoomIsExplicit
-            && description.userZoom
-            && description.userZoomIsExplicit;
-    }
+    m_matchesHeuristicsForGpuRasterization = description.maxWidth == Length(DeviceWidth)
+        && description.minZoom == 1.0
+        && description.minZoomIsExplicit;
     if (m_layerTreeView)
         m_layerTreeView->heuristicsForGpuRasterizationUpdated(m_matchesHeuristicsForGpuRasterization);
 
@@ -3420,6 +3418,17 @@ void WebViewImpl::spellingMarkers(WebVector<uint32_t>* markers)
     markers->assign(result);
 }
 
+void WebViewImpl::removeSpellingMarkersUnderWords(const WebVector<WebString>& words)
+{
+    Vector<String> convertedWords;
+    convertedWords.append(words.data(), words.size());
+
+    for (Frame* frame = m_page->mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        if (frame->isLocalFrame())
+            toLocalFrame(frame)->removeSpellingMarkersUnderWords(convertedWords);
+    }
+}
+
 WebDragOperation WebViewImpl::dragTargetDragEnterOrOver(const WebPoint& clientPoint, const WebPoint& screenPoint, DragAction dragAction, int keyModifiers)
 {
     ASSERT(m_currentDragData);
@@ -3475,7 +3484,10 @@ void WebViewImpl::configureAutoResizeMode()
     if (!mainFrameImpl() || !mainFrameImpl()->frame() || !mainFrameImpl()->frame()->view())
         return;
 
-    mainFrameImpl()->frame()->view()->enableAutoSizeMode(m_shouldAutoResize, m_minAutoSize, m_maxAutoSize);
+    if (m_shouldAutoResize)
+        mainFrameImpl()->frame()->view()->enableAutoSizeMode(m_minAutoSize, m_maxAutoSize);
+    else
+        mainFrameImpl()->frame()->view()->disableAutoSizeMode();
 }
 
 unsigned long WebViewImpl::createUniqueIdentifierForRequest()
@@ -3587,6 +3599,10 @@ void WebViewImpl::extractSmartClipData(WebRect rect, WebString& clipText, WebStr
 
     Position startPosition = startVisiblePosition.deepEquivalent();
     Position endPosition = endVisiblePosition.deepEquivalent();
+
+    // document() will return null if -webkit-user-select is set to none.
+    if (!startPosition.document() || !endPosition.document())
+        return;
 
     RefPtrWillBeRawPtr<Range> range = Range::create(*startPosition.document(), startPosition, endPosition);
     if (!range)

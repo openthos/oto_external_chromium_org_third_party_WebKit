@@ -225,7 +225,8 @@
         "commands": [
             {
                 "name": "enable",
-                "description": "Enables page domain notifications."
+                "description": "Enables page domain notifications.",
+                "handlers": ["browser", "renderer"]
             },
             {
                 "name": "disable",
@@ -551,6 +552,15 @@
                 "description": "Queries more detailed quota and usage data than Storage API provides.",
                 "hidden": true,
                 "handlers": ["browser"]
+            },
+            {
+                "name": "setColorPickerEnabled",
+                "parameters": [
+                    { "name": "enabled", "type": "boolean", "description": "Shows / hides color picker" }
+                ],
+                "description": "Shows / hides color picker",
+                "hidden": true,
+                "handlers": ["browser"]
             }
         ],
         "events": [
@@ -672,6 +682,27 @@
                     { "name": "viewport", "$ref": "Viewport", "description": "Viewport description." }
                 ],
                 "hidden": true
+            },
+            {
+                "name": "colorPicked",
+                "description": "Fired when a color has been picked.",
+                "parameters": [
+                    { "name": "color", "$ref": "DOM.RGBA", "description": "RGBA of the picked color." }
+                ],
+                "hidden": true,
+                "handlers": ["browser"]
+            },
+            {
+                "name": "interstitialShown",
+                "description": "Fired when interstitial page was shown",
+                "hidden": true,
+                "handlers": ["browser"]
+            },
+            {
+                "name": "interstitialHidden",
+                "description": "Fired when interstitial page was hidden",
+                "hidden": true,
+                "handlers": ["browser"]
             }
         ]
     },
@@ -1081,6 +1112,7 @@
                     { "name": "remoteIPAddress", "type": "string", "optional": true, "hidden": true, "description": "Remote IP address." },
                     { "name": "remotePort", "type": "integer", "optional": true, "hidden": true, "description": "Remote port."},
                     { "name": "fromDiskCache", "type": "boolean", "optional": true, "description": "Specifies that the request was served from the disk cache." },
+                    { "name": "fromServiceWorker", "type": "boolean", "optional": true, "description": "Specifies that the request was served from the ServiceWorker." },
                     { "name": "encodedDataLength", "type": "number", "optional": false, "description": "Total number of bytes received for this request so far." },
                     { "name": "timing", "$ref": "ResourceTiming", "optional": true, "description": "Timing information for the given request." }
                 ]

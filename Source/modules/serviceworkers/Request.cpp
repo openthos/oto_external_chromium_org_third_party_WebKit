@@ -150,7 +150,6 @@ PassRefPtrWillBeRawPtr<Request> Request::create(ExecutionContext* context, const
     return createRequestWithRequestData(request.release(), RequestInit(init), FetchRequestData::CORSMode, FetchRequestData::OmitCredentials, exceptionState);
 }
 
-
 PassRefPtrWillBeRawPtr<Request> Request::create(ExecutionContext* context, Request* input, ExceptionState& exceptionState)
 {
     return create(context, input, Dictionary(), exceptionState);
@@ -213,6 +212,16 @@ String Request::url() const
     return url;
 }
 
+PassRefPtrWillBeRawPtr<FetchBodyStream> Request::body(ExecutionContext* context)
+{
+    if (!m_request->blobDataHandle())
+        return nullptr;
+    if (!m_fetchBodyStream)
+        m_fetchBodyStream = FetchBodyStream::create(context, m_request->blobDataHandle());
+    return m_fetchBodyStream;
+}
+
+
 String Request::referrer() const
 {
     // "The referrer attribute's getter must return the empty string if
@@ -259,6 +268,7 @@ void Request::trace(Visitor* visitor)
 {
     visitor->trace(m_request);
     visitor->trace(m_headers);
+    visitor->trace(m_fetchBodyStream);
 }
 
 } // namespace blink

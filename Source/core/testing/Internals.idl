@@ -36,12 +36,6 @@
     boolean isPreloaded(DOMString url);
     boolean isLoadingFromMemoryCache(DOMString url);
 
-    void crash();
-
-    void setStyleResolverStatsEnabled(boolean enabled);
-    [RaisesException] DOMString styleResolverStatsReport();
-    [RaisesException] DOMString styleResolverStatsTotalsReport();
-
     [TypeChecking=Interface] boolean isSharingStyle(Element element1, Element element2);
 
     [TypeChecking=Interface] CSSStyleDeclaration computedStyleIncludingVisitedInfo(Node node);
@@ -88,8 +82,6 @@
     [RaisesException] void setFormControlStateOfHistoryItem(sequence<DOMString> values);
     [RaisesException] void setEnableMockPagePopup(boolean enabled);
     readonly attribute PagePopupController pagePopupController;
-
-    [RaisesException] ClientRect unscaledViewportRect();
 
     [RaisesException] ClientRect absoluteCaretBounds();
 
@@ -146,9 +138,6 @@
     [RaisesException, TypeChecking=Interface] NodeList nodesFromRect(Document document, long x, long y,
         unsigned long topPadding, unsigned long rightPadding, unsigned long bottomPadding, unsigned long leftPadding,
         boolean ignoreClipping, boolean allowChildFrameContent);
-
-    void emitInspectorDidBeginFrame(optional long frameId);
-    void emitInspectorDidCancelFrame();
 
     [TypeChecking=Interface] boolean hasSpellingMarker(Document document, long from, long length);
     [TypeChecking=Interface] boolean hasGrammarMarker(Document document, long from, long length);
@@ -240,8 +229,6 @@
 
     [TypeChecking=Interface] DOMString markerTextForListItem(Element element);
 
-    [TypeChecking=Interface] DOMString baseURL(Document document);
-
     SerializedScriptValue deserializeBuffer(ArrayBuffer buffer);
     ArrayBuffer serializeObject(SerializedScriptValue obj);
 
@@ -288,4 +275,6 @@
 
     DOMString serializeNavigationMarkup();
     void hideAllTransitionElements();
+
+    [RaisesException] void forcePluginPlaceholder(HTMLElement plugin, DOMString htmlSource);
 };

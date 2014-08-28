@@ -49,10 +49,7 @@ public:
     virtual void setAccelerated2dCanvasEnabled(bool) OVERRIDE;
     virtual void setAccelerated2dCanvasMSAASampleCount(int) OVERRIDE;
     virtual void setAcceleratedCompositingEnabled(bool) OVERRIDE;
-    virtual void setAcceleratedCompositingForFixedPositionEnabled(bool) OVERRIDE;
-    virtual void setAcceleratedCompositingForOverflowScrollEnabled(bool) OVERRIDE;
-    virtual void setCompositorDrivenAcceleratedScrollingEnabled(bool) OVERRIDE;
-    virtual void setAcceleratedCompositingForFixedRootBackgroundEnabled(bool) OVERRIDE;
+    virtual void setPreferCompositingToLCDTextEnabled(bool) OVERRIDE;
     virtual void setAllowDisplayOfInsecureContent(bool) OVERRIDE;
     virtual void setAllowFileAccessFromFileURLs(bool) OVERRIDE;
     virtual void setAllowCustomScrollbarInMainFrame(bool) OVERRIDE;
@@ -65,7 +62,6 @@ public:
     virtual void setAutoZoomFocusedNodeToLegibleScale(bool) OVERRIDE;
     virtual void setCaretBrowsingEnabled(bool) OVERRIDE;
     virtual void setClobberUserAgentInitialScaleQuirk(bool) OVERRIDE;
-    virtual void setCompositedScrollingForFramesEnabled(bool) OVERRIDE;
     virtual void setContainerCullingEnabled(bool) OVERRIDE;
     virtual void setCookieEnabled(bool) OVERRIDE;
     virtual void setNavigateOnDragDrop(bool) OVERRIDE;
@@ -149,7 +145,6 @@ public:
     virtual void setUnifiedTextCheckerEnabled(bool) OVERRIDE;
     virtual void setUnsafePluginPastingEnabled(bool) OVERRIDE;
     virtual void setUsesEncodingDetector(bool) OVERRIDE;
-    virtual void setUseExpandedHeuristicsForGpuRasterization(bool) OVERRIDE;
     virtual void setUseLegacyBackgroundSizeShorthandBehavior(bool) OVERRIDE;
     virtual void setUseSolidColorScrollbars(bool) OVERRIDE;
     virtual void setUseWideViewport(bool) OVERRIDE;
@@ -174,7 +169,6 @@ public:
     bool doubleTapToZoomEnabled() const { return m_doubleTapToZoomEnabled; }
     bool perTilePaintingEnabled() const { return m_perTilePaintingEnabled; }
     bool supportDeprecatedTargetDensityDPI() const { return m_supportDeprecatedTargetDensityDPI; }
-    bool useExpandedHeuristicsForGpuRasterization() const { return m_useExpandedHeuristicsForGpuRasterization; }
     bool viewportMetaLayoutSizeQuirk() const { return m_viewportMetaLayoutSizeQuirk; }
     bool viewportMetaNonUserScalableQuirk() const { return m_viewportMetaNonUserScalableQuirk; }
     bool clobberUserAgentInitialScaleQuirk() const { return m_clobberUserAgentInitialScaleQuirk; }
@@ -194,7 +188,6 @@ private:
     bool m_perTilePaintingEnabled;
     bool m_supportDeprecatedTargetDensityDPI;
     bool m_shrinksViewportContentToFit;
-    bool m_useExpandedHeuristicsForGpuRasterization;
     // This quirk is to maintain compatibility with Android apps built on
     // the Android SDK prior to and including version 18. Presumably, this
     // can be removed any time after 2015. See http://crbug.com/277369.

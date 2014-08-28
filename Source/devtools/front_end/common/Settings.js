@@ -298,8 +298,8 @@ WebInspector.ExperimentsSettings = function(experimentsEnabled)
     this.fileSystemInspection = this._createExperiment("fileSystemInspection", "FileSystem inspection");
     this.gpuTimeline = this._createExperiment("gpuTimeline", "GPU data on timeline", true);
     this.layersPanel = this._createExperiment("layersPanel", "Layers panel");
-    this.timelineOnTraceEvents = this._createExperiment("timelineOnTraceEvents", "Timeline on trace events");
     this.paintProfiler = this._createExperiment("paintProfiler", "Paint profiler");
+    this.timelineOnTraceEvents = this._createExperiment("timelineOnTraceEvents", "Timeline on trace events");
     this.timelinePowerProfiler = this._createExperiment("timelinePowerProfiler", "Timeline power profiler");
     this.timelineJSCPUProfile = this._createExperiment("timelineJSCPUProfile", "Timeline with JS sampling");
 

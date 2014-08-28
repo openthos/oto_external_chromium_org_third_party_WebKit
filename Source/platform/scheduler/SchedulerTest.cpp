@@ -256,13 +256,13 @@ TEST_F(SchedulerTest, TestTaskPrioritization)
     m_scheduler->postTask(FROM_HERE, WTF::bind(&SchedulerTest::appendToVector, this, string("L1")));
     m_scheduler->postTask(FROM_HERE, WTF::bind(&SchedulerTest::appendToVector, this, string("L2")));
     m_scheduler->postInputTask(FROM_HERE, WTF::bind(&SchedulerTest::appendToVector, this, string("I1")));
-    m_scheduler->postInputTask(FROM_HERE, WTF::bind(&SchedulerTest::appendToVector, this, string("I2")));
     m_scheduler->postCompositorTask(FROM_HERE, WTF::bind(&SchedulerTest::appendToVector, this, string("C1")));
+    m_scheduler->postInputTask(FROM_HERE, WTF::bind(&SchedulerTest::appendToVector, this, string("I2")));
     m_scheduler->postCompositorTask(FROM_HERE, WTF::bind(&SchedulerTest::appendToVector, this, string("C2")));
 
     runPendingTasks();
     EXPECT_THAT(m_order, testing::ElementsAre(
-        string("I1"), string("I2"), string("C1"), string("C2"), string("L1"), string("L2")));
+        string("I1"), string("C1"), string("I2"), string("C2"), string("L1"), string("L2")));
 }
 
 TEST_F(SchedulerTest, TestRentrantTask)
@@ -288,6 +288,44 @@ TEST_F(SchedulerTest, TestRentrantCompositorTaskDuringShutdown)
     Scheduler::shutdown();
 
     EXPECT_THAT(m_reentrantOrder, testing::ElementsAre(0, 1, 2, 3, 4));
+}
+
+bool s_shouldContinue;
+void reentrantInputTask(Scheduler* scheduler)
+{
+    if (s_shouldContinue)
+        scheduler->postInputTask(FROM_HERE, WTF::bind(&reentrantInputTask, scheduler));
+}
+
+void reentrantCompositorTask(Scheduler* scheduler)
+{
+    if (s_shouldContinue)
+        scheduler->postCompositorTask(FROM_HERE, WTF::bind(&reentrantCompositorTask, scheduler));
+}
+
+void stopReentrantTask()
+{
+    s_shouldContinue = false;
+}
+
+TEST_F(SchedulerTest, TestRentrantInputTaskDoesNotStarveOutLowPriorityTask)
+{
+    s_shouldContinue = true;
+    m_scheduler->postInputTask(FROM_HERE, WTF::bind(&reentrantInputTask, m_scheduler));
+    m_scheduler->postTask(FROM_HERE, WTF::bind(&stopReentrantTask));
+
+    // If starvation occurs then this will never exit.
+    runPendingTasks();
+}
+
+TEST_F(SchedulerTest, TestRentrantCompositorTaskDoesNotStarveOutLowPriorityTask)
+{
+    s_shouldContinue = true;
+    m_scheduler->postInputTask(FROM_HERE, WTF::bind(&reentrantCompositorTask, m_scheduler));
+    m_scheduler->postTask(FROM_HERE, WTF::bind(&stopReentrantTask));
+
+    // If starvation occurs then this will never exit.
+    runPendingTasks();
 }
 
 } // namespace

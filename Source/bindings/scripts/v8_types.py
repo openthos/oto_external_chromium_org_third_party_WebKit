@@ -39,7 +39,7 @@ Design doc: http://www.chromium.org/developers/design-documents/idl-compiler
 
 import posixpath
 
-from idl_types import IdlTypeBase, IdlType, IdlUnionType, IdlArrayOrSequenceType
+from idl_types import IdlTypeBase, IdlType, IdlUnionType, IdlArrayOrSequenceType, IdlNullableType
 import v8_attributes  # for IdlType.constructor_type_name
 from v8_globals import includes
 
@@ -72,12 +72,9 @@ TYPED_ARRAYS = {
     'Uint32Array': ('unsigned int', 'v8::kExternalUnsignedIntArray'),
 }
 
-IdlTypeBase.is_typed_array_element_type = False
 IdlType.is_typed_array_element_type = property(
     lambda self: self.base_type in TYPED_ARRAYS)
 
-
-IdlTypeBase.is_wrapper_type = False
 IdlType.is_wrapper_type = property(
     lambda self: (self.is_interface_type and
                   self.base_type not in NON_WRAPPER_TYPES))
@@ -203,11 +200,21 @@ def cpp_type_initializer(idl_type):
     |idl_type| argument is of type IdlType.
     """
 
-    if (idl_type.is_numeric_type):
+    base_idl_type = idl_type.base_type
+
+    if idl_type.native_array_element_type:
+        return ''
+    if idl_type.is_numeric_type:
         return ' = 0'
-    if idl_type.base_type == 'boolean':
+    if base_idl_type == 'boolean':
         return ' = false'
-    return ''
+    if (base_idl_type in NON_WRAPPER_TYPES or
+        base_idl_type in CPP_SPECIAL_CONVERSION_RULES or
+        base_idl_type == 'any' or
+        idl_type.is_string_type or
+        idl_type.is_enum):
+        return ''
+    return ' = nullptr'
 
 
 def cpp_type_union(idl_type, extended_attributes=None, raw_type=False):
@@ -229,7 +236,6 @@ IdlUnionType.cpp_type_initializer = property(cpp_type_initializer_union)
 IdlUnionType.cpp_type_args = cpp_type_union
 
 
-IdlTypeBase.native_array_element_type = None
 IdlArrayOrSequenceType.native_array_element_type = property(
     lambda self: self.element_type)
 
@@ -285,7 +291,6 @@ IdlType.set_implemented_as_interfaces = classmethod(
 # [GarbageCollected]
 IdlType.garbage_collected_types = set()
 
-IdlTypeBase.is_garbage_collected = False
 IdlType.is_garbage_collected = property(
     lambda self: self.base_type in IdlType.garbage_collected_types)
 
@@ -297,7 +302,6 @@ IdlType.set_garbage_collected_types = classmethod(
 # [WillBeGarbageCollected]
 IdlType.will_be_garbage_collected_types = set()
 
-IdlTypeBase.is_will_be_garbage_collected = False
 IdlType.is_will_be_garbage_collected = property(
     lambda self: self.base_type in IdlType.will_be_garbage_collected_types)
 
@@ -337,6 +341,7 @@ INCLUDES_FOR_TYPE = {
                            'core/dom/ClassCollection.h',
                            'core/dom/TagCollection.h',
                            'core/html/HTMLCollection.h',
+                           'core/html/HTMLDataListOptionsCollection.h',
                            'core/html/HTMLFormControlsCollection.h',
                            'core/html/HTMLTableRowsCollection.h']),
     'MediaQueryListListener': set(['core/css/MediaQueryListListener.h']),
@@ -379,7 +384,7 @@ def includes_for_type(idl_type):
 
 IdlType.includes_for_type = property(includes_for_type)
 IdlUnionType.includes_for_type = property(
-    lambda self: set.union(*[includes_for_type(member_type)
+    lambda self: set.union(*[member_type.includes_for_type
                              for member_type in self.member_types]))
 IdlArrayOrSequenceType.includes_for_type = property(
     lambda self: self.element_type.includes_for_type)
@@ -595,7 +600,10 @@ def preprocess_idl_type_and_value(idl_type, cpp_value, extended_attributes):
     if idl_type.base_type in ['long long', 'unsigned long long']:
         # long long and unsigned long long are not representable in ECMAScript;
         # we represent them as doubles.
-        idl_type = IdlType('double', is_nullable=idl_type.is_nullable)
+        is_nullable = idl_type.is_nullable
+        idl_type = IdlType('double')
+        if is_nullable:
+            idl_type = IdlNullableType(idl_type)
         cpp_value = 'static_cast<double>(%s)' % cpp_value
     # HTML5 says that unsigned reflected attributes should be in the range
     # [0, 2^31). When a value isn't in this range, a default value (or 0)
@@ -732,7 +740,6 @@ IdlType.release = property(lambda self: self.is_interface_type)
 IdlUnionType.release = property(
     lambda self: [member_type.is_interface_type
                   for member_type in self.member_types])
-IdlArrayOrSequenceType.release = False
 
 
 CPP_VALUE_TO_V8_VALUE = {
@@ -795,7 +802,10 @@ def cpp_type_has_null_value(idl_type):
     #   i.e. one for which String::isNull() returns true.
     # - Wrapper types (raw pointer or RefPtr/PassRefPtr) represent null as
     #   a null pointer.
-    return idl_type.is_string_type or idl_type.is_wrapper_type
+    # - Dictionary types represent null as a null pointer. They are garbage
+    #   collected so their type is raw pointer.
+    return (idl_type.is_string_type or idl_type.is_wrapper_type or
+            idl_type.is_dictionary)
 
 IdlTypeBase.cpp_type_has_null_value = property(cpp_type_has_null_value)
 

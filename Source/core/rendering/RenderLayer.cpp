@@ -137,7 +137,7 @@ RenderLayer::RenderLayer(RenderLayerModelObject* renderer, LayerType type)
     , m_potentialCompositingReasonsFromStyle(CompositingReasonNone)
     , m_compositingReasons(CompositingReasonNone)
     , m_groupedMapping(0)
-    , m_repainter(*renderer)
+    , m_paintInvalidator(*renderer)
     , m_clipper(*renderer)
 {
     updateStackingNode();
@@ -556,7 +556,7 @@ void RenderLayer::mapRectToPaintBackingCoordinates(const RenderLayerModelObject*
     if (!transformedAncestor)
         return;
 
-    // |repaintContainer| may have a local 2D transform on it, so take that into account when mapping into the space of the
+    // |paintInvalidationContainer| may have a local 2D transform on it, so take that into account when mapping into the space of the
     // transformed ancestor.
     rect = LayoutRect(paintInvalidationContainer->localToContainerQuad(FloatRect(rect), transformedAncestor).boundingBox());
 
@@ -565,16 +565,21 @@ void RenderLayer::mapRectToPaintBackingCoordinates(const RenderLayerModelObject*
 
 void RenderLayer::mapRectToPaintInvalidationBacking(const RenderObject* renderObject, const RenderLayerModelObject* paintInvalidationContainer, LayoutRect& rect, const PaintInvalidationState* paintInvalidationState)
 {
+    // FIXME: Passing paintInvalidationState directly to mapRectToPaintInvalidationBacking causes incorrect invalidations.
+    // Should avoid slowRectMapping by correctly adjusting paintInvalidationState. crbug.com/402983.
+    ForceHorriblySlowRectMapping slowRectMapping(paintInvalidationState);
+    ViewportConstrainedPosition viewportConstraint = renderObject->isRenderView() ? IsNotFixedPosition : ViewportConstraintDoesNotMatter;
+
     if (!paintInvalidationContainer->layer()->groupedMapping()) {
-        renderObject->mapRectToPaintInvalidationBacking(paintInvalidationContainer, rect, paintInvalidationState);
+        renderObject->mapRectToPaintInvalidationBacking(paintInvalidationContainer, rect, viewportConstraint, paintInvalidationState);
         return;
     }
 
-    // This code adjusts the repaint rectangle to be in the space of the transformed ancestor of the grouped (i.e. squashed)
-    // layer. This is because all layers that squash together need to repaint w.r.t. a single container that is
+    // This code adjusts the paint invalidation rectangle to be in the space of the transformed ancestor of the grouped (i.e. squashed)
+    // layer. This is because all layers that squash together need to issue paint invalidations w.r.t. a single container that is
     // an ancestor of all of them, in order to properly take into account any local transforms etc.
-    // FIXME: remove this special-case code that works around the repainting code structure.
-    renderObject->mapRectToPaintInvalidationBacking(paintInvalidationContainer, rect, paintInvalidationState);
+    // FIXME: remove this special-case code that works around the paint invalidation code structure.
+    renderObject->mapRectToPaintInvalidationBacking(paintInvalidationContainer, rect, viewportConstraint, paintInvalidationState);
 
     RenderLayer::mapRectToPaintBackingCoordinates(paintInvalidationContainer, rect);
 }
@@ -1582,7 +1587,7 @@ static inline bool shouldSuppressPaintingLayer(RenderLayer* layer)
 {
     // Avoid painting descendants of the root layer when stylesheets haven't loaded. This eliminates FOUC.
     // It's ok not to draw, because later on, when all the stylesheets do load, updateStyleSelector on the Document
-    // will do a full repaint().
+    // will do a full paintInvalidationForWholeRenderer().
     if (layer->renderer()->document().didLayoutWithPendingStylesheets() && !layer->isRootLayer() && !layer->renderer()->isDocumentElement())
         return true;
 
@@ -1702,7 +1707,7 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
     // the outline is painted in the background phase during composited scrolling.
     // If it were painted in the foreground phase, it would move with the scrolled
     // content. When not composited scrolling, the outline is painted in the
-    // foreground phase. Since scrolled contents are moved by repainting in this
+    // foreground phase. Since scrolled contents are moved by paint invalidation in this
     // case, the outline won't get 'dragged along'.
     bool shouldPaintOutline = isSelfPaintingLayer && !isPaintingOverlayScrollbars
         && ((isPaintingScrollingContent && isPaintingCompositedBackground)
@@ -1784,7 +1789,19 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
         beginTransparencyLayers(context, paintingInfo.rootLayer, paintingInfo.paintDirtyRect, paintingInfo.subPixelAccumulation, paintingInfo.paintBehavior);
 
     LayerPaintingInfo localPaintingInfo(paintingInfo);
+    bool deferredFiltersEnabled = renderer()->document().settings()->deferredFiltersEnabled();
     FilterEffectRendererHelper filterPainter(filterRenderer() && paintsWithFilters());
+
+    LayerFragments layerFragments;
+    if (shouldPaintContent || shouldPaintOutline || isPaintingOverlayScrollbars) {
+        // Collect the fragments. This will compute the clip rectangles and paint offsets for each layer fragment, as well as whether or not the content of each
+        // fragment should paint.
+        collectFragments(layerFragments, localPaintingInfo.rootLayer, localPaintingInfo.paintDirtyRect,
+            (paintFlags & PaintLayerUncachedClipRects) ? UncachedClipRects : PaintingClipRects, IgnoreOverlayScrollbarSize,
+            shouldRespectOverflowClip(paintFlags, renderer()), &offsetFromRoot, localPaintingInfo.subPixelAccumulation);
+        updatePaintingInfoForFragments(layerFragments, localPaintingInfo, paintFlags, shouldPaintContent, &offsetFromRoot);
+    }
+
     if (filterPainter.haveFilterEffect()) {
         ASSERT(this->filterInfo());
 
@@ -1792,15 +1809,33 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
             rootRelativeBounds = physicalBoundingBoxIncludingReflectionAndStackingChildren(paintingInfo.rootLayer, offsetFromRoot);
 
         if (filterPainter.prepareFilterEffect(this, rootRelativeBounds, paintingInfo.paintDirtyRect)) {
+
             // Rewire the old context to a memory buffer, so that we can capture the contents of the layer.
             // NOTE: We saved the old context in the "transparencyLayerContext" local variable, to be able to start a transparency layer
             // on the original context and avoid duplicating "beginFilterEffect" after each transparency layer call. Also, note that
             // beginTransparencyLayers will only create a single lazy transparency layer, even though it is called twice in this method.
+            // With deferred filters, we don't need a separate context, but we do need to do transparency and clipping before starting
+            // filter processing.
+            // FIXME: when the legacy path is removed, remove the transparencyLayerContext as well.
+            if (deferredFiltersEnabled) {
+                if (haveTransparency) {
+                    // If we have a filter and transparency, we have to eagerly start a transparency layer here, rather than risk a child layer lazily starts one after filter processing.
+                    beginTransparencyLayers(context, localPaintingInfo.rootLayer, paintingInfo.paintDirtyRect, paintingInfo.subPixelAccumulation, localPaintingInfo.paintBehavior);
+                }
+                // We'll handle clipping to the dirty rect before filter rasterization.
+                // Filter processing will automatically expand the clip rect and the offscreen to accommodate any filter outsets.
+                // FIXME: It is incorrect to just clip to the damageRect here once multiple fragments are involved.
+                ClipRect backgroundRect = layerFragments.isEmpty() ? ClipRect() : layerFragments[0].backgroundRect;
+                clipToRect(localPaintingInfo, context, backgroundRect, paintFlags);
+                // Subsequent code should not clip to the dirty rect, since we've already
+                // done it above, and doing it later will defeat the outsets.
+                localPaintingInfo.clipToDirtyRect = false;
+            }
             context = filterPainter.beginFilterEffect(context);
 
             // Check that we didn't fail to allocate the graphics context for the offscreen buffer.
-            if (filterPainter.hasStartedFilterEffect()) {
-                localPaintingInfo.paintDirtyRect = filterPainter.repaintRect();
+            if (filterPainter.hasStartedFilterEffect() && !deferredFiltersEnabled) {
+                localPaintingInfo.paintDirtyRect = filterPainter.paintInvalidationRect();
                 // If the filter needs the full source image, we need to avoid using the clip rectangles.
                 // Otherwise, if for example this layer has overflow:hidden, a drop shadow will not compute correctly.
                 // Note that we will still apply the clipping on the final rendering of the filter.
@@ -1809,7 +1844,7 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
         }
     }
 
-    if (filterPainter.hasStartedFilterEffect() && haveTransparency) {
+    if (filterPainter.hasStartedFilterEffect() && haveTransparency && !deferredFiltersEnabled) {
         // If we have a filter and transparency, we have to eagerly start a transparency layer here, rather than risk a child layer lazily starts one with the wrong context.
         beginTransparencyLayers(transparencyLayerContext, localPaintingInfo.rootLayer, paintingInfo.paintDirtyRect, paintingInfo.subPixelAccumulation, localPaintingInfo.paintBehavior);
     }
@@ -1839,16 +1874,6 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
     else if (paintFlags & PaintLayerPaintingRootBackgroundOnly)
         paintBehavior |= PaintBehaviorRootBackgroundOnly;
 
-    LayerFragments layerFragments;
-    if (shouldPaintContent || shouldPaintOutline || isPaintingOverlayScrollbars) {
-        // Collect the fragments. This will compute the clip rectangles and paint offsets for each layer fragment, as well as whether or not the content of each
-        // fragment should paint.
-        collectFragments(layerFragments, localPaintingInfo.rootLayer, localPaintingInfo.paintDirtyRect,
-            (paintFlags & PaintLayerUncachedClipRects) ? UncachedClipRects : PaintingClipRects, IgnoreOverlayScrollbarSize,
-            shouldRespectOverflowClip(paintFlags, renderer()), &offsetFromRoot, localPaintingInfo.subPixelAccumulation);
-        updatePaintingInfoForFragments(layerFragments, localPaintingInfo, paintFlags, shouldPaintContent, &offsetFromRoot);
-    }
-
     if (shouldPaintBackground) {
         paintBackgroundForFragments(layerFragments, context, transparencyLayerContext, paintingInfo.paintDirtyRect, haveTransparency,
             localPaintingInfo, paintBehavior, paintingRootForRenderer, paintFlags);
@@ -1875,7 +1900,9 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
         // Apply the correct clipping (ie. overflow: hidden).
         // FIXME: It is incorrect to just clip to the damageRect here once multiple fragments are involved.
         ClipRect backgroundRect = layerFragments.isEmpty() ? ClipRect() : layerFragments[0].backgroundRect;
-        clipToRect(localPaintingInfo, transparencyLayerContext, backgroundRect, paintFlags);
+        if (!deferredFiltersEnabled)
+            clipToRect(localPaintingInfo, transparencyLayerContext, backgroundRect, paintFlags);
+
         context = filterPainter.applyFilterEffect();
         restoreClip(transparencyLayerContext, localPaintingInfo.paintDirtyRect, backgroundRect);
     }
@@ -2146,7 +2173,7 @@ void RenderLayer::paintForegroundForFragments(const LayerFragments& layerFragmen
     if (shouldClip)
         clipToRect(localPaintingInfo, context, layerFragments[0].foregroundRect, paintFlags);
 
-    // We have to loop through every fragment multiple times, since we have to repaint in each specific phase in order for
+    // We have to loop through every fragment multiple times, since we have to issue paint invalidations in each specific phase in order for
     // interleaving of the fragments to work properly.
     paintForegroundForFragmentsWithPhase(selectionOnly ? PaintPhaseSelection : PaintPhaseChildBlockBackgrounds, layerFragments,
         context, localPaintingInfo, paintBehavior, paintingRootForRenderer, paintFlags);
@@ -2264,7 +2291,7 @@ void RenderLayer::paintPaginatedChildLayer(RenderLayer* childLayer, GraphicsCont
 
     // It is possible for paintLayer() to be called after the child layer ceases to be paginated but before
     // updatePaginationRecusive() is called and resets the isPaginated() flag, see <rdar://problem/10098679>.
-    // If this is the case, just bail out, since the upcoming call to updatePaginationRecusive() will repaint the layer.
+    // If this is the case, just bail out, since the upcoming call to updatePaginationRecusive() will paint invalidate the layer.
     // FIXME: Is this true anymore? This seems very suspicious.
     if (!columnLayers.size())
         return;
@@ -2983,7 +3010,7 @@ IntRect RenderLayer::blockSelectionGapsBounds() const
         return IntRect();
 
     RenderBlock* renderBlock = toRenderBlock(renderer());
-    LayoutRect gapRects = renderBlock->selectionGapRectsForRepaint(renderBlock);
+    LayoutRect gapRects = renderBlock->selectionGapRectsForPaintInvalidation(renderBlock);
 
     return pixelSnappedIntRect(gapRects);
 }
@@ -3610,12 +3637,7 @@ void RenderLayer::filterNeedsPaintInvalidation()
         toElement(renderer()->node())->scheduleSVGFilterLayerUpdateHack();
     }
 
-    if (renderer()->view()) {
-        if (renderer()->frameView()->isInPerformLayout())
-            renderer()->setShouldDoFullPaintInvalidation(true);
-        else
-            renderer()->paintInvalidationForWholeRenderer();
-    }
+    renderer()->setShouldDoFullPaintInvalidation(true);
 }
 
 void RenderLayer::addLayerHitTestRects(LayerHitTestRects& rects) const

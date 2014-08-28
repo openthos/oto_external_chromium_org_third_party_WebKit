@@ -435,6 +435,16 @@ public:
         *prevNext = this;
     }
 
+    NO_SANITIZE_ADDRESS
+    FreeListEntry* next() const { return m_next; }
+
+    NO_SANITIZE_ADDRESS
+    void append(FreeListEntry* next)
+    {
+        ASSERT(!m_next);
+        m_next = next;
+    }
+
 #if defined(ADDRESS_SANITIZER)
     NO_SANITIZE_ADDRESS
     bool shouldAddToFreeList()
@@ -472,7 +482,7 @@ public:
     HeapPage(PageMemory*, ThreadHeap<Header>*, const GCInfo*);
 
     void link(HeapPage**);
-    static void unlink(HeapPage*, HeapPage**);
+    static void unlink(ThreadHeap<Header>*, HeapPage*, HeapPage**);
 
     bool isEmpty();
 
@@ -502,7 +512,7 @@ public:
 
     void getStats(HeapStats&);
     void clearLiveAndMarkDead();
-    void sweep();
+    void sweep(HeapStats*, ThreadHeap<Header>*);
     void clearObjectStartBitMap();
     void finalize(Header*);
     virtual void checkAndMarkPointer(Visitor*, Address) OVERRIDE;
@@ -512,7 +522,7 @@ public:
 #if ENABLE(GC_PROFILE_HEAP)
     virtual void snapshot(TracedValue*, ThreadState::SnapshotInfo*);
 #endif
-    ThreadHeap<Header>* heap() { return m_heap; }
+
 #if defined(ADDRESS_SANITIZER)
     void poisonUnmarkedObjects();
 #endif
@@ -540,8 +550,10 @@ protected:
     TraceCallback traceCallback(Header*);
     bool hasVTable(Header*);
 
+    intptr_t padding() const { return m_padding; }
+
     HeapPage<Header>* m_next;
-    ThreadHeap<Header>* m_heap;
+    intptr_t m_padding; // Preserve 8-byte alignment on 32-bit systems.
     bool m_objectStartBitMapComputed;
     uint8_t m_objectStartBitMap[reservedForObjectBitMap];
 
@@ -668,7 +680,7 @@ class ThreadSafeRefCountedGarbageCollected : public GarbageCollectedFinalized<T>
 public:
     ThreadSafeRefCountedGarbageCollected()
     {
-        m_keepAlive = adoptPtr(new CrossThreadPersistent<T>(static_cast<T*>(this)));
+        makeKeepAlive();
     }
 
     // Override ref to deal with a case where a reference count goes up
@@ -680,8 +692,7 @@ public:
     {
         MutexLocker lock(m_mutex);
         if (UNLIKELY(!refCount())) {
-            ASSERT(!m_keepAlive);
-            m_keepAlive = adoptPtr(new CrossThreadPersistent<T>(static_cast<T*>(this)));
+            makeKeepAlive();
         }
         WTF::ThreadSafeRefCountedBase::ref();
     }
@@ -703,6 +714,12 @@ protected:
     ~ThreadSafeRefCountedGarbageCollected() { }
 
 private:
+    void makeKeepAlive()
+    {
+        ASSERT(!m_keepAlive);
+        m_keepAlive = adoptPtr(new CrossThreadPersistent<T>(static_cast<T*>(this)));
+    }
+
     OwnPtr<CrossThreadPersistent<T> > m_keepAlive;
     mutable Mutex m_mutex;
 };
@@ -851,18 +868,26 @@ public:
 
     // Sweep this part of the Blink heap. This finalizes dead objects
     // and builds freelists for all the unused memory.
-    virtual void sweep() = 0;
+    virtual void sweep(HeapStats*) = 0;
+    virtual void postSweepProcessing() = 0;
 
     virtual void clearFreeLists() = 0;
     virtual void clearLiveAndMarkDead() = 0;
+
+    virtual void makeConsistentForSweeping() = 0;
+
 #if ENABLE(ASSERT)
+    virtual bool isConsistentForSweeping() = 0;
+
     virtual void getScannedStats(HeapStats&) = 0;
 #endif
 
-    virtual void makeConsistentForGC() = 0;
-    virtual bool isConsistentForGC() = 0;
-
     virtual void prepareHeapForTermination() = 0;
+
+    virtual int normalPageCount() = 0;
+
+    virtual BaseHeap* split(int normalPages) = 0;
+    virtual void merge(BaseHeap* other) = 0;
 
     // Returns a bucket number for inserting a FreeListEntry of a
     // given size. All FreeListEntries in the given bucket, n, have
@@ -894,15 +919,20 @@ public:
 #if ENABLE(GC_PROFILE_HEAP)
     virtual void snapshot(TracedValue*, ThreadState::SnapshotInfo*);
 #endif
-    virtual void sweep();
+
+    virtual void sweep(HeapStats*);
+    virtual void postSweepProcessing();
+
     virtual void clearFreeLists();
     virtual void clearLiveAndMarkDead();
+
+    virtual void makeConsistentForSweeping();
+
 #if ENABLE(ASSERT)
+    virtual bool isConsistentForSweeping();
+
     virtual void getScannedStats(HeapStats&);
 #endif
-
-    virtual void makeConsistentForGC();
-    virtual bool isConsistentForGC();
 
     ThreadState* threadState() { return m_threadState; }
     HeapStats& stats() { return m_threadState->stats(); }
@@ -918,7 +948,13 @@ public:
         return allocationSizeFromSize(size) - sizeof(Header);
     }
 
-    void prepareHeapForTermination();
+    virtual void prepareHeapForTermination();
+
+    virtual int normalPageCount() { return m_numberOfNormalPages; }
+
+    virtual BaseHeap* split(int numberOfNormalPages);
+    virtual void merge(BaseHeap* splitOffBase);
+
     void removePageFromHeap(HeapPage<Header>*);
 
 private:
@@ -942,21 +978,39 @@ private:
     void freeLargeObject(LargeHeapObject<Header>*, LargeHeapObject<Header>**);
     void allocatePage(const GCInfo*);
 
+#if ENABLE(ASSERT)
+    bool pagesToBeSweptContains(Address);
+    bool pagesAllocatedDuringSweepingContains(Address);
+#endif
+
+    void sweepNormalPages(HeapStats*);
+    void sweepLargePages(HeapStats*);
+
     Address m_currentAllocationPoint;
     size_t m_remainingAllocationSize;
 
     HeapPage<Header>* m_firstPage;
     LargeHeapObject<Header>* m_firstLargeHeapObject;
 
+    HeapPage<Header>* m_firstPageAllocatedDuringSweeping;
+    HeapPage<Header>* m_lastPageAllocatedDuringSweeping;
+
+    // Merge point for parallel sweep.
+    HeapPage<Header>* m_mergePoint;
+
     int m_biggestFreeListIndex;
+
     ThreadState* m_threadState;
 
     // All FreeListEntries in the nth list have size >= 2^n.
     FreeListEntry* m_freeLists[blinkPageSizeLog2];
+    FreeListEntry* m_lastFreeListEntries[blinkPageSizeLog2];
 
     // Index into the page pools. This is used to ensure that the pages of the
     // same type go into the correct page pool and thus avoid type confusion.
     int m_index;
+
+    int m_numberOfNormalPages;
 };
 
 class PLATFORM_EXPORT Heap {
@@ -1005,7 +1059,7 @@ public:
     static bool weakTableRegistered(const void*);
 #endif
 
-    template<typename T> static Address allocate(size_t);
+    template<typename T, typename HeapTraits = HeapTypeTrait<T> > static Address allocate(size_t);
     template<typename T> static Address reallocate(void* previous, size_t);
 
     static void collectGarbage(ThreadState::StackState);
@@ -1040,8 +1094,11 @@ public:
 
     static void getHeapSpaceSize(uint64_t*, uint64_t*);
 
-    static bool isConsistentForGC();
-    static void makeConsistentForGC();
+    static void makeConsistentForSweeping();
+
+#if ENABLE(ASSERT)
+    static bool isConsistentForSweeping();
+#endif
 
     static void flushHeapDoesNotContainCache();
     static bool heapDoesNotContainCacheIsEmpty() { return s_heapDoesNotContainCache->isEmpty(); }
@@ -1450,21 +1507,17 @@ Address ThreadHeap<Header>::allocate(size_t size, const GCInfo* gcInfo)
     return result;
 }
 
-// FIXME: Allocate objects that do not need finalization separately
-// and use separate sweeping to not have to check for finalizers.
-template<typename T>
+template<typename T, typename HeapTraits>
 Address Heap::allocate(size_t size)
 {
     ThreadState* state = ThreadStateFor<ThreadingTrait<T>::Affinity>::state();
     ASSERT(state->isAllocationAllowed());
-    BaseHeap* heap = state->heap(HeapTrait<T>::index);
-    Address addr =
-        static_cast<typename HeapTrait<T>::HeapType*>(heap)->allocate(size, GCInfoTrait<T>::get());
-    return addr;
+    const GCInfo* gcInfo = GCInfoTrait<T>::get();
+    int heapIndex = HeapTraits::index(gcInfo->hasFinalizer());
+    BaseHeap* heap = state->heap(heapIndex);
+    return static_cast<typename HeapTraits::HeapType*>(heap)->allocate(size, gcInfo);
 }
 
-// FIXME: Allocate objects that do not need finalization separately
-// and use separate sweeping to not have to check for finalizers.
 template<typename T>
 Address Heap::reallocate(void* previous, size_t size)
 {
@@ -1476,19 +1529,21 @@ Address Heap::reallocate(void* previous, size_t size)
     }
     ThreadState* state = ThreadStateFor<ThreadingTrait<T>::Affinity>::state();
     ASSERT(state->isAllocationAllowed());
+    const GCInfo* gcInfo = GCInfoTrait<T>::get();
+    int heapIndex = HeapTypeTrait<T>::index(gcInfo->hasFinalizer());
     // FIXME: Currently only supports raw allocation on the
     // GeneralHeap. Hence we assume the header is a
     // FinalizedHeapObjectHeader.
-    ASSERT(HeapTrait<T>::index == GeneralHeap);
-    BaseHeap* heap = state->heap(HeapTrait<T>::index);
-    Address address = static_cast<typename HeapTrait<T>::HeapType*>(heap)->allocate(size, GCInfoTrait<T>::get());
+    ASSERT(heapIndex == GeneralHeap || heapIndex == GeneralHeapNonFinalized);
+    BaseHeap* heap = state->heap(heapIndex);
+    Address address = static_cast<typename HeapTypeTrait<T>::HeapType*>(heap)->allocate(size, gcInfo);
     if (!previous) {
         // This is equivalent to malloc(size).
         return address;
     }
     FinalizedHeapObjectHeader* previousHeader = FinalizedHeapObjectHeader::fromPayload(previous);
     ASSERT(!previousHeader->hasFinalizer());
-    ASSERT(previousHeader->gcInfo() == GCInfoTrait<T>::get());
+    ASSERT(previousHeader->gcInfo() == gcInfo);
     size_t copySize = previousHeader->payloadSize();
     if (copySize > size)
         copySize = size;
@@ -1502,7 +1557,7 @@ public:
     static size_t quantizedSize(size_t count)
     {
         RELEASE_ASSERT(count <= kMaxUnquantizedAllocation / sizeof(T));
-        return HeapTrait<T>::HeapType::roundedAllocationSize(count * sizeof(T));
+        return HeapIndexTrait<CollectionBackingHeap>::HeapType::roundedAllocationSize(count * sizeof(T));
     }
     static const size_t kMaxUnquantizedAllocation = maxHeapObjectSize;
 };
@@ -1518,12 +1573,12 @@ public:
     template <typename Return, typename Metadata>
     static Return backingMalloc(size_t size)
     {
-        return malloc<Return, Metadata>(size);
+        return reinterpret_cast<Return>(Heap::allocate<Metadata, HeapIndexTrait<CollectionBackingHeap> >(size));
     }
     template <typename Return, typename Metadata>
     static Return zeroedBackingMalloc(size_t size)
     {
-        return malloc<Return, Metadata>(size);
+        return backingMalloc<Return, Metadata>(size);
     }
     template <typename Return, typename Metadata>
     static Return malloc(size_t size)

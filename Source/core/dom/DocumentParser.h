@@ -50,7 +50,6 @@ public:
 
     // The below functions are used by DocumentWriter (the loader).
     virtual void appendBytes(const char* bytes, size_t length) = 0;
-    virtual void flush() = 0;
     virtual bool needsDecoder() const { return false; }
     virtual void setDecoder(PassOwnPtr<TextResourceDecoder>);
     virtual TextResourceDecoder* decoder();
@@ -79,9 +78,6 @@ public:
     bool isStopped() const { return m_state >= StoppedState; }
     bool isDetached() const { return m_state == DetachedState; }
 
-    // FIXME: Is this necessary? Does XMLDocumentParserLibxml2 really need to set this?
-    virtual void startParsing();
-
     // prepareToStop() is used when the EOF token is encountered and parsing is to be
     // stopped normally.
     virtual void prepareToStopParsing();
@@ -109,6 +105,8 @@ public:
 
 protected:
     explicit DocumentParser(Document*);
+
+    virtual void flush() = 0;
 
 private:
     enum ParserState {

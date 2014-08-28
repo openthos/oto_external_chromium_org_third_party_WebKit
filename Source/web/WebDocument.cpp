@@ -41,7 +41,7 @@
 #include "core/dom/Document.h"
 #include "core/dom/DocumentType.h"
 #include "core/dom/Element.h"
-#include "core/dom/FullscreenElementStack.h"
+#include "core/dom/Fullscreen.h"
 #include "core/dom/StyleEngine.h"
 #include "core/html/HTMLAllCollection.h"
 #include "core/html/HTMLBodyElement.h"
@@ -64,8 +64,6 @@
 #include "web/WebLocalFrameImpl.h"
 #include "wtf/PassRefPtr.h"
 #include <v8.h>
-
-using namespace blink;
 
 namespace blink {
 
@@ -229,14 +227,13 @@ void WebDocument::watchCSSSelectors(const WebVector<WebString>& webSelectors)
 
 void WebDocument::cancelFullScreen()
 {
-    if (FullscreenElementStack* fullscreen = FullscreenElementStack::fromIfExists(*unwrap<Document>()))
-        fullscreen->fullyExitFullscreen();
+    Fullscreen::fullyExitFullscreen(*unwrap<Document>());
 }
 
 WebElement WebDocument::fullScreenElement() const
 {
     Element* fullScreenElement = 0;
-    if (FullscreenElementStack* fullscreen = FullscreenElementStack::fromIfExists(*const_cast<WebDocument*>(this)->unwrap<Document>()))
+    if (Fullscreen* fullscreen = Fullscreen::fromIfExists(*const_cast<WebDocument*>(this)->unwrap<Document>()))
         fullScreenElement = fullscreen->webkitCurrentFullScreenElement();
     return WebElement(fullScreenElement);
 }
@@ -299,7 +296,7 @@ WebVector<WebDraggableRegion> WebDocument::draggableRegions() const
         for (size_t i = 0; i < regions.size(); i++) {
             const AnnotatedRegionValue& value = regions[i];
             draggableRegions[i].draggable = value.draggable;
-            draggableRegions[i].bounds = blink::IntRect(value.bounds);
+            draggableRegions[i].bounds = IntRect(value.bounds);
         }
     }
     return draggableRegions;

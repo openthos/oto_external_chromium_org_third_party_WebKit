@@ -266,6 +266,7 @@ static PassRefPtr<TypeBuilder::Network::Response> buildObjectForResourceResponse
         .setEncodedDataLength(encodedDataLength);
 
     responseObject->setFromDiskCache(response.wasCached());
+    responseObject->setFromServiceWorker(response.wasFetchedViaServiceWorker());
     if (response.resourceLoadTiming())
         responseObject->setTiming(buildObjectForTiming(*response.resourceLoadTiming(), loader));
 
@@ -479,10 +480,10 @@ void InspectorResourceAgent::documentThreadableLoaderStartedLoadingForClient(uns
     m_resourcesData->setXHRReplayData(requestId, xhrReplayData);
 }
 
-void InspectorResourceAgent::willLoadXHR(XMLHttpRequest* xhr, ThreadableLoaderClient* client, const AtomicString& method, const KURL& url, bool async, FormData* formData, const HTTPHeaderMap& headers, bool includeCredentials)
+void InspectorResourceAgent::willLoadXHR(XMLHttpRequest* xhr, ThreadableLoaderClient* client, const AtomicString& method, const KURL& url, bool async, PassRefPtr<FormData> formData, const HTTPHeaderMap& headers, bool includeCredentials)
 {
     ASSERT(xhr);
-    RefPtrWillBeRawPtr<XHRReplayData> xhrReplayData = XHRReplayData::create(xhr->executionContext(), method, urlWithoutFragment(url), async, formData, includeCredentials);
+    RefPtrWillBeRawPtr<XHRReplayData> xhrReplayData = XHRReplayData::create(xhr->executionContext(), method, urlWithoutFragment(url), async, formData.get(), includeCredentials);
     HTTPHeaderMap::const_iterator end = headers.end();
     for (HTTPHeaderMap::const_iterator it = headers.begin(); it!= end; ++it)
         xhrReplayData->addHeader(it->key, it->value);
@@ -879,6 +880,11 @@ InspectorResourceAgent::InspectorResourceAgent(InspectorPageAgent* pageAgent)
     , m_isRecalculatingStyle(false)
     , m_removeFinishedReplayXHRTimer(this, &InspectorResourceAgent::removeFinishedReplayXHRFired)
 {
+}
+
+bool InspectorResourceAgent::shouldForceCORSPreflight()
+{
+    return m_state->getBoolean(ResourceAgentState::cacheDisabled);
 }
 
 } // namespace blink

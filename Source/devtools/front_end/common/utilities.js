@@ -27,6 +27,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/** @typedef {Array|NodeList|Arguments|{length: number}} */
+var ArrayLike;
+
 /**
  * @param {!Object} obj
  * @return {boolean}
@@ -393,7 +396,7 @@ Date.prototype.toISO8601Compact = function()
 /**
  * @return {string}
  */
- Date.prototype.toConsoleTime = function()
+Date.prototype.toConsoleTime = function()
 {
     /**
      * @param {number} x
@@ -1009,21 +1012,22 @@ String.vsprintf = function(format, substitutions)
 
 /**
  * @param {string} format
- * @param {?Array.<string>} substitutions
+ * @param {?ArrayLike} substitutions
  * @param {!Object.<string, function(string, ...):string>} formatters
  * @param {!T} initialValue
  * @param {function(T, string): T|undefined} append
- * @return {!{formattedResult: T, unusedSubstitutions: ?Array.<string>}};
+ * @param {!Array.<!Object>=} tokenizedFormat
+ * @return {!{formattedResult: T, unusedSubstitutions: ?ArrayLike}};
  * @template T
  */
-String.format = function(format, substitutions, formatters, initialValue, append)
+String.format = function(format, substitutions, formatters, initialValue, append, tokenizedFormat)
 {
     if (!format || !substitutions || !substitutions.length)
         return { formattedResult: append(initialValue, format), unusedSubstitutions: substitutions };
 
     function prettyFunctionName()
     {
-        return "String.format(\"" + format + "\", \"" + substitutions.join("\", \"") + "\")";
+        return "String.format(\"" + format + "\", \"" + Array.prototype.join.call(substitutions, "\", \"") + "\")";
     }
 
     function warn(msg)
@@ -1037,7 +1041,7 @@ String.format = function(format, substitutions, formatters, initialValue, append
     }
 
     var result = initialValue;
-    var tokens = String.tokenizeFormatString(format, formatters);
+    var tokens = tokenizedFormat || String.tokenizeFormatString(format, formatters);
     var usedSubstitutionIndexes = {};
 
     for (var i = 0; i < tokens.length; ++i) {
@@ -1274,7 +1278,7 @@ Map.prototype = {
      * @param {K} key
      * @param {V} value
      */
-    put: function(key, value)
+    set: function(key, value)
     {
         var objectIdentifier = key.__identifier;
         if (!objectIdentifier) {
@@ -1343,7 +1347,7 @@ Map.prototype = {
      * @param {K} key
      * @return {boolean}
      */
-    contains: function(key)
+    has: function(key)
     {
         var entry = this._map[key.__identifier];
         return !!entry;
@@ -1352,7 +1356,7 @@ Map.prototype = {
     /**
      * @return {number}
      */
-    size: function()
+    get size()
     {
         return this._size;
     },
@@ -1380,7 +1384,7 @@ StringMap.prototype = {
      * @param {string} key
      * @param {T} value
      */
-    put: function(key, value)
+    set: function(key, value)
     {
         if (key === "__proto__") {
             if (!this._hasProtoKey) {
@@ -1459,7 +1463,7 @@ StringMap.prototype = {
      * @param {string} key
      * @return {boolean}
      */
-    contains: function(key)
+    has: function(key)
     {
         var result;
         if (key === "__proto__")
@@ -1470,7 +1474,7 @@ StringMap.prototype = {
     /**
      * @return {number}
      */
-    size: function()
+    get size()
     {
         return this._size;
     },
@@ -1499,7 +1503,7 @@ StringMultimap.prototype = {
      * @param {string} key
      * @param {T} value
      */
-    put: function(key, value)
+    set: function(key, value)
     {
         if (key === "__proto__") {
             if (!this._hasProtoKey) {
@@ -1591,7 +1595,7 @@ StringSet.prototype = {
      */
     add: function(value)
     {
-        this._map.put(value, true);
+        this._map.set(value, true);
     },
 
     /**
@@ -1617,7 +1621,7 @@ StringSet.prototype = {
      */
     contains: function(value)
     {
-        return this._map.contains(value);
+        return this._map.has(value);
     },
 
     /**
@@ -1625,7 +1629,7 @@ StringSet.prototype = {
      */
     size: function()
     {
-        return this._map.size();
+        return this._map.size;
     },
 
     clear: function()

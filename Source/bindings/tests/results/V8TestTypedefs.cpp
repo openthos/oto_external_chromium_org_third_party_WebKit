@@ -40,7 +40,7 @@ void webCoreInitializeScriptWrappableForInterface(blink::TestTypedefs* object)
 }
 
 namespace blink {
-const WrapperTypeInfo V8TestTypedefs::wrapperTypeInfo = { gin::kEmbedderBlink, V8TestTypedefs::domTemplate, V8TestTypedefs::derefObject, 0, 0, 0, V8TestTypedefs::installConditionallyEnabledMethods, 0, WrapperTypeObjectPrototype, RefCountedObject };
+const WrapperTypeInfo V8TestTypedefs::wrapperTypeInfo = { gin::kEmbedderBlink, V8TestTypedefs::domTemplate, V8TestTypedefs::derefObject, 0, 0, 0, V8TestTypedefs::installConditionallyEnabledMethods, V8TestTypedefs::installConditionallyEnabledProperties, 0, WrapperTypeObjectPrototype, RefCountedObject };
 
 namespace TestTypedefsV8Internal {
 
@@ -196,8 +196,8 @@ static void uLongLongMethodTestInterfaceEmptyTypeSequenceArgMethodCallback(const
 static void testInterfaceOrTestInterfaceEmptyMethodMethod(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
     TestTypedefs* impl = V8TestTypedefs::toNative(info.Holder());
-    RefPtr<TestInterfaceImplementation> result0;
-    RefPtr<TestInterfaceEmpty> result1;
+    RefPtr<TestInterfaceImplementation> result0 = nullptr;
+    RefPtr<TestInterfaceEmpty> result1 = nullptr;
     impl->testInterfaceOrTestInterfaceEmptyMethod(result0, result1);
     if (result0) {
         v8SetReturnValue(info, result0.release());

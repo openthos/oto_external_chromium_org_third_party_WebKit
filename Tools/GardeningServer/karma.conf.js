@@ -17,33 +17,35 @@ module.exports = function(config) {
         ui: 'bdd',
         checkLeaks: true,
         globals: ['net']
-      }
+      },
+      captureConsole: true
     },
 
     // list of files / patterns to load in the browser
     files: [
+      // dependencies
       'bower_components/platform/platform.js',
       'test/karma-loader.html',
       'bower_components/chai/chai.js',
       'bower_components/sugar/release/sugar-full.development.js',
       {pattern: 'bower_components/**/*.{js,html,css,map}', included: false},
       'node_modules/mocha/mocha.js',
+      // sources
       'polymer-load-warning.html',
       {pattern: 'base/*.html', included: false},
       {pattern: 'lib/*.html', included: false},
       {pattern: 'model/*.html', included: false},
-      'lib/test/*.html',
-      'model/test/*.html',
       'scripts/*.js',
       {pattern: 'ui/*.html', included: false},
+      // tests
+      'lib/test/*.html',
+      'model/test/*.html',
+      'scripts/test/*.html',
       'ui/test/*',
     ],
 
     // list of files to exclude
     exclude: [
-      'model/*tests.html',
-      'scripts/*tests.js',
-      'ui/*tests.html',
     ],
 
     // preprocess matching files before serving them to the browser

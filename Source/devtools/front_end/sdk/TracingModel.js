@@ -6,14 +6,14 @@
 
 /**
  * @constructor
- * @extends {WebInspector.SDKObject}
+ * @extends {WebInspector.Object}
+ * @implements {WebInspector.TargetManager.Observer}
  */
-WebInspector.TracingModel = function(target)
+WebInspector.TracingModel = function()
 {
-    WebInspector.SDKObject.call(this, target);
     this.reset();
     this._active = false;
-    InspectorBackend.registerTracingDispatcher(new WebInspector.TracingDispatcher(this));
+    WebInspector.targetManager.observeTargets(this);
 }
 
 WebInspector.TracingModel.Events = {
@@ -45,7 +45,7 @@ WebInspector.TracingModel.Phase = {
     Begin: "B",
     End: "E",
     Complete: "X",
-    Instant: "i",
+    Instant: "I",
     AsyncBegin: "S",
     AsyncStepInto: "T",
     AsyncStepPast: "p",
@@ -70,6 +70,8 @@ WebInspector.TracingModel.MetadataEvent = {
 
 WebInspector.TracingModel.DevToolsMetadataEventCategory = "disabled-by-default-devtools.timeline";
 
+WebInspector.TracingModel.ConsoleEventCategory = "blink.console";
+
 WebInspector.TracingModel.FrameLifecycleEventCategory = "cc,devtools";
 
 WebInspector.TracingModel.DevToolsMetadataEvent = {
@@ -78,6 +80,27 @@ WebInspector.TracingModel.DevToolsMetadataEvent = {
 };
 
 WebInspector.TracingModel.prototype = {
+    /**
+     * @param {!WebInspector.Target} target
+     */
+    targetAdded: function(target)
+    {
+        if (this._target)
+            return;
+        this._target = target;
+        InspectorBackend.registerTracingDispatcher(new WebInspector.TracingDispatcher(this));
+    },
+
+    /**
+     * @param {!WebInspector.Target} target
+     */
+    targetRemoved: function(target)
+    {
+        if (this._target !== target)
+            return;
+        delete this._target;
+    },
+
     /**
      * @return {!Array.<!WebInspector.TracingModel.Event>}
      */
@@ -268,7 +291,7 @@ WebInspector.TracingModel.prototype = {
         return WebInspector.TracingModel.NamedObject._sort(Object.values(this._processById));
     },
 
-    __proto__: WebInspector.SDKObject.prototype
+    __proto__: WebInspector.Object.prototype
 }
 
 

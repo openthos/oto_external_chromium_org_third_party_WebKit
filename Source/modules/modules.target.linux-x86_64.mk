@@ -18,44 +18,11 @@ GYP_TARGET_DEPENDENCIES := \
 	$(call intermediates-dir-for,STATIC_LIBRARIES,skia_skia_library_gyp,,,$(GYP_VAR_PREFIX))/skia_skia_library_gyp.a \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_modules_make_modules_generated_gyp,,,$(GYP_VAR_PREFIX))/make_modules_generated.stamp
 
-### Rules for action "CachePolyfill":
-$(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.h: gyp_local_path := $(LOCAL_PATH)
-$(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.h: gyp_var_prefix := $(GYP_VAR_PREFIX)
-$(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.h: gyp_intermediate_dir := $(abspath $(gyp_intermediate_dir))
-$(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.h: gyp_shared_intermediate_dir := $(abspath $(gyp_shared_intermediate_dir))
-$(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.h: export PATH := $(subst $(ANDROID_BUILD_PATHS),,$(PATH))
-$(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.h: $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/make-file-arrays.py $(LOCAL_PATH)/third_party/WebKit/Source/modules/serviceworkers/polyfills/cachePolyfill.js $(GYP_TARGET_DEPENDENCIES)
-	@echo "Gyp action: third_party_WebKit_Source_modules_modules_gyp_modules_target_CachePolyfill ($@)"
-	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/modules; mkdir -p $(gyp_shared_intermediate_dir)/blink/modules; python ../build/scripts/make-file-arrays.py "--out-h=$(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.h" "--out-cpp=$(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.cpp" "--namespace=blink" serviceworkers/polyfills/cachePolyfill.js
-
-$(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.cpp: $(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.h ;
-
-### Rules for action "CacheStoragePolyfill":
-$(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.h: gyp_local_path := $(LOCAL_PATH)
-$(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.h: gyp_var_prefix := $(GYP_VAR_PREFIX)
-$(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.h: gyp_intermediate_dir := $(abspath $(gyp_intermediate_dir))
-$(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.h: gyp_shared_intermediate_dir := $(abspath $(gyp_shared_intermediate_dir))
-$(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.h: export PATH := $(subst $(ANDROID_BUILD_PATHS),,$(PATH))
-$(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.h: $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/make-file-arrays.py $(LOCAL_PATH)/third_party/WebKit/Source/modules/serviceworkers/polyfills/cacheStoragePolyfill.js $(GYP_TARGET_DEPENDENCIES)
-	@echo "Gyp action: third_party_WebKit_Source_modules_modules_gyp_modules_target_CacheStoragePolyfill ($@)"
-	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/modules; mkdir -p $(gyp_shared_intermediate_dir)/blink/modules; python ../build/scripts/make-file-arrays.py "--out-h=$(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.h" "--out-cpp=$(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.cpp" "--namespace=blink" serviceworkers/polyfills/cacheStoragePolyfill.js
-
-$(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.cpp: $(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.h ;
-
-
-GYP_GENERATED_OUTPUTS := \
-	$(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.h \
-	$(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.cpp \
-	$(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.h \
-	$(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.cpp
+GYP_GENERATED_OUTPUTS :=
 
 # Make sure our deps and generated files are built first.
 LOCAL_ADDITIONAL_DEPENDENCIES := $(GYP_TARGET_DEPENDENCIES) $(GYP_GENERATED_OUTPUTS)
 
-$(gyp_intermediate_dir)/CachePolyfill.cpp: $(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.cpp
-	mkdir -p $(@D); cp $< $@
-$(gyp_intermediate_dir)/CacheStoragePolyfill.cpp: $(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.cpp
-	mkdir -p $(@D); cp $< $@
 $(gyp_intermediate_dir)/EventModules.cpp: $(gyp_shared_intermediate_dir)/blink/modules/EventModules.cpp
 	mkdir -p $(@D); cp $< $@
 $(gyp_intermediate_dir)/EventModulesNames.cpp: $(gyp_shared_intermediate_dir)/blink/modules/EventModulesNames.cpp
@@ -103,8 +70,6 @@ $(gyp_intermediate_dir)/V8GeneratedModulesBindings18.cpp: $(gyp_shared_intermedi
 $(gyp_intermediate_dir)/V8GeneratedModulesBindings19.cpp: $(gyp_shared_intermediate_dir)/blink/bindings/modules/v8/V8GeneratedModulesBindings19.cpp
 	mkdir -p $(@D); cp $< $@
 LOCAL_GENERATED_SOURCES := \
-	$(gyp_intermediate_dir)/CachePolyfill.cpp \
-	$(gyp_intermediate_dir)/CacheStoragePolyfill.cpp \
 	$(gyp_intermediate_dir)/EventModules.cpp \
 	$(gyp_intermediate_dir)/EventModulesNames.cpp \
 	$(gyp_intermediate_dir)/EventTargetModulesNames.cpp \
@@ -127,9 +92,7 @@ LOCAL_GENERATED_SOURCES := \
 	$(gyp_intermediate_dir)/V8GeneratedModulesBindings16.cpp \
 	$(gyp_intermediate_dir)/V8GeneratedModulesBindings17.cpp \
 	$(gyp_intermediate_dir)/V8GeneratedModulesBindings18.cpp \
-	$(gyp_intermediate_dir)/V8GeneratedModulesBindings19.cpp \
-	$(gyp_shared_intermediate_dir)/blink/modules/CachePolyfill.h \
-	$(gyp_shared_intermediate_dir)/blink/modules/CacheStoragePolyfill.h
+	$(gyp_intermediate_dir)/V8GeneratedModulesBindings19.cpp
 
 GYP_COPIED_SOURCE_ORIGIN_DIRS := \
 	$(gyp_shared_intermediate_dir)/blink/modules \
@@ -143,6 +106,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/modules/battery/NavigatorBattery.cpp \
 	third_party/WebKit/Source/modules/beacon/NavigatorBeacon.cpp \
 	third_party/WebKit/Source/modules/credentialmanager/Credential.cpp \
+	third_party/WebKit/Source/modules/credentialmanager/CredentialManagerClient.cpp \
 	third_party/WebKit/Source/modules/credentialmanager/CredentialsContainer.cpp \
 	third_party/WebKit/Source/modules/credentialmanager/FederatedCredential.cpp \
 	third_party/WebKit/Source/modules/credentialmanager/LocalCredential.cpp \
@@ -450,7 +414,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/modules/websockets/DOMWebSocket.cpp \
 	third_party/WebKit/Source/modules/websockets/MainThreadWebSocketChannel.cpp \
 	third_party/WebKit/Source/modules/websockets/NewWebSocketChannelImpl.cpp \
-	third_party/WebKit/Source/modules/websockets/ThreadableWebSocketChannelClientWrapper.cpp \
 	third_party/WebKit/Source/modules/websockets/WebSocketChannel.cpp \
 	third_party/WebKit/Source/modules/websockets/WebSocketDeflateFramer.cpp \
 	third_party/WebKit/Source/modules/websockets/WebSocketDeflater.cpp \
@@ -539,6 +502,10 @@ MY_DEFS_Debug := \
 	'-DVIDEO_HOLE=1' \
 	'-DBLINK_IMPLEMENTATION=1' \
 	'-DINSIDE_BLINK' \
+	'-DCHROME_PNG_WRITE_SUPPORT' \
+	'-DPNG_USER_CONFIG' \
+	'-DCHROME_PNG_READ_PACK_SUPPORT' \
+	'-DUSE_SYSTEM_LIBJPEG' \
 	'-DENABLE_CUSTOM_SCHEME_HANDLER=0' \
 	'-DENABLE_SVG_FONTS=1' \
 	'-DWTF_USE_CONCATENATED_IMPULSE_RESPONSES=1' \
@@ -591,6 +558,11 @@ LOCAL_C_INCLUDES_Debug := \
 	$(LOCAL_PATH)/third_party/WebKit \
 	$(gyp_shared_intermediate_dir)/blink \
 	$(LOCAL_PATH)/third_party/openmax_dl \
+	$(LOCAL_PATH)/third_party/libpng \
+	$(LOCAL_PATH)/third_party/libwebp \
+	$(LOCAL_PATH)/third_party/ots/include \
+	$(LOCAL_PATH)/third_party/iccjpeg \
+	$(PWD)/external/jpeg \
 	$(PWD)/external/icu/icu4c/source/common \
 	$(PWD)/external/icu/icu4c/source/i18n \
 	$(LOCAL_PATH)/third_party/skia/src/core \
@@ -687,6 +659,10 @@ MY_DEFS_Release := \
 	'-DVIDEO_HOLE=1' \
 	'-DBLINK_IMPLEMENTATION=1' \
 	'-DINSIDE_BLINK' \
+	'-DCHROME_PNG_WRITE_SUPPORT' \
+	'-DPNG_USER_CONFIG' \
+	'-DCHROME_PNG_READ_PACK_SUPPORT' \
+	'-DUSE_SYSTEM_LIBJPEG' \
 	'-DENABLE_CUSTOM_SCHEME_HANDLER=0' \
 	'-DENABLE_SVG_FONTS=1' \
 	'-DWTF_USE_CONCATENATED_IMPULSE_RESPONSES=1' \
@@ -740,6 +716,11 @@ LOCAL_C_INCLUDES_Release := \
 	$(LOCAL_PATH)/third_party/WebKit \
 	$(gyp_shared_intermediate_dir)/blink \
 	$(LOCAL_PATH)/third_party/openmax_dl \
+	$(LOCAL_PATH)/third_party/libpng \
+	$(LOCAL_PATH)/third_party/libwebp \
+	$(LOCAL_PATH)/third_party/ots/include \
+	$(LOCAL_PATH)/third_party/iccjpeg \
+	$(PWD)/external/jpeg \
 	$(PWD)/external/icu/icu4c/source/common \
 	$(PWD)/external/icu/icu4c/source/i18n \
 	$(LOCAL_PATH)/third_party/skia/src/core \

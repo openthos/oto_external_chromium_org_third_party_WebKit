@@ -361,6 +361,8 @@ bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, CSSValueID valueID
         return false;
 
     switch (propertyId) {
+    case CSSPropertyAll:
+        return valueID == CSSValueUnset;
     case CSSPropertyBackgroundRepeatX: // repeat | no-repeat
     case CSSPropertyBackgroundRepeatY: // repeat | no-repeat
         return valueID == CSSValueRepeat || valueID == CSSValueNoRepeat;
@@ -398,7 +400,7 @@ bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, CSSValueID valueID
     case CSSPropertyFontStyle: // normal | italic | oblique
         return valueID == CSSValueNormal || valueID == CSSValueItalic || valueID == CSSValueOblique;
     case CSSPropertyFontStretch: // normal | ultra-condensed | extra-condensed | condensed | semi-condensed | semi-expanded | expanded | extra-expanded | ultra-expanded
-        return valueID == CSSValueNormal || valueID == CSSValueUltraCondensed || valueID == CSSValueExtraCondensed || valueID == CSSValueCondensed || valueID == CSSValueSemiCondensed || valueID == CSSValueSemiExpanded || valueID == CSSValueExpanded || valueID == CSSValueExtraExpanded || valueID == CSSValueUltraExpanded;
+        return valueID == CSSValueNormal || (valueID >= CSSValueUltraCondensed && valueID <= CSSValueUltraExpanded);
     case CSSPropertyImageRendering: // auto | optimizeContrast | pixelated
         return valueID == CSSValueAuto || valueID == CSSValueWebkitOptimizeContrast || (RuntimeEnabledFeatures::imageRenderingPixelatedEnabled() && valueID == CSSValuePixelated);
     case CSSPropertyIsolation: // auto | isolate
@@ -462,6 +464,10 @@ bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, CSSValueID valueID
     case CSSPropertyTouchActionDelay: // none | script
         return RuntimeEnabledFeatures::cssTouchActionDelayEnabled()
             && (valueID == CSSValueScript || valueID == CSSValueNone);
+    case CSSPropertyUnicodeBidi:
+        return valueID == CSSValueNormal || valueID == CSSValueEmbed
+            || valueID == CSSValueBidiOverride || valueID == CSSValueWebkitIsolate
+            || valueID == CSSValueWebkitIsolateOverride || valueID == CSSValueWebkitPlaintext;
     case CSSPropertyVisibility: // visible | hidden | collapse
         return valueID == CSSValueVisible || valueID == CSSValueHidden || valueID == CSSValueCollapse;
     case CSSPropertyWebkitAppearance:
@@ -489,9 +495,6 @@ bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, CSSValueID valueID
         return valueID == CSSValueHorizontal || valueID == CSSValueVertical || valueID == CSSValueInlineAxis || valueID == CSSValueBlockAxis;
     case CSSPropertyWebkitBoxPack:
         return valueID == CSSValueStart || valueID == CSSValueEnd || valueID == CSSValueCenter || valueID == CSSValueJustify;
-    case CSSPropertyInternalCallback:
-        // This property is only injected programmatically, not parsed from stylesheets.
-        return false;
     case CSSPropertyColumnFill:
         return RuntimeEnabledFeatures::regionBasedColumnsEnabled()
             && (valueID == CSSValueAuto || valueID == CSSValueBalance);
@@ -564,6 +567,7 @@ bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, CSSValueID valueID
 bool isKeywordPropertyID(CSSPropertyID propertyId)
 {
     switch (propertyId) {
+    case CSSPropertyAll:
     case CSSPropertyMixBlendMode:
     case CSSPropertyIsolation:
     case CSSPropertyBackgroundRepeatX:
@@ -605,6 +609,7 @@ bool isKeywordPropertyID(CSSPropertyID propertyId)
     case CSSPropertyTextRendering:
     case CSSPropertyTextTransform:
     case CSSPropertyTouchActionDelay:
+    case CSSPropertyUnicodeBidi:
     case CSSPropertyVisibility:
     case CSSPropertyWebkitAppearance:
     case CSSPropertyBackfaceVisibility:
@@ -620,7 +625,6 @@ bool isKeywordPropertyID(CSSPropertyID propertyId)
     case CSSPropertyWebkitBoxLines:
     case CSSPropertyWebkitBoxOrient:
     case CSSPropertyWebkitBoxPack:
-    case CSSPropertyInternalCallback:
     case CSSPropertyWebkitColumnBreakAfter:
     case CSSPropertyWebkitColumnBreakBefore:
     case CSSPropertyWebkitColumnBreakInside:

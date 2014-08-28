@@ -132,6 +132,7 @@ GraphicsContext::GraphicsContext(SkCanvas* canvas, DisabledMode disableContextOr
     , m_isCertainlyOpaque(true)
     , m_printing(false)
     , m_antialiasHairlineImages(false)
+    , m_shouldSmoothFonts(true)
 {
     ASSERT(canvas);
 
@@ -548,13 +549,13 @@ void GraphicsContext::drawDisplayList(DisplayList* displayList)
     realizeCanvasSave();
 
     const FloatRect& bounds = displayList->bounds();
-    if (bounds.x() || bounds.y())
-        m_canvas->translate(bounds.x(), bounds.y());
-
-    m_canvas->drawPicture(displayList->picture());
-
-    if (bounds.x() || bounds.y())
-        m_canvas->translate(-bounds.x(), -bounds.y());
+    if (bounds.x() || bounds.y()) {
+        SkMatrix m;
+        m.setTranslate(bounds.x(), bounds.y());
+        m_canvas->drawPicture(displayList->picture(), &m, 0);
+    } else {
+        m_canvas->drawPicture(displayList->picture());
+    }
 }
 
 void GraphicsContext::drawConvexPolygon(size_t numPoints, const FloatPoint* points, bool shouldAntialias)

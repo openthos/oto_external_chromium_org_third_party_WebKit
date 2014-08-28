@@ -23,15 +23,13 @@ class ScriptState;
 class WebServiceWorkerProvider;
 
 class ServiceWorkerRegistration FINAL
-    : public RefCountedWillBeRefCountedGarbageCollected<ServiceWorkerRegistration>
+    : public RefCountedWillBeGarbageCollectedFinalized<ServiceWorkerRegistration>
     , public ActiveDOMObject
     , public EventTargetWithInlineData
     , public WebServiceWorkerRegistrationProxy {
     REFCOUNTED_EVENT_TARGET(ServiceWorkerRegistration);
     WILL_BE_USING_GARBAGE_COLLECTED_MIXIN(ServiceWorkerRegistration);
 public:
-    virtual ~ServiceWorkerRegistration() { }
-
     // EventTarget overrides.
     virtual const AtomicString& interfaceName() const OVERRIDE;
     virtual ExecutionContext* executionContext() const OVERRIDE { return ActiveDOMObject::executionContext(); }

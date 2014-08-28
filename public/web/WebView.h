@@ -44,6 +44,7 @@ namespace blink {
 
 class WebAXObject;
 class WebAutofillClient;
+class WebCredentialManagerClient;
 class WebDevToolsAgent;
 class WebDevToolsAgentClient;
 class WebDragData;
@@ -95,6 +96,7 @@ public:
 
     // Initializes the various client interfaces.
     virtual void setAutofillClient(WebAutofillClient*) = 0;
+    virtual void setCredentialManagerClient(WebCredentialManagerClient*) = 0;
     virtual void setDevToolsAgentClient(WebDevToolsAgentClient*) = 0;
     virtual void setPrerendererClient(WebPrerendererClient*) = 0;
     virtual void setSpellCheckClient(WebSpellCheckClient*) = 0;
@@ -355,7 +357,7 @@ public:
 
     // Retrieves a list of spelling markers.
     virtual void spellingMarkers(WebVector<uint32_t>* markers) = 0;
-
+    virtual void removeSpellingMarkersUnderWords(const WebVector<WebString>& words) = 0;
 
     // Support for resource loading initiated by plugins -------------------
 

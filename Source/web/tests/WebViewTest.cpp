@@ -47,6 +47,7 @@
 #include "core/page/Page.h"
 #include "core/rendering/RenderLayer.h"
 #include "core/rendering/RenderView.h"
+#include "core/testing/URLTestHelpers.h"
 #include "platform/KeyboardCodes.h"
 #include "platform/geometry/IntSize.h"
 #include "platform/graphics/Color.h"
@@ -78,7 +79,6 @@
 #include "web/WebSettingsImpl.h"
 #include "web/WebViewImpl.h"
 #include "web/tests/FrameTestHelpers.h"
-#include "web/tests/URLTestHelpers.h"
 #include <gtest/gtest.h>
 
 using namespace blink;
@@ -1239,9 +1239,7 @@ TEST_F(WebViewTest, SelectionOnReadOnlyInput)
 static void configueCompositingWebView(WebSettings* settings)
 {
     settings->setAcceleratedCompositingEnabled(true);
-    settings->setAcceleratedCompositingForFixedPositionEnabled(true);
-    settings->setAcceleratedCompositingForOverflowScrollEnabled(true);
-    settings->setCompositedScrollingForFramesEnabled(true);
+    settings->setPreferCompositingToLCDTextEnabled(true);
 }
 
 TEST_F(WebViewTest, ShowPressOnTransformedLink)
@@ -1622,6 +1620,23 @@ TEST_F(WebViewTest, SmartClipData)
     webView->extractSmartClipData(cropRect, clipText, clipHtml, clipRect);
     EXPECT_STREQ(kExpectedClipText, clipText.utf8().c_str());
     EXPECT_STREQ(kExpectedClipHtml, clipHtml.utf8().c_str());
+}
+
+TEST_F(WebViewTest, SmartClipReturnsEmptyStringsWhenUserSelectIsNone)
+{
+    WebString clipText;
+    WebString clipHtml;
+    WebRect clipRect;
+    URLTestHelpers::registerMockedURLFromBaseURL(WebString::fromUTF8(m_baseURL.c_str()), WebString::fromUTF8("Ahem.ttf"));
+    URLTestHelpers::registerMockedURLFromBaseURL(WebString::fromUTF8(m_baseURL.c_str()), WebString::fromUTF8("smartclip_user_select_none.html"));
+    WebView* webView = m_webViewHelper.initializeAndLoad(m_baseURL + "smartclip_user_select_none.html");
+    webView->setPageScaleFactorLimits(1, 1);
+    webView->resize(WebSize(500, 500));
+    webView->layout();
+    WebRect cropRect(0, 0, 100, 100);
+    webView->extractSmartClipData(cropRect, clipText, clipHtml, clipRect);
+    EXPECT_STREQ("", clipText.utf8().c_str());
+    EXPECT_STREQ("", clipHtml.utf8().c_str());
 }
 
 class CreateChildCounterFrameClient : public FrameTestHelpers::TestWebFrameClient {

@@ -28,7 +28,7 @@
 #include "core/page/scrolling/ScrollingCoordinator.h"
 
 #include "core/dom/Document.h"
-#include "core/dom/FullscreenElementStack.h"
+#include "core/dom/Fullscreen.h"
 #include "core/dom/Node.h"
 #include "core/frame/EventHandlerRegistry.h"
 #include "core/frame/FrameView.h"
@@ -161,7 +161,7 @@ void ScrollingCoordinator::updateAfterCompositingChangeIfNeeded()
         scrollingWebLayer->setBounds(frameView->contentsSize());
         // If there is a fullscreen element, set the scroll clip layer to 0 so main frame won't scroll.
         Document* mainFrameDocument = m_page->deprecatedLocalMainFrame()->document();
-        Element* fullscreenElement = FullscreenElementStack::fullscreenElementFrom(*mainFrameDocument);
+        Element* fullscreenElement = Fullscreen::fullscreenElementFrom(*mainFrameDocument);
         if (fullscreenElement && fullscreenElement != mainFrameDocument->documentElement())
             scrollingWebLayer->setScrollClipLayer(0);
         else
@@ -898,6 +898,12 @@ bool ScrollingCoordinator::hasVisibleSlowRepaintViewportConstrainedObjects(Frame
         if (!layer->scrollsWithViewport())
             continue;
 
+        // If the whole subtree is invisible, there's no reason to scroll on
+        // the main thread because we don't need to generate invalidations
+        // for invisible content.
+        if (layer->subtreeIsInvisible())
+            continue;
+
         // We're only smart enough to scroll viewport-constrainted objects
         // in the compositor if they have their own backing or they paint
         // into a grouped back (which necessarily all have the same viewport
@@ -911,23 +917,20 @@ bool ScrollingCoordinator::hasVisibleSlowRepaintViewportConstrainedObjects(Frame
 
 MainThreadScrollingReasons ScrollingCoordinator::mainThreadScrollingReasons() const
 {
-    // The main thread scrolling reasons are applicable to scrolls of the main
-    // frame. If it does not exist or if it is not scrollable, there is no
-    // reason to force main thread scrolling.
+    MainThreadScrollingReasons reasons = static_cast<MainThreadScrollingReasons>(0);
+
     if (!m_page->mainFrame()->isLocalFrame())
-        return static_cast<MainThreadScrollingReasons>(0);
+        return reasons;
     FrameView* frameView = m_page->deprecatedLocalMainFrame()->view();
     if (!frameView)
-        return static_cast<MainThreadScrollingReasons>(0);
-
-    MainThreadScrollingReasons mainThreadScrollingReasons = (MainThreadScrollingReasons)0;
+        return reasons;
 
     if (frameView->hasSlowRepaintObjects())
-        mainThreadScrollingReasons |= HasSlowRepaintObjects;
-    if (hasVisibleSlowRepaintViewportConstrainedObjects(frameView))
-        mainThreadScrollingReasons |= HasNonLayerViewportConstrainedObjects;
+        reasons |= HasSlowRepaintObjects;
+    if (frameView->isScrollable() && hasVisibleSlowRepaintViewportConstrainedObjects(frameView))
+        reasons |= HasNonLayerViewportConstrainedObjects;
 
-    return mainThreadScrollingReasons;
+    return reasons;
 }
 
 String ScrollingCoordinator::mainThreadScrollingReasonsAsText(MainThreadScrollingReasons reasons)
@@ -935,11 +938,11 @@ String ScrollingCoordinator::mainThreadScrollingReasonsAsText(MainThreadScrollin
     StringBuilder stringBuilder;
 
     if (reasons & ScrollingCoordinator::HasSlowRepaintObjects)
-        stringBuilder.append("Has slow repaint objects, ");
+        stringBuilder.appendLiteral("Has slow repaint objects, ");
     if (reasons & ScrollingCoordinator::HasViewportConstrainedObjectsWithoutSupportingFixedLayers)
-        stringBuilder.append("Has viewport constrained objects without supporting fixed layers, ");
+        stringBuilder.appendLiteral("Has viewport constrained objects without supporting fixed layers, ");
     if (reasons & ScrollingCoordinator::HasNonLayerViewportConstrainedObjects)
-        stringBuilder.append("Has non-layer viewport-constrained objects, ");
+        stringBuilder.appendLiteral("Has non-layer viewport-constrained objects, ");
 
     if (stringBuilder.length())
         stringBuilder.resize(stringBuilder.length() - 2);

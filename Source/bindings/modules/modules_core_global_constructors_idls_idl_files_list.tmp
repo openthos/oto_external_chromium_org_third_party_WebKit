@@ -74,7 +74,6 @@
 ../../core/dom/NodeFilter.idl
 ../../core/dom/NodeIterator.idl
 ../../core/dom/NodeList.idl
-../../core/dom/Notation.idl
 ../../core/dom/ProcessingInstruction.idl
 ../../core/dom/Range.idl
 ../../core/dom/RequestAnimationFrameCallback.idl

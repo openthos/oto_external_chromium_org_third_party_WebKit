@@ -1161,7 +1161,7 @@ String CSSComputedStyleDeclaration::cssText() const
         if (i)
             result.append(' ');
         result.append(getPropertyName(properties[i]));
-        result.append(": ", 2);
+        result.appendLiteral(": ");
         result.append(getPropertyValue(properties[i]));
         result.append(';');
     }
@@ -2063,13 +2063,13 @@ PassRefPtrWillBeRawPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValu
             return cssValuePool().createValue(style->userModify());
         case CSSPropertyMaxHeight: {
             const Length& maxHeight = style->maxHeight();
-            if (maxHeight.isUndefined())
+            if (maxHeight.isMaxSizeNone())
                 return cssValuePool().createIdentifierValue(CSSValueNone);
             return zoomAdjustedPixelValueForLength(maxHeight, *style);
         }
         case CSSPropertyMaxWidth: {
             const Length& maxWidth = style->maxWidth();
-            if (maxWidth.isUndefined())
+            if (maxWidth.isMaxSizeNone())
                 return cssValuePool().createIdentifierValue(CSSValueNone);
             return zoomAdjustedPixelValueForLength(maxWidth, *style);
         }
@@ -2529,7 +2529,7 @@ PassRefPtrWillBeRawPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValu
         case CSSPropertyBorderTopRightRadius:
             return valueForBorderRadiusCorner(style->borderTopRightRadius(), *style);
         case CSSPropertyClip: {
-            if (!style->hasClip())
+            if (style->hasAutoClip())
                 return cssValuePool().createIdentifierValue(CSSValueAuto);
             RefPtrWillBeRawPtr<Rect> rect = Rect::create();
             rect->setTop(zoomAdjustedPixelValue(style->clip().top().value(), *style));
@@ -2689,9 +2689,6 @@ PassRefPtrWillBeRawPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValu
         case CSSPropertyBackgroundRepeatX:
         case CSSPropertyBackgroundRepeatY:
             break;
-        case CSSPropertyInternalCallback:
-            // This property is hidden from the web.
-            return nullptr;
 
         /* Unimplemented CSS 3 properties (including CSS3 shorthand properties) */
         case CSSPropertyWebkitTextEmphasis:

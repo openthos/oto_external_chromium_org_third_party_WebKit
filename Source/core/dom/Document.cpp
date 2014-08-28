@@ -488,7 +488,7 @@ Document::Document(const DocumentInit& initializer, DocumentClassFlags documentC
     , m_weakFactory(this)
 #endif
     , m_contextDocument(initializer.contextDocument())
-    , m_hasFullscreenElementStack(false)
+    , m_hasFullscreenSupplement(false)
     , m_loadEventDelayCount(0)
     , m_loadEventDelayTimer(this, &Document::loadEventDelayTimerFired)
     , m_pluginLoadingTimer(this, &Document::pluginLoadingTimerFired)
@@ -1942,8 +1942,8 @@ void Document::updateLayout()
         return;
     }
 
-    if (Element* oe = ownerElement())
-        oe->document().updateLayout();
+    if (HTMLFrameOwnerElement* owner = ownerElement())
+        owner->document().updateLayout();
 
     updateRenderTreeIfNeeded();
 
@@ -4501,7 +4501,7 @@ Document& Document::topDocument() const
     // FIXME: Not clear what topDocument() should do in the OOPI case--should it return the topmost
     // available Document, or something else?
     Document* doc = const_cast<Document*>(this);
-    for (Element* element = doc->ownerElement(); element; element = doc->ownerElement())
+    for (HTMLFrameOwnerElement* element = doc->ownerElement(); element; element = doc->ownerElement())
         doc = &element->document();
 
     ASSERT(doc);
@@ -4611,7 +4611,7 @@ PassRefPtrWillBeRawPtr<HTMLCollection> Document::windowNamedItems(const AtomicSt
     return ensureCachedCollection<WindowNameCollection>(WindowNamedItems, name);
 }
 
-PassRefPtrWillBeRawPtr<HTMLCollection> Document::documentNamedItems(const AtomicString& name)
+PassRefPtrWillBeRawPtr<DocumentNameCollection> Document::documentNamedItems(const AtomicString& name)
 {
     return ensureCachedCollection<DocumentNameCollection>(DocumentNamedItems, name);
 }
@@ -5241,7 +5241,7 @@ PassRefPtrWillBeRawPtr<Touch> Document::createTouch(LocalDOMWindow* window, Even
 
 PassRefPtrWillBeRawPtr<TouchList> Document::createTouchList(WillBeHeapVector<RefPtrWillBeMember<Touch> >& touches) const
 {
-    return TouchList::create(touches);
+    return TouchList::adopt(touches);
 }
 
 DocumentLoader* Document::loader() const

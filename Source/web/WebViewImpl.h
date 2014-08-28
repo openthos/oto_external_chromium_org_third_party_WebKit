@@ -142,6 +142,7 @@ public:
     // WebView methods:
     virtual void setMainFrame(WebFrame*) OVERRIDE;
     virtual void setAutofillClient(WebAutofillClient*) OVERRIDE;
+    virtual void setCredentialManagerClient(WebCredentialManagerClient*) OVERRIDE;
     virtual void setDevToolsAgentClient(WebDevToolsAgentClient*) OVERRIDE;
     virtual void setPrerendererClient(WebPrerendererClient*) OVERRIDE;
     virtual void setSpellCheckClient(WebSpellCheckClient*) OVERRIDE;
@@ -229,6 +230,7 @@ public:
         const WebPoint& screenPoint,
         int keyModifiers) OVERRIDE;
     virtual void spellingMarkers(WebVector<uint32_t>* markers) OVERRIDE;
+    virtual void removeSpellingMarkersUnderWords(const WebVector<WebString>& words) OVERRIDE;
     virtual unsigned long createUniqueIdentifierForRequest() OVERRIDE;
     virtual void inspectElementAt(const WebPoint&) OVERRIDE;
     virtual void setCompositorDeviceScaleFactorOverride(float) OVERRIDE;

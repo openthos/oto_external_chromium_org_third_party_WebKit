@@ -146,6 +146,10 @@ def interface_context(interface):
         'conditional_string': conditional_string(interface),  # [Conditional]
         'cpp_class': cpp_name(interface),
         'gc_type': this_gc_type,
+        # FIXME: Remove 'EventTarget' special handling, http://crbug.com/383699
+        'has_access_check_callbacks': (is_check_security and
+                                       interface.name != 'Window' and
+                                       interface.name != 'EventTarget'),
         'has_custom_legacy_call_as_function': has_extended_attribute_value(interface, 'Custom', 'LegacyCallAsFunction'),  # [Custom=LegacyCallAsFunction]
         'has_custom_to_v8': has_extended_attribute_value(interface, 'Custom', 'ToV8'),  # [Custom=ToV8]
         'has_custom_wrap': has_extended_attribute_value(interface, 'Custom', 'Wrap'),  # [Custom=Wrap]
@@ -735,11 +739,10 @@ def resolution_tests_methods(effective_overloads):
     # ...
     # • a dictionary
     try:
-        # FIXME: IDL dictionary not implemented, so use Blink Dictionary
-        # http://crbug.com/321462
         idl_type, method = next((idl_type, method)
                                 for idl_type, method in idl_types_methods
                                 if (idl_type.native_array_element_type or
+                                    idl_type.is_dictionary or
                                     idl_type.name == 'Dictionary'))
         if idl_type.native_array_element_type:
             # (We test for Array instead of generic Object to type-check.)
@@ -856,7 +859,7 @@ def sort_and_groupby(l, key=None):
 
 # [Constructor]
 def constructor_context(interface, constructor):
-    arguments_need_try_catch = any(v8_methods.argument_needs_try_catch(argument, return_promise=False)
+    arguments_need_try_catch = any(v8_methods.argument_needs_try_catch(constructor, argument)
                                    for argument in constructor.arguments)
 
     # [RaisesException=Constructor]

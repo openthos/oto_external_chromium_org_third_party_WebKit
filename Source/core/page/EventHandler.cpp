@@ -35,7 +35,7 @@
 #include "core/clipboard/DataTransfer.h"
 #include "core/dom/Document.h"
 #include "core/dom/DocumentMarkerController.h"
-#include "core/dom/FullscreenElementStack.h"
+#include "core/dom/Fullscreen.h"
 #include "core/dom/NodeRenderingTraversal.h"
 #include "core/dom/TouchList.h"
 #include "core/dom/shadow/ShadowRoot.h"
@@ -2097,11 +2097,6 @@ bool EventHandler::handleGestureEventInFrame(const GestureEventWithHitTestResult
     RefPtr<Scrollbar> scrollbar = targetedEvent.hitTestResult().scrollbar();
     const PlatformGestureEvent& gestureEvent = targetedEvent.event();
 
-    if (!scrollbar) {
-        FrameView* view = m_frame->view();
-        scrollbar = view ? view->scrollbarAtPoint(gestureEvent.position()) : 0;
-    }
-
     if (scrollbar) {
         bool eventSwallowed = scrollbar->gestureEvent(gestureEvent);
         if (gestureEvent.type() == PlatformEvent::GestureTapDown && eventSwallowed)
@@ -2266,8 +2261,10 @@ bool EventHandler::handleGestureTap(const GestureEventWithHitTestResults& target
 
     bool swallowClickEvent = false;
     if (m_clickNode) {
-        Node* clickTargetNode = newHitTest.targetNode()->commonAncestor(*m_clickNode, parentForClickEvent);
-        swallowClickEvent = !dispatchMouseEvent(EventTypeNames::click, clickTargetNode, gestureEvent.tapCount(), fakeMouseUp, true);
+        if (newHitTest.targetNode()) {
+            Node* clickTargetNode = newHitTest.targetNode()->commonAncestor(*m_clickNode, parentForClickEvent);
+            swallowClickEvent = !dispatchMouseEvent(EventTypeNames::click, clickTargetNode, gestureEvent.tapCount(), fakeMouseUp, true);
+        }
         m_clickNode = nullptr;
     }
 
@@ -2583,7 +2580,16 @@ GestureEventWithHitTestResults EventHandler::targetGestureEvent(const PlatformGe
     IntPoint hitTestPoint = m_frame->view()->windowToContents(gestureEvent.position());
     IntSize touchRadius = gestureEvent.area();
     touchRadius.scale(1.f / 2);
+    // FIXME: We should not do a rect-based hit-test if touch adjustment is disabled.
     HitTestResult hitTestResult = hitTestResultAtPoint(hitTestPoint, hitType | HitTestRequest::ReadOnly, touchRadius);
+
+    // Hit-test the main frame scrollbars (in addition to the child-frame and RenderLayer
+    // scroll bars checked by the hit-test code.
+    if (!hitTestResult.scrollbar()) {
+        if (FrameView* view = m_frame->view()) {
+            hitTestResult.setScrollbar(view->scrollbarAtPoint(gestureEvent.position()));
+        }
+    }
 
     // Adjust the location of the gesture to the most likely nearby node, as appropriate for the
     // type of event.
@@ -2657,6 +2663,8 @@ void EventHandler::applyTouchAdjustment(PlatformGestureEvent* gestureEvent, HitT
         ASSERT_NOT_REACHED();
     }
 
+    // Update the hit-test result to be a point-based result instead of a rect-based result.
+    // FIXME: We should do this even when no candidate matches the node filter. crbug.com/398914
     if (adjusted) {
         hitTestResult->resolveRectBasedTest(adjustedNode, m_frame->view()->windowToContents(adjustedPoint));
         gestureEvent->applyTouchAdjustment(adjustedPoint);
@@ -2942,7 +2950,7 @@ bool EventHandler::handleAccessKey(const PlatformKeyboardEvent& evt)
     return true;
 }
 
-bool EventHandler::isKeyEventAllowedInFullScreen(FullscreenElementStack* fullscreen, const PlatformKeyboardEvent& keyEvent) const
+bool EventHandler::isKeyEventAllowedInFullScreen(Fullscreen* fullscreen, const PlatformKeyboardEvent& keyEvent) const
 {
     if (fullscreen->webkitFullScreenKeyboardInputAllowed())
         return true;
@@ -2966,8 +2974,8 @@ bool EventHandler::keyEvent(const PlatformKeyboardEvent& initialKeyEvent)
     RefPtr<FrameView> protector(m_frame->view());
 
     ASSERT(m_frame->document());
-    if (FullscreenElementStack* fullscreen = FullscreenElementStack::fromIfExists(*m_frame->document())) {
-        if (fullscreen->webkitIsFullScreen() && !isKeyEventAllowedInFullScreen(fullscreen, initialKeyEvent)) {
+    if (Fullscreen* fullscreen = Fullscreen::fromIfExists(*m_frame->document())) {
+        if (fullscreen->webkitCurrentFullScreenElement() && !isKeyEventAllowedInFullScreen(fullscreen, initialKeyEvent)) {
             UseCounter::count(*m_frame->document(), UseCounter::KeyEventNotAllowedInFullScreen);
             return false;
         }
@@ -3260,8 +3268,15 @@ bool EventHandler::tryStartDrag(const MouseEventWithHitTestResults& event)
     DragController& dragController = m_frame->page()->dragController();
     if (!dragController.populateDragDataTransfer(m_frame, dragState(), m_mouseDownPos))
         return false;
+
+    // If dispatching dragstart brings about another mouse down -- one way
+    // this will happen is if a DevTools user breaks within a dragstart
+    // handler and then clicks on the suspended page -- the drag state is
+    // reset. Hence, need to check if this particular drag operation can
+    // continue even if dispatchEvent() indicates no (direct) cancellation.
+    // Do that by checking if m_dragSrc is still set.
     m_mouseDownMayStartDrag = dispatchDragSrcEvent(EventTypeNames::dragstart, m_mouseDown)
-        && !m_frame->selection().isInPasswordField();
+        && !m_frame->selection().isInPasswordField() && dragState().m_dragSrc;
 
     // Invalidate clipboard here against anymore pasteboard writing for security. The drag
     // image can still be changed as we drag, but not the pasteboard data.

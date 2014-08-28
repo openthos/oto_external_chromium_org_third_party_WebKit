@@ -48,7 +48,6 @@
 #include "core/dom/DocumentMarkerController.h"
 #include "core/dom/Element.h"
 #include "core/dom/ExceptionCode.h"
-#include "core/dom/FullscreenElementStack.h"
 #include "core/dom/NodeRenderStyle.h"
 #include "core/dom/PseudoElement.h"
 #include "core/dom/Range.h"
@@ -78,6 +77,7 @@
 #include "core/html/HTMLIFrameElement.h"
 #include "core/html/HTMLInputElement.h"
 #include "core/html/HTMLMediaElement.h"
+#include "core/html/HTMLPlugInElement.h"
 #include "core/html/HTMLSelectElement.h"
 #include "core/html/HTMLTextAreaElement.h"
 #include "core/html/canvas/CanvasRenderingContext2D.h"
@@ -320,48 +320,6 @@ bool Internals::isLoadingFromMemoryCache(const String& url)
         return false;
     Resource* resource = memoryCache()->resourceForURL(contextDocument()->completeURL(url));
     return resource && resource->status() == Resource::Cached;
-}
-
-void Internals::crash()
-{
-    CRASH();
-}
-
-void Internals::setStyleResolverStatsEnabled(bool enabled)
-{
-    Document* document = contextDocument();
-    if (enabled)
-        document->ensureStyleResolver().enableStats(StyleResolver::ReportSlowStats);
-    else
-        document->ensureStyleResolver().disableStats();
-}
-
-String Internals::styleResolverStatsReport(ExceptionState& exceptionState) const
-{
-    Document* document = contextDocument();
-    if (!document) {
-        exceptionState.throwDOMException(InvalidAccessError, "No context document is available.");
-        return String();
-    }
-    if (!document->ensureStyleResolver().stats()) {
-        exceptionState.throwDOMException(InvalidStateError, "Style resolver stats not enabled");
-        return String();
-    }
-    return document->ensureStyleResolver().stats()->report();
-}
-
-String Internals::styleResolverStatsTotalsReport(ExceptionState& exceptionState) const
-{
-    Document* document = contextDocument();
-    if (!document) {
-        exceptionState.throwDOMException(InvalidAccessError, "No context document is available.");
-        return String();
-    }
-    if (!document->ensureStyleResolver().statsTotals()) {
-        exceptionState.throwDOMException(InvalidStateError, "Style resolver stats not enabled");
-        return String();
-    }
-    return document->ensureStyleResolver().statsTotals()->report();
 }
 
 bool Internals::isSharingStyle(Element* element1, Element* element2) const
@@ -706,17 +664,6 @@ void Internals::setEnableMockPagePopup(bool enabled, ExceptionState& exceptionSt
 PassRefPtrWillBeRawPtr<PagePopupController> Internals::pagePopupController()
 {
     return s_pagePopupDriver ? s_pagePopupDriver->pagePopupController() : 0;
-}
-
-PassRefPtrWillBeRawPtr<ClientRect> Internals::unscaledViewportRect(ExceptionState& exceptionState)
-{
-    Document* document = contextDocument();
-    if (!document || !document->view()) {
-        exceptionState.throwDOMException(InvalidAccessError, document ? "The document's viewport cannot be retrieved." : "No context document can be obtained.");
-        return ClientRect::create();
-    }
-
-    return ClientRect::create(document->view()->visibleContentRect());
 }
 
 PassRefPtrWillBeRawPtr<ClientRect> Internals::absoluteCaretBounds(ExceptionState& exceptionState)
@@ -1416,16 +1363,6 @@ PassRefPtrWillBeRawPtr<StaticNodeList> Internals::nodesFromRect(Document* docume
     return StaticNodeList::adopt(matches);
 }
 
-void Internals::emitInspectorDidBeginFrame(int frameId)
-{
-    contextDocument()->page()->inspectorController().didBeginFrame(frameId);
-}
-
-void Internals::emitInspectorDidCancelFrame()
-{
-    contextDocument()->page()->inspectorController().didCancelFrame();
-}
-
 bool Internals::hasSpellingMarker(Document* document, int from, int length)
 {
     ASSERT(document);
@@ -1602,12 +1539,6 @@ bool Internals::isUnclippedDescendant(Element* element, ExceptionState& exceptio
         exceptionState.throwDOMException(InvalidAccessError, "No render layer can be obtained from the provided element.");
         return 0;
     }
-
-    // We used to compute isUnclippedDescendant only when acceleratedCompositingForOverflowScrollEnabled,
-    // but now we compute it all the time.
-    // FIXME: Remove this if statement and rebaseline the tests that make this assumption.
-    if (!layer->compositor()->acceleratedCompositingForOverflowScrollEnabled())
-        return false;
 
     return layer->isUnclippedDescendant();
 }
@@ -1973,21 +1904,21 @@ String Internals::getCurrentCursorInfo(Document* document, ExceptionState& excep
     Cursor cursor = document->frame()->eventHandler().currentMouseCursor();
 
     StringBuilder result;
-    result.append("type=");
+    result.appendLiteral("type=");
     result.append(cursorTypeToString(cursor.type()));
-    result.append(" hotSpot=");
+    result.appendLiteral(" hotSpot=");
     result.appendNumber(cursor.hotSpot().x());
-    result.append(",");
+    result.append(',');
     result.appendNumber(cursor.hotSpot().y());
     if (cursor.image()) {
         IntSize size = cursor.image()->size();
-        result.append(" image=");
+        result.appendLiteral(" image=");
         result.appendNumber(size.width());
-        result.append("x");
+        result.append('x');
         result.appendNumber(size.height());
     }
     if (cursor.imageScaleFactor() != 1) {
-        result.append(" scale=");
+        result.appendLiteral(" scale=");
         NumberToStringBuffer buffer;
         result.append(numberToFixedPrecisionString(cursor.imageScaleFactor(), 8, buffer, true));
     }
@@ -2035,12 +1966,6 @@ String Internals::getImageSourceURL(Element* element)
 {
     ASSERT(element);
     return element->imageSourceURL();
-}
-
-String Internals::baseURL(Document* document)
-{
-    ASSERT(document);
-    return document->baseURL().string();
 }
 
 bool Internals::isSelectPopupVisible(Node* node)
@@ -2284,6 +2209,20 @@ void Internals::hideAllTransitionElements()
     Vector<Document::TransitionElementData>::iterator iter = elementData.begin();
     for (; iter != elementData.end(); ++iter)
         frame()->document()->hideTransitionElements(AtomicString(iter->selector));
+}
+
+void Internals::forcePluginPlaceholder(HTMLElement* element, const String& htmlSource, ExceptionState& exceptionState)
+{
+    if (!element) {
+        exceptionState.throwDOMException(InvalidAccessError, ExceptionMessages::argumentNullOrIncorrectType(1, "HTMLElement"));
+        return;
+    }
+    if (!element->isPluginElement()) {
+        exceptionState.throwDOMException(InvalidNodeTypeError, "The element provided is not a plugin.");
+        return;
+    }
+    element->ensureUserAgentShadowRoot().setInnerHTML(htmlSource, exceptionState);
+    toHTMLPlugInElement(element)->setUsePlaceholderContent(true);
 }
 
 } // namespace blink

@@ -107,7 +107,7 @@ WebInspector.ElementsPanel = function()
     WebInspector.targetManager.observeTargets(this);
     WebInspector.settings.showUAShadowDOM.addChangeListener(this._showUAShadowDOMChanged.bind(this));
     WebInspector.targetManager.addModelListener(WebInspector.DOMModel, WebInspector.DOMModel.Events.DocumentUpdated, this._documentUpdatedEvent, this);
-    WebInspector.targetManager.addModelListener(WebInspector.DOMModel, WebInspector.CSSStyleModel.Events.ModelWasEnabled, this._updateSidebars, this);
+    WebInspector.targetManager.addModelListener(WebInspector.CSSStyleModel, WebInspector.CSSStyleModel.Events.ModelWasEnabled, this._updateSidebars, this);
 }
 
 WebInspector.ElementsPanel.prototype = {
@@ -121,7 +121,7 @@ WebInspector.ElementsPanel.prototype = {
         treeOutline.addEventListener(WebInspector.ElementsTreeOutline.Events.SelectedNodeChanged, this._selectedNodeChanged, this);
         treeOutline.addEventListener(WebInspector.ElementsTreeOutline.Events.ElementsTreeUpdated, this._updateBreadcrumbIfNeeded, this);
         this._treeOutlines.push(treeOutline);
-        this._targetToTreeOutline.put(target, treeOutline);
+        this._targetToTreeOutline.set(target, treeOutline);
 
         // Perform attach if necessary.
         if (this.isShowing())
@@ -1162,12 +1162,9 @@ WebInspector.ElementsPanel.prototype = {
             }
         }
 
-        var element = event.target.enclosingNodeOrSelfWithClass("elements-tree-outline");
-        if (!element)
-            return;
         var treeOutline = null;
         for (var i = 0; i < this._treeOutlines.length; ++i) {
-            if (this._treeOutlines[i].element === element)
+            if (this._treeOutlines[i].selectedDOMNode() === this._lastValidSelectedNode)
                 treeOutline = this._treeOutlines[i];
         }
         if (!treeOutline)

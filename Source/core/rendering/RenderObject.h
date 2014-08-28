@@ -126,6 +126,12 @@ enum InvalidationReason {
     InvalidationPaintRectangle
 };
 
+enum ViewportConstrainedPosition {
+    ViewportConstraintDoesNotMatter,
+    IsNotFixedPosition,
+    IsFixedPosition,
+};
+
 const int caretWidth = 1;
 
 struct AnnotatedRegionValue {
@@ -599,7 +605,7 @@ public:
 
     bool isSelectionBorder() const;
 
-    bool hasClip() const { return isOutOfFlowPositioned() && style()->hasClip(); }
+    bool hasClip() const { return isOutOfFlowPositioned() && !style()->hasAutoClip(); }
     bool hasOverflowClip() const { return m_bitfields.hasOverflowClip(); }
     bool hasClipOrOverflowClip() const { return hasClip() || hasOverflowClip(); }
 
@@ -790,7 +796,7 @@ public:
 
     virtual void absoluteRects(Vector<IntRect>&, const LayoutPoint&) const { }
 
-    // Computes the position of the given render object in the space of |repaintContainer|.
+    // Computes the position of the given render object in the space of |paintInvalidationContainer|.
     LayoutPoint positionFromPaintInvalidationContainer(const RenderLayerModelObject* paintInvalidationContainer, const PaintInvalidationState* = 0) const;
 
     IntRect absoluteBoundingBoxRect() const;
@@ -868,10 +874,6 @@ public:
     // FIXME: |paintInvalidationContainer| should never be 0. See crbug.com/363699.
     void invalidatePaintUsingContainer(const RenderLayerModelObject* paintInvalidationContainer, const LayoutRect&, InvalidationReason) const;
 
-    // Invalidate the paint of the entire object. Called when, e.g., the color of a border changes, or when a border
-    // style changes.
-    void paintInvalidationForWholeRenderer() const;
-
     // Invalidate the paint of a specific subrectangle within a given object. The rect |r| is in the object's coordinate space.
     void invalidatePaintRectangle(const LayoutRect&) const;
 
@@ -888,18 +890,17 @@ public:
 
     // Returns the rect that should have paint invalidated whenever this object changes. The rect is in the view's
     // coordinate space. This method deals with outlines and overflow.
-    LayoutRect absoluteClippedOverflowRect() const
-    {
-        return clippedOverflowRectForPaintInvalidation(0);
-    }
+    LayoutRect absoluteClippedOverflowRect() const;
     IntRect pixelSnappedAbsoluteClippedOverflowRect() const;
     virtual LayoutRect clippedOverflowRectForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer, const PaintInvalidationState* = 0) const;
     virtual LayoutRect rectWithOutlineForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer, LayoutUnit outlineWidth, const PaintInvalidationState* = 0) const;
 
     // Given a rect in the object's coordinate space, compute a rect suitable for invalidating paints of
     // that rect in the coordinate space of paintInvalidationContainer.
-    virtual void mapRectToPaintInvalidationBacking(const RenderLayerModelObject* paintInvalidationContainer, LayoutRect&, bool fixed = false, const PaintInvalidationState* = 0) const;
-    virtual void computeFloatRectForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer, FloatRect& paintInvalidationRect, bool fixed = false, const PaintInvalidationState* = 0) const;
+    // The ViewportConstrainedPosition parameter is only meaningful when this object is RenderView.
+    // For other objects, the caller can just pass |ViewportConstraintDoesNotMatter|.
+    virtual void mapRectToPaintInvalidationBacking(const RenderLayerModelObject* paintInvalidationContainer, LayoutRect&, ViewportConstrainedPosition, const PaintInvalidationState*) const;
+    virtual void computeFloatRectForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer, FloatRect& paintInvalidationRect, const PaintInvalidationState*) const;
 
     // Return the offset to the column in which the specified point (in flow-thread coordinates)
     // lives. This is used to convert a flow-thread point to a visual point.
@@ -1030,13 +1031,7 @@ public:
     void setPreviousPositionFromPaintInvalidationContainer(const LayoutPoint& location) { m_previousPositionFromPaintInvalidationContainer = location; }
 
     bool shouldDoFullPaintInvalidation() const { return m_bitfields.shouldDoFullPaintInvalidation(); }
-    void setShouldDoFullPaintInvalidation(bool b, MarkingBehavior markBehavior = MarkContainingBlockChain)
-    {
-        m_bitfields.setShouldDoFullPaintInvalidation(b);
-
-        if (markBehavior == MarkContainingBlockChain && b)
-            markContainingBlockChainForPaintInvalidation();
-    }
+    void setShouldDoFullPaintInvalidation(bool, MarkingBehavior = MarkContainingBlockChain);
 
     bool shouldInvalidateOverflowForPaint() const { return m_bitfields.shouldInvalidateOverflowForPaint(); }
 
@@ -1148,7 +1143,7 @@ protected:
     virtual InvalidationReason getPaintInvalidationReason(const RenderLayerModelObject& paintInvalidationContainer,
         const LayoutRect& oldBounds, const LayoutPoint& oldPositionFromPaintInvalidationContainer,
         const LayoutRect& newBounds, const LayoutPoint& newPositionFromPaintInvalidationContainer);
-    void incrementallyInvalidatePaint(const RenderLayerModelObject& paintInvalidationContainer, const LayoutRect& oldBounds, const LayoutRect& newBounds);
+    virtual void incrementallyInvalidatePaint(const RenderLayerModelObject& paintInvalidationContainer, const LayoutRect& oldBounds, const LayoutRect& newBounds, const LayoutPoint& positionFromPaintInvalidationContainer);
     void fullyInvalidatePaint(const RenderLayerModelObject& paintInvalidationContainer, InvalidationReason, const LayoutRect& oldBounds, const LayoutRect& newBounds);
 
 #if ENABLE(ASSERT)
@@ -1160,6 +1155,10 @@ protected:
 #endif
 
 private:
+    // Invalidate the paint of the entire object. This is only used when a renderer is to be removed.
+    // For other cases, the caller should call setShouldDoFullPaintInvalidation() instead.
+    void invalidatePaintForWholeRenderer() const;
+
     const RenderLayerModelObject* enclosingCompositedContainer() const;
 
     RenderFlowThread* locateFlowThreadContainingBlock() const;

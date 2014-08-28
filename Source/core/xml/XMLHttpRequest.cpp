@@ -26,7 +26,9 @@
 #include "bindings/core/v8/ExceptionState.h"
 #include "core/FetchInitiatorTypeNames.h"
 #include "core/dom/ContextFeatures.h"
+#include "core/dom/DOMException.h"
 #include "core/dom/DOMImplementation.h"
+#include "core/dom/DocumentParser.h"
 #include "core/dom/ExceptionCode.h"
 #include "core/dom/XMLDocument.h"
 #include "core/editing/markup.h"
@@ -44,7 +46,10 @@
 #include "core/inspector/InspectorInstrumentation.h"
 #include "core/inspector/InspectorTraceEvents.h"
 #include "core/loader/ThreadableLoader.h"
+#include "core/streams/ReadableStream.h"
+#include "core/streams/ReadableStreamImpl.h"
 #include "core/streams/Stream.h"
+#include "core/streams/UnderlyingSource.h"
 #include "core/xml/XMLHttpRequestProgressEvent.h"
 #include "core/xml/XMLHttpRequestUpload.h"
 #include "platform/Logging.h"
@@ -59,22 +64,11 @@
 #include "wtf/ArrayBuffer.h"
 #include "wtf/ArrayBufferView.h"
 #include "wtf/Assertions.h"
-#include "wtf/CurrentTime.h"
 #include "wtf/RefCountedLeakCounter.h"
 #include "wtf/StdLibExtras.h"
 #include "wtf/text/CString.h"
 
 namespace blink {
-
-// To throttle readystatechange event fired when readystatechange is not
-// changed, we don't dispatch the event within 50ms.
-// As dispatching readystatechange when readystatechange is NOT changed is not
-// specified, 50ms is not specified, too.
-// We choose this value because progress event is dispatched every 50ms, but
-// actually this value doesn't have to equal to the interval.
-// Note: When readystate is actually changed readystatechange event must be
-// dispatched no matter how recently dispatched the event was.
-const double readyStateChangeFireInterval = 0.05;
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, xmlHttpRequestCounter, ("XMLHttpRequest"));
 
@@ -111,9 +105,37 @@ static void logConsoleError(ExecutionContext* context, const String& message)
     context->addConsoleMessage(ConsoleMessage::create(JSMessageSource, ErrorMessageLevel, message));
 }
 
+namespace {
+
+class ReadableStreamSource : public GarbageCollectedFinalized<ReadableStreamSource>, public UnderlyingSource {
+    USING_GARBAGE_COLLECTED_MIXIN(ReadableStreamSource);
+public:
+    ReadableStreamSource(XMLHttpRequest* owner) : m_owner(owner) { }
+    virtual ~ReadableStreamSource() { }
+    virtual void pullSource() OVERRIDE { }
+    virtual ScriptPromise cancelSource(ScriptState* scriptState, ScriptValue reason) OVERRIDE
+    {
+        m_owner->abort();
+        return ScriptPromise::cast(scriptState, v8::Undefined(scriptState->isolate()));
+    }
+    virtual void trace(Visitor* visitor) OVERRIDE
+    {
+        visitor->trace(m_owner);
+        UnderlyingSource::trace(visitor);
+    }
+
+private:
+    // This is RawPtr in non-oilpan build to avoid the reference cycle. To
+    // avoid use-after free, the associated ReadableStream must be closed
+    // or errored when m_owner is gone.
+    RawPtrWillBeMember<XMLHttpRequest> m_owner;
+};
+
+} // namespace
+
 PassRefPtrWillBeRawPtr<XMLHttpRequest> XMLHttpRequest::create(ExecutionContext* context, PassRefPtr<SecurityOrigin> securityOrigin)
 {
-    RefPtrWillBeRawPtr<XMLHttpRequest> xmlHttpRequest = adoptRefWillBeRefCountedGarbageCollected(new XMLHttpRequest(context, securityOrigin));
+    RefPtrWillBeRawPtr<XMLHttpRequest> xmlHttpRequest = adoptRefWillBeNoop(new XMLHttpRequest(context, securityOrigin));
     xmlHttpRequest->suspendIfNeeded();
 
     return xmlHttpRequest.release();
@@ -130,7 +152,6 @@ XMLHttpRequest::XMLHttpRequest(ExecutionContext* context, PassRefPtr<SecurityOri
     , m_progressEventThrottle(this)
     , m_responseTypeCode(ResponseTypeDefault)
     , m_securityOrigin(securityOrigin)
-    , m_previousReadyStateChangeFireTime(0)
     , m_async(true)
     , m_includeCredentials(false)
     , m_parsedResponse(false)
@@ -190,11 +211,9 @@ ScriptString XMLHttpRequest::responseJSONSource()
 
 void XMLHttpRequest::initResponseDocument()
 {
-    AtomicString mimeType = finalResponseMIMETypeWithFallback();
-    bool isHTML = equalIgnoringCase(mimeType, "text/html");
-
     // The W3C spec requires the final MIME type to be some valid XML type, or text/html.
     // If it is text/html, then the responseType of "document" must have been supplied explicitly.
+    bool isHTML = responseIsHTML();
     if ((m_response.isHTTP() && !responseIsXML() && !isHTML)
         || (isHTML && m_responseTypeCode == ResponseTypeDefault)
         || executionContext()->isWorkerGlobalScope()) {
@@ -211,7 +230,7 @@ void XMLHttpRequest::initResponseDocument()
     // FIXME: Set Last-Modified.
     m_responseDocument->setSecurityOrigin(securityOrigin());
     m_responseDocument->setContextFeatures(document()->contextFeatures());
-    m_responseDocument->setMimeType(mimeType);
+    m_responseDocument->setMimeType(finalResponseMIMETypeWithFallback());
 }
 
 Document* XMLHttpRequest::responseXML(ExceptionState& exceptionState)
@@ -295,14 +314,23 @@ ArrayBuffer* XMLHttpRequest::responseArrayBuffer()
     return m_responseArrayBuffer.get();
 }
 
-Stream* XMLHttpRequest::responseStream()
+Stream* XMLHttpRequest::responseLegacyStream()
 {
     ASSERT(m_responseTypeCode == ResponseTypeLegacyStream);
 
     if (m_error || (m_state != LOADING && m_state != DONE))
         return 0;
 
-    return m_responseStream.get();
+    return m_responseLegacyStream.get();
+}
+
+ReadableStream* XMLHttpRequest::responseStream()
+{
+    ASSERT(m_responseTypeCode == ResponseTypeStream);
+    if (m_error || (m_state != LOADING && m_state != DONE))
+        return 0;
+
+    return m_responseStream;
 }
 
 void XMLHttpRequest::setTimeout(unsigned long timeout, ExceptionState& exceptionState)
@@ -356,6 +384,11 @@ void XMLHttpRequest::setResponseType(const String& responseType, ExceptionState&
             m_responseTypeCode = ResponseTypeLegacyStream;
         else
             return;
+    } else if (responseType == "stream") {
+        if (RuntimeEnabledFeatures::streamEnabled())
+            m_responseTypeCode = ResponseTypeStream;
+        else
+            return;
     } else {
         ASSERT_NOT_REACHED();
     }
@@ -378,6 +411,8 @@ String XMLHttpRequest::responseType()
         return "arraybuffer";
     case ResponseTypeLegacyStream:
         return "legacystream";
+    case ResponseTypeStream:
+        return "stream";
     }
     return "";
 }
@@ -404,15 +439,12 @@ void XMLHttpRequest::trackProgress(int length)
     if (m_state != LOADING) {
         changeState(LOADING);
     } else {
-        // FIXME: Make our implementation and the spec consistent. This extra
-        // invocation of readystatechange event in LOADING state was needed
-        // when the progress event was not available.
-        double now = monotonicallyIncreasingTime();
-        bool shouldFire = now - m_previousReadyStateChangeFireTime >= readyStateChangeFireInterval;
-        if (shouldFire) {
-            m_previousReadyStateChangeFireTime = now;
-            dispatchReadyStateChangeEvent();
-        }
+        // Firefox calls readyStateChanged every time it receives data. Do
+        // the same to align with Firefox.
+        //
+        // FIXME: Make our implementation and the spec consistent. This
+        // behavior was needed when the progress event was not available.
+        dispatchReadyStateChangeEvent();
     }
 }
 
@@ -893,8 +925,15 @@ bool XMLHttpRequest::internalAbort()
 
     InspectorInstrumentation::didFailXHRLoading(executionContext(), this, this);
 
-    if (m_responseStream && m_state != DONE)
-        m_responseStream->abort();
+    if (m_responseLegacyStream && m_state != DONE)
+        m_responseLegacyStream->abort();
+
+    if (m_responseStream) {
+        // When the stream is already closed (including canceled from the
+        // user), |error| does nothing.
+        // FIXME: Create a more specific error.
+        m_responseStream->error(DOMException::create(!m_async && m_exceptionCode ? m_exceptionCode : AbortError, "XMLHttpRequest::abort"));
+    }
 
     if (!m_loader)
         return true;
@@ -932,10 +971,12 @@ void XMLHttpRequest::clearResponse()
 
     m_parsedResponse = false;
     m_responseDocument = nullptr;
+    m_responseDocumentParser = nullptr;
 
     m_responseBlob = nullptr;
     m_downloadedBlobLength = 0;
 
+    m_responseLegacyStream = nullptr;
     m_responseStream = nullptr;
 
     // These variables may referred by the response accessors. So, we can clear
@@ -1033,12 +1074,14 @@ void XMLHttpRequest::handleRequestError(ExceptionCode exceptionCode, const Atomi
     dispatchProgressEvent(EventTypeNames::loadend, receivedLength, expectedLength);
 }
 
-void XMLHttpRequest::overrideMimeType(const AtomicString& override)
+void XMLHttpRequest::overrideMimeType(const AtomicString& mimeType, ExceptionState& exceptionState)
 {
-    // FIXME: This method must throw an InvalidStateError exception when the
-    // XHR is in the LOADING or DONE state. http://crbug.com/402375
+    if (m_state == LOADING || m_state == DONE) {
+        exceptionState.throwDOMException(InvalidStateError, "MimeType cannot be overridden when the state is LOADING or DONE.");
+        return;
+    }
 
-    m_mimeTypeOverride = override;
+    m_mimeTypeOverride = mimeType;
 }
 
 void XMLHttpRequest::setRequestHeader(const AtomicString& name, const AtomicString& value, ExceptionState& exceptionState)
@@ -1162,6 +1205,11 @@ bool XMLHttpRequest::responseIsXML() const
     return DOMImplementation::isXMLMIMEType(finalResponseMIMETypeWithFallback());
 }
 
+bool XMLHttpRequest::responseIsHTML() const
+{
+    return equalIgnoringCase(finalResponseMIMEType(), "text/html");
+}
+
 int XMLHttpRequest::status() const
 {
     if (m_state == UNSENT || m_state == OPENED || m_error)
@@ -1226,11 +1274,25 @@ void XMLHttpRequest::didFinishLoading(unsigned long identifier, double)
     if (m_state < HEADERS_RECEIVED)
         changeState(HEADERS_RECEIVED);
 
-    if (m_decoder)
+    if (m_responseDocumentParser) {
+        m_responseDocumentParser->finish();
+        m_responseDocumentParser = nullptr;
+
+        m_responseDocument->implicitClose();
+
+        if (!m_responseDocument->wellFormed())
+            m_responseDocument = nullptr;
+
+        m_parsedResponse = true;
+    } else if (m_decoder) {
         m_responseText = m_responseText.concatenateWith(m_decoder->flush());
+    }
+
+    if (m_responseLegacyStream)
+        m_responseLegacyStream->finalize();
 
     if (m_responseStream)
-        m_responseStream->finalize();
+        m_responseStream->close();
 
     clearVariablesForLoading();
 
@@ -1273,6 +1335,24 @@ void XMLHttpRequest::didReceiveResponse(unsigned long identifier, const Resource
         m_finalResponseCharset = response.textEncodingName();
 }
 
+void XMLHttpRequest::parseDocumentChunk(const char* data, int len)
+{
+    if (!m_responseDocumentParser) {
+        ASSERT(!m_responseDocument);
+        initResponseDocument();
+        if (!m_responseDocument)
+            return;
+
+        m_responseDocumentParser = m_responseDocument->implicitOpen();
+    }
+    ASSERT(m_responseDocumentParser);
+
+    if (m_responseDocumentParser->needsDecoder())
+        m_responseDocumentParser->setDecoder(createDecoder());
+
+    m_responseDocumentParser->appendBytes(data, len);
+}
+
 PassOwnPtr<TextResourceDecoder> XMLHttpRequest::createDecoder() const
 {
     if (m_responseTypeCode == ResponseTypeJSON)
@@ -1292,7 +1372,7 @@ PassOwnPtr<TextResourceDecoder> XMLHttpRequest::createDecoder() const
         return decoder.release();
     }
 
-    if (equalIgnoringCase(finalResponseMIMEType(), "text/html"))
+    if (responseIsHTML())
         return TextResourceDecoder::create("text/html", "UTF-8");
 
     return TextResourceDecoder::create("text/plain", "UTF-8");
@@ -1314,8 +1394,9 @@ void XMLHttpRequest::didReceiveData(const char* data, int len)
     if (len == -1)
         len = strlen(data);
 
-    bool useDecoder = m_responseTypeCode == ResponseTypeDefault || m_responseTypeCode == ResponseTypeText || m_responseTypeCode == ResponseTypeJSON || m_responseTypeCode == ResponseTypeDocument;
-    if (useDecoder) {
+    if (m_responseTypeCode == ResponseTypeDocument && responseIsHTML()) {
+        parseDocumentChunk(data, len);
+    } else if (m_responseTypeCode == ResponseTypeDefault || m_responseTypeCode == ResponseTypeText || m_responseTypeCode == ResponseTypeJSON || m_responseTypeCode == ResponseTypeDocument) {
         if (!m_decoder)
             m_decoder = createDecoder();
 
@@ -1326,9 +1407,15 @@ void XMLHttpRequest::didReceiveData(const char* data, int len)
             m_binaryResponseBuilder = SharedBuffer::create();
         m_binaryResponseBuilder->append(data, len);
     } else if (m_responseTypeCode == ResponseTypeLegacyStream) {
-        if (!m_responseStream)
-            m_responseStream = Stream::create(executionContext(), finalResponseMIMEType());
-        m_responseStream->addData(data, len);
+        if (!m_responseLegacyStream)
+            m_responseLegacyStream = Stream::create(executionContext(), responseType());
+        m_responseLegacyStream->addData(data, len);
+    } else if (m_responseTypeCode == ResponseTypeStream) {
+        if (!m_responseStream) {
+            m_responseStream = new ReadableStreamImpl<ReadableStreamChunkTypeTraits<ArrayBuffer> >(executionContext(), new ReadableStreamSource(this));
+            m_responseStream->didSourceStart();
+        }
+        m_responseStream->enqueue(ArrayBuffer::create(data, len));
     }
 
     if (m_error)
@@ -1417,8 +1504,11 @@ ExecutionContext* XMLHttpRequest::executionContext() const
 void XMLHttpRequest::trace(Visitor* visitor)
 {
     visitor->trace(m_responseBlob);
+    visitor->trace(m_responseLegacyStream);
     visitor->trace(m_responseStream);
+    visitor->trace(m_streamSource);
     visitor->trace(m_responseDocument);
+    visitor->trace(m_responseDocumentParser);
     visitor->trace(m_progressEventThrottle);
     visitor->trace(m_upload);
     XMLHttpRequestEventTarget::trace(visitor);

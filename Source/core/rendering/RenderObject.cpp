@@ -66,6 +66,7 @@
 #include "core/rendering/RenderListItem.h"
 #include "core/rendering/RenderMarquee.h"
 #include "core/rendering/RenderObjectInlines.h"
+#include "core/rendering/RenderPart.h"
 #include "core/rendering/RenderScrollbarPart.h"
 #include "core/rendering/RenderTableCaption.h"
 #include "core/rendering/RenderTableCell.h"
@@ -1327,11 +1328,16 @@ void RenderObject::addChildFocusRingRects(Vector<IntRect>& rects, const LayoutPo
                 box->addFocusRingRects(layerFocusRingRects, LayoutPoint(), box);
                 for (size_t i = 0; i < layerFocusRingRects.size(); ++i) {
                     FloatQuad quadInBox = box->localToContainerQuad(FloatRect(layerFocusRingRects[i]), paintContainer);
-                    rects.append(pixelSnappedIntRect(LayoutRect(quadInBox.boundingBox())));
+                    FloatRect rect = quadInBox.boundingBox();
+                    // Floor the location instead of using pixelSnappedIntRect to match the !hasLayer() path.
+                    // FIXME: roundedIntSize matches pixelSnappedIntRect in other places of addFocusRingRects
+                    // because we always floor the offset.
+                    // This assumption is fragile and should be replaced by better solution.
+                    rects.append(IntRect(flooredIntPoint(rect.location()), roundedIntSize(rect.size())));
                 }
             } else {
                 FloatPoint pos(additionalOffset);
-                pos.move(box->locationOffset()); // FIXME: Snap offsets? crbug.com/350474
+                pos.move(box->locationOffset());
                 box->addFocusRingRects(rects, flooredIntPoint(pos), paintContainer);
             }
         } else {
@@ -1342,8 +1348,7 @@ void RenderObject::addChildFocusRingRects(Vector<IntRect>& rects, const LayoutPo
 
 LayoutPoint RenderObject::positionFromPaintInvalidationContainer(const RenderLayerModelObject* paintInvalidationContainer, const PaintInvalidationState* paintInvalidationState) const
 {
-    // FIXME: This assert should be re-enabled when we move paint invalidation to after compositing update. crbug.com/360286
-    // ASSERT(containerForPaintInvalidation() == paintInvalidationContainer);
+    ASSERT(containerForPaintInvalidation() == paintInvalidationContainer);
 
     if (paintInvalidationContainer == this)
         return LayoutPoint();
@@ -1441,24 +1446,16 @@ const RenderLayerModelObject* RenderObject::containerForPaintInvalidation() cons
 const RenderLayerModelObject* RenderObject::enclosingCompositedContainer() const
 {
     RenderLayerModelObject* container = 0;
-    if (view()->usesCompositing()) {
-        // FIXME: CompositingState is not necessarily up to date for many callers of this function.
-        DisableCompositingQueryAsserts disabler;
+    // FIXME: CompositingState is not necessarily up to date for many callers of this function.
+    DisableCompositingQueryAsserts disabler;
 
-        if (RenderLayer* compositingLayer = enclosingLayer()->enclosingLayerForPaintInvalidation())
-            container = compositingLayer->renderer();
-    }
+    if (RenderLayer* compositingLayer = enclosingLayer()->enclosingLayerForPaintInvalidationCrossingFrameBoundaries())
+        container = compositingLayer->renderer();
     return container;
 }
 
 const RenderLayerModelObject* RenderObject::adjustCompositedContainerForSpecialAncestors(const RenderLayerModelObject* paintInvalidationContainer) const
 {
-
-    if (document().view()->hasSoftwareFilters()) {
-        if (RenderLayer* enclosingFilterLayer = enclosingLayer()->enclosingFilterLayer())
-            return enclosingFilterLayer->renderer();
-    }
-
     // If we have a flow thread, then we need to do individual paint invalidations within the RenderRegions instead.
     // Return the flow thread as a paint invalidation container in order to create a chokepoint that allows us to change
     // paint invalidation to do individual region paint invalidations.
@@ -1468,7 +1465,14 @@ const RenderLayerModelObject* RenderObject::adjustCompositedContainerForSpecialA
         if (!paintInvalidationContainer || paintInvalidationContainer->flowThreadContainingBlock() != parentRenderFlowThread)
             paintInvalidationContainer = parentRenderFlowThread;
     }
-    return paintInvalidationContainer ? paintInvalidationContainer : view();
+
+    if (paintInvalidationContainer)
+        return paintInvalidationContainer;
+
+    RenderView* renderView = view();
+    while (renderView->frame()->ownerRenderer())
+        renderView = renderView->frame()->ownerRenderer()->view();
+    return renderView;
 }
 
 bool RenderObject::isPaintInvalidationContainer() const
@@ -1518,29 +1522,26 @@ void RenderObject::invalidatePaintUsingContainer(const RenderLayerModelObject* p
     DisableCompositingQueryAsserts disabler;
 
     if (paintInvalidationContainer->isRenderFlowThread()) {
-        toRenderFlowThread(paintInvalidationContainer)->repaintRectangleInRegions(r);
+        toRenderFlowThread(paintInvalidationContainer)->paintInvalidationRectangleInRegions(r);
         return;
     }
 
     if (paintInvalidationContainer->hasFilter() && paintInvalidationContainer->layer()->requiresFullLayerImageForFilters()) {
-        paintInvalidationContainer->layer()->paintInvalidator().setFilterBackendNeedsRepaintingInRect(r);
+        paintInvalidationContainer->layer()->paintInvalidator().setFilterBackendNeedsPaintInvalidationInRect(r);
         return;
     }
 
-    RenderView* v = view();
     if (paintInvalidationContainer->isRenderView()) {
-        ASSERT(paintInvalidationContainer == v);
-        v->invalidatePaintForRectangle(r);
+        toRenderView(paintInvalidationContainer)->invalidatePaintForRectangle(r);
         return;
     }
-
-    if (v->usesCompositing()) {
+    if (paintInvalidationContainer->view()->usesCompositing()) {
         ASSERT(paintInvalidationContainer->hasLayer() && (paintInvalidationContainer->layer()->compositingState() == PaintsIntoOwnBacking || paintInvalidationContainer->layer()->compositingState() == PaintsIntoGroupedBacking));
-        paintInvalidationContainer->layer()->paintInvalidator().setBackingNeedsRepaintInRect(r);
+        paintInvalidationContainer->layer()->paintInvalidator().setBackingNeedsPaintInvalidationInRect(r);
     }
 }
 
-void RenderObject::paintInvalidationForWholeRenderer() const
+void RenderObject::invalidatePaintForWholeRenderer() const
 {
     if (!isRooted())
         return;
@@ -1669,7 +1670,7 @@ InvalidationReason RenderObject::invalidatePaintIfNeeded(const RenderLayerModelO
         return invalidationReason;
 
     if (invalidationReason == InvalidationIncremental) {
-        incrementallyInvalidatePaint(paintInvalidationContainer, oldBounds, newBounds);
+        incrementallyInvalidatePaint(paintInvalidationContainer, oldBounds, newBounds, newLocation);
         return invalidationReason;
     }
 
@@ -1718,7 +1719,7 @@ InvalidationReason RenderObject::getPaintInvalidationReason(const RenderLayerMod
     return InvalidationIncremental;
 }
 
-void RenderObject::incrementallyInvalidatePaint(const RenderLayerModelObject& paintInvalidationContainer, const LayoutRect& oldBounds, const LayoutRect& newBounds)
+void RenderObject::incrementallyInvalidatePaint(const RenderLayerModelObject& paintInvalidationContainer, const LayoutRect& oldBounds, const LayoutRect& newBounds, const LayoutPoint& positionFromPaintInvalidationContainer)
 {
     ASSERT(oldBounds.location() == newBounds.location());
 
@@ -1765,13 +1766,18 @@ LayoutRect RenderObject::rectWithOutlineForPaintInvalidation(const RenderLayerMo
     return r;
 }
 
+LayoutRect RenderObject::absoluteClippedOverflowRect() const
+{
+    return clippedOverflowRectForPaintInvalidation(view());
+}
+
 LayoutRect RenderObject::clippedOverflowRectForPaintInvalidation(const RenderLayerModelObject*, const PaintInvalidationState*) const
 {
     ASSERT_NOT_REACHED();
     return LayoutRect();
 }
 
-void RenderObject::mapRectToPaintInvalidationBacking(const RenderLayerModelObject* paintInvalidationContainer, LayoutRect& rect, bool fixed, const PaintInvalidationState* paintInvalidationState) const
+void RenderObject::mapRectToPaintInvalidationBacking(const RenderLayerModelObject* paintInvalidationContainer, LayoutRect& rect, ViewportConstrainedPosition, const PaintInvalidationState* paintInvalidationState) const
 {
     if (paintInvalidationContainer == this)
         return;
@@ -1785,16 +1791,17 @@ void RenderObject::mapRectToPaintInvalidationBacking(const RenderLayerModelObjec
 
         if (o->hasOverflowClip()) {
             RenderBox* boxParent = toRenderBox(o);
-            boxParent->applyCachedClipAndScrollOffsetForRepaint(rect);
+            boxParent->applyCachedClipAndScrollOffsetForPaintInvalidation(rect);
             if (rect.isEmpty())
                 return;
         }
 
-        o->mapRectToPaintInvalidationBacking(paintInvalidationContainer, rect, fixed, paintInvalidationState);
+        // RenderBox must override this method and pass correct ViewportConstrainedPosition for fixed-position.
+        o->mapRectToPaintInvalidationBacking(paintInvalidationContainer, rect, IsNotFixedPosition, paintInvalidationState);
     }
 }
 
-void RenderObject::computeFloatRectForPaintInvalidation(const RenderLayerModelObject*, FloatRect&, bool, const PaintInvalidationState*) const
+void RenderObject::computeFloatRectForPaintInvalidation(const RenderLayerModelObject*, FloatRect&, const PaintInvalidationState*) const
 {
     ASSERT_NOT_REACHED();
 }
@@ -3406,6 +3413,17 @@ bool RenderObject::nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const
 bool RenderObject::isRelayoutBoundaryForInspector() const
 {
     return objectIsRelayoutBoundary(this);
+}
+
+void RenderObject::setShouldDoFullPaintInvalidation(bool b, MarkingBehavior markBehavior)
+{
+    m_bitfields.setShouldDoFullPaintInvalidation(b);
+
+    if (markBehavior == MarkContainingBlockChain && b) {
+        ASSERT(document().lifecycle().state() != DocumentLifecycle::InPaintInvalidation);
+        frame()->page()->animator().scheduleVisualUpdate(); // In case that this is called not during FrameView::updateLayoutAndStyleForPainting().
+        markContainingBlockChainForPaintInvalidation();
+    }
 }
 
 void RenderObject::clearPaintInvalidationState(const PaintInvalidationState& paintInvalidationState)

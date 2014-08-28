@@ -305,7 +305,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/graphics/CrossfadeGeneratedImage.cpp \
 	third_party/WebKit/Source/platform/graphics/DecodingImageGenerator.cpp \
 	third_party/WebKit/Source/platform/graphics/DeferredImageDecoder.cpp \
-	third_party/WebKit/Source/platform/graphics/DiscardablePixelRef.cpp \
 	third_party/WebKit/Source/platform/graphics/DisplayList.cpp \
 	third_party/WebKit/Source/platform/graphics/DrawLooperBuilder.cpp \
 	third_party/WebKit/Source/platform/graphics/FrameData.cpp \
@@ -322,11 +321,11 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/graphics/ImageBuffer.cpp \
 	third_party/WebKit/Source/platform/graphics/ImageBufferSurface.cpp \
 	third_party/WebKit/Source/platform/graphics/ImageDecodingStore.cpp \
+	third_party/WebKit/Source/platform/graphics/ImageFilter.cpp \
 	third_party/WebKit/Source/platform/graphics/ImageFrameGenerator.cpp \
 	third_party/WebKit/Source/platform/graphics/ImageObserver.cpp \
 	third_party/WebKit/Source/platform/graphics/ImageOrientation.cpp \
 	third_party/WebKit/Source/platform/graphics/ImageSource.cpp \
-	third_party/WebKit/Source/platform/graphics/LazyDecodingPixelRef.cpp \
 	third_party/WebKit/Source/platform/graphics/LoggingCanvas.cpp \
 	third_party/WebKit/Source/platform/graphics/OpaqueRectTrackingContentLayerDelegate.cpp \
 	third_party/WebKit/Source/platform/graphics/Path.cpp \
@@ -336,7 +335,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/graphics/RecordingImageBufferSurface.cpp \
 	third_party/WebKit/Source/platform/graphics/RegionTracker.cpp \
 	third_party/WebKit/Source/platform/graphics/ReplayingCanvas.cpp \
-	third_party/WebKit/Source/platform/graphics/ScaledImageFragment.cpp \
 	third_party/WebKit/Source/platform/graphics/StrokeData.cpp \
 	third_party/WebKit/Source/platform/graphics/ThreadSafeDataTransport.cpp \
 	third_party/WebKit/Source/platform/graphics/UnacceleratedImageBufferSurface.cpp \

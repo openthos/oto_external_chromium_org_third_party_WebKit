@@ -33,12 +33,14 @@
 
 #include "core/dom/CrossThreadTask.h"
 #include "core/dom/Document.h"
+#include "core/inspector/InspectorInstrumentation.h"
 #include "core/inspector/WorkerDebuggerAgent.h"
 #include "core/inspector/WorkerInspectorController.h"
 #include "core/loader/FrameLoadRequest.h"
 #include "core/loader/SubstituteData.h"
 #include "core/workers/WorkerClients.h"
 #include "core/workers/WorkerGlobalScope.h"
+#include "core/workers/WorkerInspectorProxy.h"
 #include "core/workers/WorkerLoaderProxy.h"
 #include "core/workers/WorkerScriptLoader.h"
 #include "core/workers/WorkerScriptLoaderClient.h"
@@ -61,8 +63,6 @@
 #include "web/WorkerPermissionClient.h"
 #include "wtf/Functional.h"
 
-using namespace blink;
-
 namespace blink {
 
 // A thin wrapper for one-off script loading.
@@ -82,7 +82,7 @@ public:
     {
         ASSERT(loadingContext);
         m_callback = callback;
-        m_scriptLoader->setRequestContext(blink::WebURLRequest::RequestContextServiceWorker);
+        m_scriptLoader->setRequestContext(WebURLRequest::RequestContextServiceWorker);
         m_scriptLoader->loadAsynchronously(
             *loadingContext, scriptURL, DenyCrossOriginRequests, this);
     }
@@ -158,6 +158,7 @@ WebEmbeddedWorkerImpl::WebEmbeddedWorkerImpl(
     PassOwnPtr<WebWorkerPermissionClientProxy> permissionClient)
     : m_workerContextClient(client)
     , m_permissionClient(permissionClient)
+    , m_workerInspectorProxy(WorkerInspectorProxy::create())
     , m_webView(0)
     , m_mainFrame(0)
     , m_askedToTerminate(false)
@@ -218,6 +219,7 @@ void WebEmbeddedWorkerImpl::terminateWorkerContext()
     }
     if (m_workerThread)
         m_workerThread->stop();
+    m_workerInspectorProxy->workerThreadTerminated();
 }
 
 namespace {
@@ -272,9 +274,19 @@ void WebEmbeddedWorkerImpl::attachDevTools()
         m_workerThread->postDebuggerTask(createCrossThreadTask(connectToWorkerContextInspectorTask, true));
 }
 
+void WebEmbeddedWorkerImpl::attachDevTools(const WebString& hostId)
+{
+    attachDevTools();
+}
+
 void WebEmbeddedWorkerImpl::reattachDevTools(const WebString& savedState)
 {
     m_workerThread->postDebuggerTask(createCrossThreadTask(reconnectToWorkerContextInspectorTask, String(savedState)));
+}
+
+void WebEmbeddedWorkerImpl::reattachDevTools(const WebString& hostId, const WebString& savedState)
+{
+    reattachDevTools(savedState);
 }
 
 void WebEmbeddedWorkerImpl::detachDevTools()
@@ -288,6 +300,14 @@ void WebEmbeddedWorkerImpl::dispatchDevToolsMessage(const WebString& message)
         return;
     m_workerThread->postDebuggerTask(createCrossThreadTask(dispatchOnInspectorBackendTask, String(message)));
     m_workerThread->interruptAndDispatchInspectorCommands();
+}
+
+void WebEmbeddedWorkerImpl::postMessageToPageInspector(const String& message)
+{
+    WorkerInspectorProxy::PageInspector* pageInspector = m_workerInspectorProxy->pageInspector();
+    if (!pageInspector)
+        return;
+    pageInspector->dispatchMessageFromWorker(message);
 }
 
 void WebEmbeddedWorkerImpl::prepareShadowPageForLoader()
@@ -373,9 +393,10 @@ void WebEmbeddedWorkerImpl::startWorkerThread()
     providePermissionClientToWorker(workerClients.get(), m_permissionClient.release());
     provideServiceWorkerGlobalScopeClientToWorker(workerClients.get(), ServiceWorkerGlobalScopeClientImpl::create(*m_workerContextClient));
 
+    KURL scriptURL = m_mainScriptLoader->url();
     OwnPtrWillBeRawPtr<WorkerThreadStartupData> startupData =
         WorkerThreadStartupData::create(
-            m_mainScriptLoader->url(),
+            scriptURL,
             m_workerStartData.userAgent,
             m_mainScriptLoader->script(),
             startMode,
@@ -386,11 +407,13 @@ void WebEmbeddedWorkerImpl::startWorkerThread()
 
     m_mainScriptLoader.clear();
 
-    m_workerGlobalScopeProxy = ServiceWorkerGlobalScopeProxy::create(*this, *toWebLocalFrameImpl(m_mainFrame)->frame()->document(), *m_workerContextClient);
+    Document* document = toWebLocalFrameImpl(m_mainFrame)->frame()->document();
+    m_workerGlobalScopeProxy = ServiceWorkerGlobalScopeProxy::create(*this, *document, *m_workerContextClient);
     m_loaderProxy = LoaderProxy::create(*this);
 
     m_workerThread = ServiceWorkerThread::create(*m_loaderProxy, *m_workerGlobalScopeProxy, startupData.release());
     m_workerThread->start();
+    m_workerInspectorProxy->workerThreadCreated(document, m_workerThread.get(), scriptURL);
 }
 
 } // namespace blink

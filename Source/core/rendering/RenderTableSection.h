@@ -256,6 +256,7 @@ private:
 
     void populateSpanningRowsHeightFromCell(RenderTableCell*, struct SpanningRowsHeight&);
     void distributeExtraRowSpanHeightToPercentRows(RenderTableCell*, int, int&, Vector<int>&);
+    void distributeWholeExtraRowSpanHeightToPercentRows(RenderTableCell*, int, int&, Vector<int>&);
     void distributeExtraRowSpanHeightToAutoRows(RenderTableCell*, int, int&, Vector<int>&);
     void distributeExtraRowSpanHeightToRemainingRows(RenderTableCell*, int, int&, Vector<int>&);
     void distributeRowSpanHeightToRows(SpanningRenderTableCells& rowSpanCells);
@@ -275,8 +276,8 @@ private:
     // Flip the rect so it aligns with the coordinates used by the rowPos and columnPos vectors.
     LayoutRect logicalRectForWritingModeAndDirection(const LayoutRect&) const;
 
-    CellSpan dirtiedRows(const LayoutRect& repaintRect) const;
-    CellSpan dirtiedColumns(const LayoutRect& repaintRect) const;
+    CellSpan dirtiedRows(const LayoutRect& paintInvalidationRect) const;
+    CellSpan dirtiedColumns(const LayoutRect& paintInvalidationRect) const;
 
     // These two functions take a rectangle as input that has been flipped by logicalRectForWritingModeAndDirection.
     // The returned span of rows or columns is end-exclusive, and empty if start==end.

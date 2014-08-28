@@ -39,8 +39,6 @@
 #include "core/loader/ThreadableLoader.h"
 #include "core/workers/WorkerClients.h"
 #include "core/workers/WorkerThreadStartupData.h"
-#include "modules/CachePolyfill.h"
-#include "modules/CacheStoragePolyfill.h"
 #include "modules/EventTargetModules.h"
 #include "modules/serviceworkers/CacheStorage.h"
 #include "modules/serviceworkers/FetchManager.h"
@@ -57,12 +55,9 @@ namespace blink {
 
 PassRefPtrWillBeRawPtr<ServiceWorkerGlobalScope> ServiceWorkerGlobalScope::create(ServiceWorkerThread* thread, PassOwnPtrWillBeRawPtr<WorkerThreadStartupData> startupData)
 {
-    RefPtrWillBeRawPtr<ServiceWorkerGlobalScope> context = adoptRefWillBeRefCountedGarbageCollected(new ServiceWorkerGlobalScope(startupData->m_scriptURL, startupData->m_userAgent, thread, monotonicallyIncreasingTime(), startupData->m_workerClients.release()));
+    RefPtrWillBeRawPtr<ServiceWorkerGlobalScope> context = adoptRefWillBeNoop(new ServiceWorkerGlobalScope(startupData->m_scriptURL, startupData->m_userAgent, thread, monotonicallyIncreasingTime(), startupData->m_workerClients.release()));
 
     context->applyContentSecurityPolicyFromString(startupData->m_contentSecurityPolicy, startupData->m_contentSecurityPolicyType);
-
-    context->script()->evaluate(String(cachePolyfillJs, sizeof(cachePolyfillJs)));
-    context->script()->evaluate(String(cacheStoragePolyfillJs, sizeof(cacheStoragePolyfillJs)));
 
     return context.release();
 }

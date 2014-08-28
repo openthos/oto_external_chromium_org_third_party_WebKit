@@ -15,19 +15,19 @@ gyp_shared_intermediate_dir := $(call intermediates-dir-for,GYP,shared,,,$(GYP_V
 GYP_TARGET_DEPENDENCIES :=
 
 ### Rules for action "build_layers_module":
-$(gyp_shared_intermediate_dir)/resources/inspector/layers/_module.js: gyp_local_path := $(LOCAL_PATH)
-$(gyp_shared_intermediate_dir)/resources/inspector/layers/_module.js: gyp_var_prefix := $(GYP_VAR_PREFIX)
-$(gyp_shared_intermediate_dir)/resources/inspector/layers/_module.js: gyp_intermediate_dir := $(abspath $(gyp_intermediate_dir))
-$(gyp_shared_intermediate_dir)/resources/inspector/layers/_module.js: gyp_shared_intermediate_dir := $(abspath $(gyp_shared_intermediate_dir))
-$(gyp_shared_intermediate_dir)/resources/inspector/layers/_module.js: export PATH := $(subst $(ANDROID_BUILD_PATHS),,$(PATH))
-$(gyp_shared_intermediate_dir)/resources/inspector/layers/_module.js: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/scripts/inline_js_imports.py $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/layers/_module.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/layers/LayerDetailsView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/layers/LayerPaintProfilerView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/layers/LayersPanel.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/layers/LayerTreeOutline.js $(GYP_TARGET_DEPENDENCIES)
+$(gyp_shared_intermediate_dir)/resources/inspector/layers.js: gyp_local_path := $(LOCAL_PATH)
+$(gyp_shared_intermediate_dir)/resources/inspector/layers.js: gyp_var_prefix := $(GYP_VAR_PREFIX)
+$(gyp_shared_intermediate_dir)/resources/inspector/layers.js: gyp_intermediate_dir := $(abspath $(gyp_intermediate_dir))
+$(gyp_shared_intermediate_dir)/resources/inspector/layers.js: gyp_shared_intermediate_dir := $(abspath $(gyp_shared_intermediate_dir))
+$(gyp_shared_intermediate_dir)/resources/inspector/layers.js: export PATH := $(subst $(ANDROID_BUILD_PATHS),,$(PATH))
+$(gyp_shared_intermediate_dir)/resources/inspector/layers.js: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/scripts/concatenate_module_scripts.py $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/layers/module.json $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/layers/LayerDetailsView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/layers/LayerPaintProfilerView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/layers/LayersPanel.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/layers/LayerTreeOutline.js $(GYP_TARGET_DEPENDENCIES)
 	@echo "Gyp action: third_party_WebKit_Source_devtools_devtools_gyp_build_layers_module_target_build_layers_module ($@)"
-	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/devtools; mkdir -p $(gyp_shared_intermediate_dir)/resources/inspector/layers; python scripts/inline_js_imports.py front_end/layers/_module.js "$(gyp_shared_intermediate_dir)/resources/inspector/layers/_module.js"
+	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/devtools; mkdir -p $(gyp_shared_intermediate_dir)/resources/inspector; python scripts/concatenate_module_scripts.py front_end/layers/module.json "$(gyp_shared_intermediate_dir)/resources/inspector/layers.js"
 
 
 
 GYP_GENERATED_OUTPUTS := \
-	$(gyp_shared_intermediate_dir)/resources/inspector/layers/_module.js
+	$(gyp_shared_intermediate_dir)/resources/inspector/layers.js
 
 # Make sure our deps and generated files are built first.
 LOCAL_ADDITIONAL_DEPENDENCIES := $(GYP_TARGET_DEPENDENCIES) $(GYP_GENERATED_OUTPUTS)

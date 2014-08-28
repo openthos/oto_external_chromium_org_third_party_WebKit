@@ -28,7 +28,7 @@
 #include "core/rendering/compositing/RenderLayerCompositor.h"
 
 #include "core/animation/DocumentAnimations.h"
-#include "core/dom/FullscreenElementStack.h"
+#include "core/dom/Fullscreen.h"
 #include "core/frame/FrameView.h"
 #include "core/frame/LocalFrame.h"
 #include "core/frame/Settings.h"
@@ -158,7 +158,7 @@ bool RenderLayerCompositor::layerSquashingEnabled() const
     return true;
 }
 
-bool RenderLayerCompositor::acceleratedCompositingForOverflowScrollEnabled() const
+bool RenderLayerCompositor::preferCompositingToLCDTextEnabled() const
 {
     return m_compositingReasonFinder.hasOverflowScrollTrigger();
 }
@@ -166,16 +166,16 @@ bool RenderLayerCompositor::acceleratedCompositingForOverflowScrollEnabled() con
 static RenderVideo* findFullscreenVideoRenderer(Document& document)
 {
     // Recursively find the document that is in fullscreen.
-    Element* fullscreenElement = FullscreenElementStack::fullscreenElementFrom(document);
+    Element* fullscreenElement = Fullscreen::fullscreenElementFrom(document);
     Document* contentDocument = &document;
     while (fullscreenElement && fullscreenElement->isFrameOwnerElement()) {
         contentDocument = toHTMLFrameOwnerElement(fullscreenElement)->contentDocument();
         if (!contentDocument)
             return 0;
-        fullscreenElement = FullscreenElementStack::fullscreenElementFrom(*contentDocument);
+        fullscreenElement = Fullscreen::fullscreenElementFrom(*contentDocument);
     }
     // Get the current fullscreen element from the document.
-    fullscreenElement = FullscreenElementStack::currentFullScreenElementFrom(*contentDocument);
+    fullscreenElement = Fullscreen::currentFullScreenElementFrom(*contentDocument);
     if (!isHTMLVideoElement(fullscreenElement))
         return 0;
     RenderObject* renderer = fullscreenElement->renderer();
@@ -512,7 +512,7 @@ void RenderLayerCompositor::frameViewDidScroll()
     bool scrollingCoordinatorHandlesOffset = false;
     if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator()) {
         if (Settings* settings = m_renderView.document().settings()) {
-            if (m_renderView.frame()->isLocalRoot() || settings->compositedScrollingForFramesEnabled())
+            if (m_renderView.frame()->isLocalRoot() || settings->preferCompositingToLCDTextEnabled())
                 scrollingCoordinatorHandlesOffset = scrollingCoordinator->scrollableAreaScrollLayerDidChange(frameView);
         }
     }
@@ -789,10 +789,8 @@ void RenderLayerCompositor::paintContents(const GraphicsLayer* graphicsLayer, Gr
 
 bool RenderLayerCompositor::supportsFixedRootBackgroundCompositing() const
 {
-    if (Settings* settings = m_renderView.document().settings()) {
-        if (settings->acceleratedCompositingForFixedRootBackgroundEnabled())
-            return true;
-    }
+    if (Settings* settings = m_renderView.document().settings())
+        return settings->preferCompositingToLCDTextEnabled();
     return false;
 }
 

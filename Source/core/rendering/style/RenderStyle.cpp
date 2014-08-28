@@ -29,6 +29,7 @@
 #include "core/rendering/TextAutosizer.h"
 #include "core/rendering/style/AppliedTextDecoration.h"
 #include "core/rendering/style/ContentData.h"
+#include "core/rendering/style/DataEquivalency.h"
 #include "core/rendering/style/QuotesData.h"
 #include "core/rendering/style/ShadowList.h"
 #include "core/rendering/style/StyleImage.h"
@@ -622,7 +623,7 @@ bool RenderStyle::diffNeedsFullLayout(const RenderStyle& other) const
 
 bool RenderStyle::diffNeedsPaintInvalidationLayer(const RenderStyle& other) const
 {
-    if (position() != StaticPosition && (visual->clip != other.visual->clip || visual->hasClip != other.visual->hasClip))
+    if (position() != StaticPosition && (visual->clip != other.visual->clip || visual->hasAutoClip != other.visual->hasAutoClip))
         return true;
 
     if (rareNonInheritedData.get() != other.rareNonInheritedData.get()) {
@@ -660,8 +661,8 @@ bool RenderStyle::diffNeedsPaintInvalidationObject(const RenderStyle& other) con
             || rareNonInheritedData->m_borderFit != other.rareNonInheritedData->m_borderFit
             || rareNonInheritedData->m_objectFit != other.rareNonInheritedData->m_objectFit
             || rareNonInheritedData->m_objectPosition != other.rareNonInheritedData->m_objectPosition
-            || rareNonInheritedData->m_shapeOutside != other.rareNonInheritedData->m_shapeOutside
-            || rareNonInheritedData->m_clipPath != other.rareNonInheritedData->m_clipPath)
+            || !dataEquivalent(rareNonInheritedData->m_shapeOutside, other.rareNonInheritedData->m_shapeOutside)
+            || !dataEquivalent(rareNonInheritedData->m_clipPath, other.rareNonInheritedData->m_clipPath))
             return true;
     }
 
@@ -703,15 +704,6 @@ void RenderStyle::updatePropertySpecificDifferences(const RenderStyle& other, St
                 diff.setTextOrColorChanged();
         }
     }
-}
-
-void RenderStyle::setClip(const Length& top, const Length& right, const Length& bottom, const Length& left)
-{
-    StyleVisualData* data = visual.access();
-    data->clip.m_top = top;
-    data->clip.m_right = right;
-    data->clip.m_bottom = bottom;
-    data->clip.m_left = left;
 }
 
 void RenderStyle::addCursor(PassRefPtr<StyleImage> image, const IntPoint& hotSpot)

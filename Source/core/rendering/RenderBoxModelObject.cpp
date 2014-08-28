@@ -115,14 +115,10 @@ RenderBoxModelObject::~RenderBoxModelObject()
 {
 }
 
-void RenderBoxModelObject::destroy()
-{
-    ImageQualityController::remove(this);
-    RenderLayerModelObject::destroy();
-}
-
 void RenderBoxModelObject::willBeDestroyed()
 {
+    ImageQualityController::remove(this);
+
     // A continuation of this RenderObject should be destroyed at subclasses.
     ASSERT(!continuation());
 
@@ -566,8 +562,7 @@ void RenderBoxModelObject::paintFillLayerExtended(const PaintInfo& paintInfo, co
     if (isRoot) {
         isOpaqueRoot = true;
         if (!bgLayer.next() && bgColor.hasAlpha() && view()->frameView()) {
-            Element* ownerElement = document().ownerElement();
-            if (ownerElement) {
+            if (HTMLFrameOwnerElement* ownerElement = document().ownerElement()) {
                 if (!isHTMLFrameElement(*ownerElement)) {
                     // Locate the <body> element using the DOM.  This is easier than trying
                     // to crawl around a render tree with potential :before/:after content and
@@ -2676,7 +2671,7 @@ const RenderObject* RenderBoxModelObject::pushMappingToContainer(const RenderLay
 
     LayoutSize adjustmentForSkippedAncestor;
     if (ancestorSkipped) {
-        // There can't be a transform between repaintContainer and o, because transforms create containers, so it should be safe
+        // There can't be a transform between paintInvalidationContainer and o, because transforms create containers, so it should be safe
         // to just subtract the delta between the ancestor and o.
         adjustmentForSkippedAncestor = -ancestorToStopAt->offsetFromAncestorContainer(container);
     }

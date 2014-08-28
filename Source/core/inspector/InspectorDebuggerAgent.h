@@ -47,6 +47,7 @@
 
 namespace blink {
 
+class ConsoleMessage;
 class Document;
 class Event;
 class EventListener;
@@ -97,7 +98,7 @@ public:
 
     bool isPaused();
     bool runningNestedMessageLoop();
-    void addConsoleAPIMessageToConsole(MessageType, MessageLevel, const String&, ScriptState*, PassRefPtrWillBeRawPtr<ScriptArguments>, unsigned long);
+    void addMessageToConsole(ConsoleMessage*);
 
     String preprocessEventListener(LocalFrame*, const String& source, const String& url, const String& functionName);
     PassOwnPtr<ScriptSourceCode> preprocess(LocalFrame*, const ScriptSourceCode&);
@@ -157,7 +158,7 @@ public:
     void didRemoveEvent(EventTarget*, Event*);
     void willHandleEvent(EventTarget*, Event*, EventListener*, bool useCapture);
     void didHandleEvent();
-    void willLoadXHR(XMLHttpRequest*, ThreadableLoaderClient*, const AtomicString& method, const KURL&, bool async, FormData* body, const HTTPHeaderMap& headers, bool includeCrendentials);
+    void willLoadXHR(XMLHttpRequest*, ThreadableLoaderClient*, const AtomicString& method, const KURL&, bool async, PassRefPtr<FormData> body, const HTTPHeaderMap& headers, bool includeCrendentials);
     void didDispatchXHRLoadendEvent(XMLHttpRequest*);
     void didEnqueueMutationRecord(ExecutionContext*, MutationObserver*);
     void didClearAllMutationRecords(ExecutionContext*, MutationObserver*);
