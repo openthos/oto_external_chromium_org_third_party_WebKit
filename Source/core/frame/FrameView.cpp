@@ -1270,24 +1270,21 @@ bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect
     ViewportConstrainedObjectSet::const_iterator end = m_viewportConstrainedObjects->end();
     for (ViewportConstrainedObjectSet::const_iterator it = m_viewportConstrainedObjects->begin(); it != end; ++it) {
         RenderObject* renderer = *it;
-        // m_viewportConstrainedObjects should not contain non-viewport constrained objects.
         ASSERT(renderer->style()->hasViewportConstrainedPosition());
-
-        // Fixed items should always have layers.
         ASSERT(renderer->hasLayer());
         RenderLayer* layer = toRenderBoxModelObject(renderer)->layer();
 
-        // Layers that paint into their ancestor or into a grouped backing will still need
-        // to apply a paint invalidation. If the layer paints into its own backing, then
-        // it does not need paint invalidation just to scroll.
-        if (layer->compositingState() == PaintsIntoOwnBacking)
+        CompositingState state = layer->compositingState();
+        if (state == PaintsIntoOwnBacking || state == PaintsIntoGroupedBacking)
             continue;
 
-        if (layer->hasAncestorWithFilterOutsets()) {
-            // If the fixed layer has a blur/drop-shadow filter applied on at least one of its parents, we cannot
-            // scroll using the fast path, otherwise the outsets of the filter will be moved around the page.
+        if (layer->subtreeIsInvisible())
+            continue;
+
+        // If the fixed layer has a blur/drop-shadow filter applied on at least one of its parents, we cannot
+        // scroll using the fast path, otherwise the outsets of the filter will be moved around the page.
+        if (layer->hasAncestorWithFilterOutsets())
             return false;
-        }
 
         IntRect updateRect = pixelSnappedIntRect(layer->paintInvalidator().repaintRectIncludingNonCompositingDescendants());
 
