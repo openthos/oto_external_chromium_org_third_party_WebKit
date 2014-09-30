@@ -293,7 +293,7 @@ WebInspector.SourcesView.prototype = {
 
     /**
      * @param {!WebInspector.UISourceCode} uiSourceCode
-     * @param {number=} lineNumber
+     * @param {number=} lineNumber 0-based
      * @param {number=} columnNumber
      * @param {boolean=} omitFocus
      * @param {boolean=} omitHighlight
@@ -402,7 +402,7 @@ WebInspector.SourcesView.prototype = {
 
     /**
      * @param {!WebInspector.UISourceCode} uiSourceCode
-     * @return {!WebInspector.SourceFrame}
+     * @return {!WebInspector.UISourceCodeFrame}
      */
     viewForFile: function(uiSourceCode)
     {
@@ -532,7 +532,7 @@ WebInspector.SourcesView.prototype = {
          */
         function searchResultsChanged()
         {
-            this._searchableView.cancelSearch();
+            this.performSearch(query, false, false);
         }
 
         this._searchView.performSearch(query, shouldJump, !!jumpBackwards, finishedCallback.bind(this), currentMatchChanged.bind(this), searchResultsChanged.bind(this));

@@ -45,11 +45,16 @@ public:
 
     virtual bool mainFrameResizesAreOrientationChanges() const OVERRIDE;
     virtual bool shrinksViewportContentToFit() const OVERRIDE;
+    virtual int availablePointerTypes() const OVERRIDE;
+    virtual PointerType primaryPointerType() const OVERRIDE;
+    virtual int availableHoverTypes() const OVERRIDE;
+    virtual HoverType primaryHoverType() const OVERRIDE;
     virtual bool viewportEnabled() const OVERRIDE;
     virtual void setAccelerated2dCanvasEnabled(bool) OVERRIDE;
     virtual void setAccelerated2dCanvasMSAASampleCount(int) OVERRIDE;
     virtual void setAcceleratedCompositingEnabled(bool) OVERRIDE;
     virtual void setPreferCompositingToLCDTextEnabled(bool) OVERRIDE;
+    virtual void setAccessibilityEnabled(bool) OVERRIDE;
     virtual void setAllowDisplayOfInsecureContent(bool) OVERRIDE;
     virtual void setAllowFileAccessFromFileURLs(bool) OVERRIDE;
     virtual void setAllowCustomScrollbarInMainFrame(bool) OVERRIDE;
@@ -76,7 +81,11 @@ public:
     virtual void setDeferredImageDecodingEnabled(bool) OVERRIDE;
     virtual void setDeviceScaleAdjustment(float) OVERRIDE;
     virtual void setDeviceSupportsMouse(bool) OVERRIDE;
+
+    // FIXME: Remove once the pointer/hover features are converted to use the
+    // new APIs (e.g. setPrimaryPointerType) on the chromium side
     virtual void setDeviceSupportsTouch(bool) OVERRIDE;
+
     virtual void setDisallowFullscreenForNonMediaElements(bool) OVERRIDE;
     virtual void setDoubleTapToZoomEnabled(bool) OVERRIDE;
     virtual void setDownloadableBinaryFontsEnabled(bool) OVERRIDE;
@@ -92,6 +101,7 @@ public:
     virtual void setHyperlinkAuditingEnabled(bool) OVERRIDE;
     virtual void setIgnoreMainFrameOverflowHiddenQuirk(bool) OVERRIDE;
     virtual void setImagesEnabled(bool) OVERRIDE;
+    virtual void setInlineTextBoxAccessibilityEnabled(bool) OVERRIDE;
     virtual void setJavaEnabled(bool) OVERRIDE;
     virtual void setJavaScriptCanAccessClipboard(bool) OVERRIDE;
     virtual void setJavaScriptCanOpenWindowsAutomatically(bool) OVERRIDE;
@@ -118,6 +128,10 @@ public:
     virtual void setPinchOverlayScrollbarThickness(int) OVERRIDE;
     virtual void setPinchVirtualViewportEnabled(bool) OVERRIDE;
     virtual void setPluginsEnabled(bool) OVERRIDE;
+    virtual void setAvailablePointerTypes(int) OVERRIDE;
+    virtual void setPrimaryPointerType(PointerType) OVERRIDE;
+    virtual void setAvailableHoverTypes(int) OVERRIDE;
+    virtual void setPrimaryHoverType(HoverType) OVERRIDE;
     virtual void setRenderVSyncNotificationEnabled(bool) OVERRIDE;
     virtual void setReportScreenSizeInPhysicalPixelsQuirk(bool) OVERRIDE;
     virtual void setSansSerifFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON) OVERRIDE;
@@ -140,6 +154,7 @@ public:
     virtual void setTextAreasAreResizable(bool) OVERRIDE;
     virtual void setTextAutosizingEnabled(bool) OVERRIDE;
     virtual void setAccessibilityFontScaleFactor(float) OVERRIDE;
+    virtual void setThreadedScrollingEnabled(bool) OVERRIDE;
     virtual void setTouchDragDropEnabled(bool) OVERRIDE;
     virtual void setTouchEditingEnabled(bool) OVERRIDE;
     virtual void setUnifiedTextCheckerEnabled(bool) OVERRIDE;
@@ -149,6 +164,7 @@ public:
     virtual void setUseSolidColorScrollbars(bool) OVERRIDE;
     virtual void setUseWideViewport(bool) OVERRIDE;
     virtual void setV8CacheOptions(V8CacheOptions) OVERRIDE;
+    virtual void setV8ScriptStreamingEnabled(bool) OVERRIDE;
     virtual void setValidationMessageTimerMagnification(int) OVERRIDE;
     virtual void setViewportEnabled(bool) OVERRIDE;
     virtual void setViewportMetaEnabled(bool) OVERRIDE;

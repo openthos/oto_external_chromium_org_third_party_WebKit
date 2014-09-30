@@ -5,7 +5,6 @@ include $(CLEAR_VARS)
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 LOCAL_MODULE := third_party_WebKit_Source_modules_modules_gyp
 LOCAL_MODULE_SUFFIX := .a
-LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_TARGET_ARCH := $(TARGET_$(GYP_VAR_PREFIX)ARCH)
 gyp_intermediate_dir := $(call local-intermediates-dir,,$(GYP_VAR_PREFIX))
 gyp_shared_intermediate_dir := $(call intermediates-dir-for,GYP,shared,,,$(GYP_VAR_PREFIX))
@@ -23,6 +22,22 @@ GYP_GENERATED_OUTPUTS :=
 # Make sure our deps and generated files are built first.
 LOCAL_ADDITIONAL_DEPENDENCIES := $(GYP_TARGET_DEPENDENCIES) $(GYP_GENERATED_OUTPUTS)
 
+$(gyp_intermediate_dir)/TextDecodeOptions.cpp: $(gyp_shared_intermediate_dir)/blink/modules/encoding/TextDecodeOptions.cpp
+	mkdir -p $(@D); cp $< $@
+$(gyp_intermediate_dir)/TextDecoderOptions.cpp: $(gyp_shared_intermediate_dir)/blink/modules/encoding/TextDecoderOptions.cpp
+	mkdir -p $(@D); cp $< $@
+$(gyp_intermediate_dir)/IDBIndexParameters.cpp: $(gyp_shared_intermediate_dir)/blink/modules/indexeddb/IDBIndexParameters.cpp
+	mkdir -p $(@D); cp $< $@
+$(gyp_intermediate_dir)/NotificationOptions.cpp: $(gyp_shared_intermediate_dir)/blink/modules/notifications/NotificationOptions.cpp
+	mkdir -p $(@D); cp $< $@
+$(gyp_intermediate_dir)/QueryParams.cpp: $(gyp_shared_intermediate_dir)/blink/modules/serviceworkers/QueryParams.cpp
+	mkdir -p $(@D); cp $< $@
+$(gyp_intermediate_dir)/RegistrationOptionList.cpp: $(gyp_shared_intermediate_dir)/blink/modules/serviceworkers/RegistrationOptionList.cpp
+	mkdir -p $(@D); cp $< $@
+$(gyp_intermediate_dir)/ServiceWorkerClientQueryParams.cpp: $(gyp_shared_intermediate_dir)/blink/modules/serviceworkers/ServiceWorkerClientQueryParams.cpp
+	mkdir -p $(@D); cp $< $@
+$(gyp_intermediate_dir)/MIDIOptions.cpp: $(gyp_shared_intermediate_dir)/blink/modules/webmidi/MIDIOptions.cpp
+	mkdir -p $(@D); cp $< $@
 $(gyp_intermediate_dir)/EventModules.cpp: $(gyp_shared_intermediate_dir)/blink/modules/EventModules.cpp
 	mkdir -p $(@D); cp $< $@
 $(gyp_intermediate_dir)/EventModulesNames.cpp: $(gyp_shared_intermediate_dir)/blink/modules/EventModulesNames.cpp
@@ -70,6 +85,14 @@ $(gyp_intermediate_dir)/V8GeneratedModulesBindings18.cpp: $(gyp_shared_intermedi
 $(gyp_intermediate_dir)/V8GeneratedModulesBindings19.cpp: $(gyp_shared_intermediate_dir)/blink/bindings/modules/v8/V8GeneratedModulesBindings19.cpp
 	mkdir -p $(@D); cp $< $@
 LOCAL_GENERATED_SOURCES := \
+	$(gyp_intermediate_dir)/TextDecodeOptions.cpp \
+	$(gyp_intermediate_dir)/TextDecoderOptions.cpp \
+	$(gyp_intermediate_dir)/IDBIndexParameters.cpp \
+	$(gyp_intermediate_dir)/NotificationOptions.cpp \
+	$(gyp_intermediate_dir)/QueryParams.cpp \
+	$(gyp_intermediate_dir)/RegistrationOptionList.cpp \
+	$(gyp_intermediate_dir)/ServiceWorkerClientQueryParams.cpp \
+	$(gyp_intermediate_dir)/MIDIOptions.cpp \
 	$(gyp_intermediate_dir)/EventModules.cpp \
 	$(gyp_intermediate_dir)/EventModulesNames.cpp \
 	$(gyp_intermediate_dir)/EventTargetModulesNames.cpp \
@@ -95,6 +118,11 @@ LOCAL_GENERATED_SOURCES := \
 	$(gyp_intermediate_dir)/V8GeneratedModulesBindings19.cpp
 
 GYP_COPIED_SOURCE_ORIGIN_DIRS := \
+	$(gyp_shared_intermediate_dir)/blink/modules/encoding \
+	$(gyp_shared_intermediate_dir)/blink/modules/indexeddb \
+	$(gyp_shared_intermediate_dir)/blink/modules/notifications \
+	$(gyp_shared_intermediate_dir)/blink/modules/serviceworkers \
+	$(gyp_shared_intermediate_dir)/blink/modules/webmidi \
 	$(gyp_shared_intermediate_dir)/blink/modules \
 	$(gyp_shared_intermediate_dir)/blink/bindings/modules/v8
 
@@ -176,9 +204,11 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/modules/gamepad/NavigatorGamepad.cpp \
 	third_party/WebKit/Source/modules/gamepad/WebKitGamepad.cpp \
 	third_party/WebKit/Source/modules/gamepad/WebKitGamepadList.cpp \
-	third_party/WebKit/Source/modules/geofencing/CircularRegion.cpp \
+	third_party/WebKit/Source/modules/geofencing/CircularGeofencingRegion.cpp \
 	third_party/WebKit/Source/modules/geofencing/Geofencing.cpp \
+	third_party/WebKit/Source/modules/geofencing/GeofencingError.cpp \
 	third_party/WebKit/Source/modules/geofencing/NavigatorGeofencing.cpp \
+	third_party/WebKit/Source/modules/geofencing/WorkerNavigatorGeofencing.cpp \
 	third_party/WebKit/Source/modules/geolocation/Coordinates.cpp \
 	third_party/WebKit/Source/modules/geolocation/Geolocation.cpp \
 	third_party/WebKit/Source/modules/geolocation/GeolocationController.cpp \
@@ -255,6 +285,8 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/modules/performance/SharedWorkerPerformance.cpp \
 	third_party/WebKit/Source/modules/performance/WorkerGlobalScopePerformance.cpp \
 	third_party/WebKit/Source/modules/performance/WorkerPerformance.cpp \
+	third_party/WebKit/Source/modules/presentation/NavigatorPresentation.cpp \
+	third_party/WebKit/Source/modules/presentation/Presentation.cpp \
 	third_party/WebKit/Source/modules/push_messaging/NavigatorPushManager.cpp \
 	third_party/WebKit/Source/modules/push_messaging/PushController.cpp \
 	third_party/WebKit/Source/modules/push_messaging/PushError.cpp \
@@ -277,9 +309,10 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/modules/screen_orientation/ScreenOrientation.cpp \
 	third_party/WebKit/Source/modules/screen_orientation/ScreenOrientationController.cpp \
 	third_party/WebKit/Source/modules/screen_orientation/ScreenOrientationDispatcher.cpp \
+	third_party/WebKit/Source/modules/serviceworkers/Body.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/Cache.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/CacheStorage.cpp \
-	third_party/WebKit/Source/modules/serviceworkers/FetchBodyStream.cpp \
+	third_party/WebKit/Source/modules/serviceworkers/ExtendableEvent.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/FetchEvent.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/FetchHeaderList.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/FetchManager.cpp \
@@ -287,9 +320,9 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/modules/serviceworkers/FetchResponseData.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/Headers.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/InstallEvent.cpp \
-	third_party/WebKit/Source/modules/serviceworkers/InstallPhaseEvent.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/NavigatorServiceWorker.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/Request.cpp \
+	third_party/WebKit/Source/modules/serviceworkers/RequestInit.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/RespondWithObserver.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/Response.cpp \
 	third_party/WebKit/Source/modules/serviceworkers/ServiceWorker.cpp \
@@ -365,15 +398,9 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/modules/webdatabase/DOMWindowWebDatabase.cpp \
 	third_party/WebKit/Source/modules/webdatabase/Database.cpp \
 	third_party/WebKit/Source/modules/webdatabase/DatabaseAuthorizer.cpp \
-	third_party/WebKit/Source/modules/webdatabase/DatabaseBackend.cpp \
-	third_party/WebKit/Source/modules/webdatabase/DatabaseBackendBase.cpp \
-	third_party/WebKit/Source/modules/webdatabase/DatabaseBackendSync.cpp \
-	third_party/WebKit/Source/modules/webdatabase/DatabaseBase.cpp \
 	third_party/WebKit/Source/modules/webdatabase/DatabaseClient.cpp \
 	third_party/WebKit/Source/modules/webdatabase/DatabaseContext.cpp \
 	third_party/WebKit/Source/modules/webdatabase/DatabaseManager.cpp \
-	third_party/WebKit/Source/modules/webdatabase/DatabaseServer.cpp \
-	third_party/WebKit/Source/modules/webdatabase/DatabaseSync.cpp \
 	third_party/WebKit/Source/modules/webdatabase/DatabaseTask.cpp \
 	third_party/WebKit/Source/modules/webdatabase/DatabaseThread.cpp \
 	third_party/WebKit/Source/modules/webdatabase/DatabaseTracker.cpp \
@@ -385,15 +412,11 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/modules/webdatabase/SQLResultSetRowList.cpp \
 	third_party/WebKit/Source/modules/webdatabase/SQLStatement.cpp \
 	third_party/WebKit/Source/modules/webdatabase/SQLStatementBackend.cpp \
-	third_party/WebKit/Source/modules/webdatabase/SQLStatementSync.cpp \
 	third_party/WebKit/Source/modules/webdatabase/SQLTransaction.cpp \
 	third_party/WebKit/Source/modules/webdatabase/SQLTransactionBackend.cpp \
-	third_party/WebKit/Source/modules/webdatabase/SQLTransactionBackendSync.cpp \
 	third_party/WebKit/Source/modules/webdatabase/SQLTransactionClient.cpp \
 	third_party/WebKit/Source/modules/webdatabase/SQLTransactionCoordinator.cpp \
 	third_party/WebKit/Source/modules/webdatabase/SQLTransactionStateMachine.cpp \
-	third_party/WebKit/Source/modules/webdatabase/SQLTransactionSync.cpp \
-	third_party/WebKit/Source/modules/webdatabase/WorkerGlobalScopeWebDatabase.cpp \
 	third_party/WebKit/Source/modules/webdatabase/sqlite/SQLValue.cpp \
 	third_party/WebKit/Source/modules/webdatabase/sqlite/SQLiteAuthorizer.cpp \
 	third_party/WebKit/Source/modules/webdatabase/sqlite/SQLiteDatabase.cpp \
@@ -408,7 +431,9 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/modules/webmidi/MIDIConnectionEvent.cpp \
 	third_party/WebKit/Source/modules/webmidi/MIDIController.cpp \
 	third_party/WebKit/Source/modules/webmidi/MIDIInput.cpp \
+	third_party/WebKit/Source/modules/webmidi/MIDIInputMap.cpp \
 	third_party/WebKit/Source/modules/webmidi/MIDIOutput.cpp \
+	third_party/WebKit/Source/modules/webmidi/MIDIOutputMap.cpp \
 	third_party/WebKit/Source/modules/webmidi/MIDIPort.cpp \
 	third_party/WebKit/Source/modules/webmidi/NavigatorWebMIDI.cpp \
 	third_party/WebKit/Source/modules/websockets/DOMWebSocket.cpp \
@@ -423,17 +448,13 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/modules/websockets/WebSocketHandshake.cpp \
 	third_party/WebKit/Source/modules/websockets/WebSocketPerMessageDeflate.cpp \
 	third_party/WebKit/Source/modules/websockets/WorkerThreadableWebSocketChannel.cpp \
-	third_party/WebKit/Source/bindings/modules/v8/custom/V8AudioNodeCustom.cpp \
 	third_party/WebKit/Source/bindings/modules/v8/custom/V8CryptoCustom.cpp \
 	third_party/WebKit/Source/bindings/modules/v8/custom/V8CryptoKeyCustom.cpp \
 	third_party/WebKit/Source/bindings/modules/v8/custom/V8CustomSQLStatementErrorCallback.cpp \
 	third_party/WebKit/Source/bindings/modules/v8/custom/V8DeviceMotionEventCustom.cpp \
 	third_party/WebKit/Source/bindings/modules/v8/custom/V8DeviceOrientationEventCustom.cpp \
-	third_party/WebKit/Source/bindings/modules/v8/custom/V8EntryCustom.cpp \
-	third_party/WebKit/Source/bindings/modules/v8/custom/V8EntrySyncCustom.cpp \
 	third_party/WebKit/Source/bindings/modules/v8/custom/V8SQLResultSetRowListCustom.cpp \
 	third_party/WebKit/Source/bindings/modules/v8/custom/V8SQLTransactionCustom.cpp \
-	third_party/WebKit/Source/bindings/modules/v8/custom/V8SQLTransactionSyncCustom.cpp \
 	third_party/WebKit/Source/bindings/modules/v8/custom/V8ServiceWorkerClientCustom.cpp \
 	third_party/WebKit/Source/bindings/modules/v8/custom/V8ServiceWorkerCustom.cpp \
 	third_party/WebKit/Source/bindings/modules/v8/custom/V8SubtleCryptoCustom.cpp \
@@ -447,7 +468,6 @@ MY_CFLAGS_Debug := \
 	-fstack-protector \
 	--param=ssp-buffer-size=4 \
 	 \
-	-fno-exceptions \
 	-fno-strict-aliasing \
 	-Wall \
 	-Wno-unused-parameter \
@@ -456,8 +476,6 @@ MY_CFLAGS_Debug := \
 	-pipe \
 	-fPIC \
 	-Wno-unused-local-typedefs \
-	-EL \
-	-mhard-float \
 	-ffunction-sections \
 	-funwind-tables \
 	-g \
@@ -472,6 +490,7 @@ MY_CFLAGS_Debug := \
 	-Wno-unused-but-set-variable \
 	-Os \
 	-g \
+	-gdwarf-4 \
 	-fdata-sections \
 	-ffunction-sections \
 	-fomit-frame-pointer \
@@ -495,18 +514,18 @@ MY_DEFS_Debug := \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
-	'-DDATA_REDUCTION_DEV_HOST="http://proxy-dev.googlezip.net:80/"' \
+	'-DDATA_REDUCTION_DEV_HOST="https://proxy-dev.googlezip.net:443/"' \
+	'-DDATA_REDUCTION_DEV_FALLBACK_HOST="http://proxy-dev.googlezip.net:80/"' \
 	'-DSPDY_PROXY_AUTH_ORIGIN="https://proxy.googlezip.net:443/"' \
 	'-DDATA_REDUCTION_PROXY_PROBE_URL="http://check.googlezip.net/connect"' \
 	'-DDATA_REDUCTION_PROXY_WARMUP_URL="http://www.gstatic.com/generate_204"' \
 	'-DVIDEO_HOLE=1' \
+	'-DENABLE_LOAD_COMPLETION_HACKS=1' \
 	'-DBLINK_IMPLEMENTATION=1' \
 	'-DINSIDE_BLINK' \
 	'-DCHROME_PNG_WRITE_SUPPORT' \
 	'-DPNG_USER_CONFIG' \
 	'-DCHROME_PNG_READ_PACK_SUPPORT' \
-	'-DUSE_SYSTEM_LIBJPEG' \
-	'-DENABLE_CUSTOM_SCHEME_HANDLER=0' \
 	'-DENABLE_SVG_FONTS=1' \
 	'-DWTF_USE_CONCATENATED_IMPULSE_RESPONSES=1' \
 	'-DWTF_USE_WEBAUDIO_OPENMAX_DL_FFT=1' \
@@ -521,10 +540,7 @@ MY_DEFS_Debug := \
 	'-DSK_ATTR_DEPRECATED=SK_NOTHING_ARG1' \
 	'-DGR_GL_IGNORE_ES3_MSAA=0' \
 	'-DSK_WILL_NEVER_DRAW_PERSPECTIVE_TEXT' \
-	'-DSK_SUPPORT_LEGACY_PICTURE_CLONE' \
-	'-DSK_SUPPORT_LEGACY_GETDEVICE' \
-	'-DSK_IGNORE_ETC1_SUPPORT' \
-	'-DSK_IGNORE_GPU_DITHER' \
+	'-DSK_SUPPORT_LEGACY_TEXTRENDERMODE' \
 	'-DSK_BUILD_FOR_ANDROID' \
 	'-DSK_USE_POSIX_THREADS' \
 	'-DSK_DEFERRED_CANVAS_USES_FACTORIES=1' \
@@ -544,7 +560,6 @@ MY_DEFS_Debug := \
 
 # Include paths placed before CFLAGS/CPPFLAGS
 LOCAL_C_INCLUDES_Debug := \
-	$(gyp_shared_intermediate_dir)/shim_headers/ashmem/target \
 	$(gyp_shared_intermediate_dir)/shim_headers/icuuc/target \
 	$(gyp_shared_intermediate_dir)/shim_headers/icui18n/target \
 	$(gyp_shared_intermediate_dir) \
@@ -562,7 +577,7 @@ LOCAL_C_INCLUDES_Debug := \
 	$(LOCAL_PATH)/third_party/libwebp \
 	$(LOCAL_PATH)/third_party/ots/include \
 	$(LOCAL_PATH)/third_party/iccjpeg \
-	$(PWD)/external/jpeg \
+	$(LOCAL_PATH)/third_party/libjpeg_turbo \
 	$(PWD)/external/icu/icu4c/source/common \
 	$(PWD)/external/icu/icu4c/source/i18n \
 	$(LOCAL_PATH)/third_party/skia/src/core \
@@ -587,6 +602,7 @@ LOCAL_C_INCLUDES_Debug := \
 
 # Flags passed to only C++ (and not C) files.
 LOCAL_CPPFLAGS_Debug := \
+	-fno-exceptions \
 	-fno-rtti \
 	-fno-threadsafe-statics \
 	-fvisibility-inlines-hidden \
@@ -605,7 +621,6 @@ MY_CFLAGS_Release := \
 	-fstack-protector \
 	--param=ssp-buffer-size=4 \
 	 \
-	-fno-exceptions \
 	-fno-strict-aliasing \
 	-Wall \
 	-Wno-unused-parameter \
@@ -614,8 +629,6 @@ MY_CFLAGS_Release := \
 	-pipe \
 	-fPIC \
 	-Wno-unused-local-typedefs \
-	-EL \
-	-mhard-float \
 	-ffunction-sections \
 	-funwind-tables \
 	-g \
@@ -653,18 +666,18 @@ MY_DEFS_Release := \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
-	'-DDATA_REDUCTION_DEV_HOST="http://proxy-dev.googlezip.net:80/"' \
+	'-DDATA_REDUCTION_DEV_HOST="https://proxy-dev.googlezip.net:443/"' \
+	'-DDATA_REDUCTION_DEV_FALLBACK_HOST="http://proxy-dev.googlezip.net:80/"' \
 	'-DSPDY_PROXY_AUTH_ORIGIN="https://proxy.googlezip.net:443/"' \
 	'-DDATA_REDUCTION_PROXY_PROBE_URL="http://check.googlezip.net/connect"' \
 	'-DDATA_REDUCTION_PROXY_WARMUP_URL="http://www.gstatic.com/generate_204"' \
 	'-DVIDEO_HOLE=1' \
+	'-DENABLE_LOAD_COMPLETION_HACKS=1' \
 	'-DBLINK_IMPLEMENTATION=1' \
 	'-DINSIDE_BLINK' \
 	'-DCHROME_PNG_WRITE_SUPPORT' \
 	'-DPNG_USER_CONFIG' \
 	'-DCHROME_PNG_READ_PACK_SUPPORT' \
-	'-DUSE_SYSTEM_LIBJPEG' \
-	'-DENABLE_CUSTOM_SCHEME_HANDLER=0' \
 	'-DENABLE_SVG_FONTS=1' \
 	'-DWTF_USE_CONCATENATED_IMPULSE_RESPONSES=1' \
 	'-DWTF_USE_WEBAUDIO_OPENMAX_DL_FFT=1' \
@@ -679,10 +692,7 @@ MY_DEFS_Release := \
 	'-DSK_ATTR_DEPRECATED=SK_NOTHING_ARG1' \
 	'-DGR_GL_IGNORE_ES3_MSAA=0' \
 	'-DSK_WILL_NEVER_DRAW_PERSPECTIVE_TEXT' \
-	'-DSK_SUPPORT_LEGACY_PICTURE_CLONE' \
-	'-DSK_SUPPORT_LEGACY_GETDEVICE' \
-	'-DSK_IGNORE_ETC1_SUPPORT' \
-	'-DSK_IGNORE_GPU_DITHER' \
+	'-DSK_SUPPORT_LEGACY_TEXTRENDERMODE' \
 	'-DSK_BUILD_FOR_ANDROID' \
 	'-DSK_USE_POSIX_THREADS' \
 	'-DSK_DEFERRED_CANVAS_USES_FACTORIES=1' \
@@ -703,7 +713,6 @@ MY_DEFS_Release := \
 
 # Include paths placed before CFLAGS/CPPFLAGS
 LOCAL_C_INCLUDES_Release := \
-	$(gyp_shared_intermediate_dir)/shim_headers/ashmem/target \
 	$(gyp_shared_intermediate_dir)/shim_headers/icuuc/target \
 	$(gyp_shared_intermediate_dir)/shim_headers/icui18n/target \
 	$(gyp_shared_intermediate_dir) \
@@ -721,7 +730,7 @@ LOCAL_C_INCLUDES_Release := \
 	$(LOCAL_PATH)/third_party/libwebp \
 	$(LOCAL_PATH)/third_party/ots/include \
 	$(LOCAL_PATH)/third_party/iccjpeg \
-	$(PWD)/external/jpeg \
+	$(LOCAL_PATH)/third_party/libjpeg_turbo \
 	$(PWD)/external/icu/icu4c/source/common \
 	$(PWD)/external/icu/icu4c/source/i18n \
 	$(LOCAL_PATH)/third_party/skia/src/core \
@@ -746,6 +755,7 @@ LOCAL_C_INCLUDES_Release := \
 
 # Flags passed to only C++ (and not C) files.
 LOCAL_CPPFLAGS_Release := \
+	-fno-exceptions \
 	-fno-rtti \
 	-fno-threadsafe-statics \
 	-fvisibility-inlines-hidden \
@@ -764,48 +774,6 @@ LOCAL_C_INCLUDES := $(GYP_COPIED_SOURCE_ORIGIN_DIRS) $(LOCAL_C_INCLUDES_$(GYP_CO
 LOCAL_CPPFLAGS := $(LOCAL_CPPFLAGS_$(GYP_CONFIGURATION))
 LOCAL_ASFLAGS := $(LOCAL_CFLAGS)
 ### Rules for final target.
-
-LOCAL_LDFLAGS_Debug := \
-	-Wl,-z,now \
-	-Wl,-z,relro \
-	-Wl,--fatal-warnings \
-	-Wl,-z,noexecstack \
-	-fPIC \
-	-EL \
-	-Wl,--no-keep-memory \
-	-nostdlib \
-	-Wl,--no-undefined \
-	-Wl,--exclude-libs=ALL \
-	-Wl,--warn-shared-textrel \
-	-Wl,-O1 \
-	-Wl,--as-needed
-
-
-LOCAL_LDFLAGS_Release := \
-	-Wl,-z,now \
-	-Wl,-z,relro \
-	-Wl,--fatal-warnings \
-	-Wl,-z,noexecstack \
-	-fPIC \
-	-EL \
-	-Wl,--no-keep-memory \
-	-nostdlib \
-	-Wl,--no-undefined \
-	-Wl,--exclude-libs=ALL \
-	-Wl,-O1 \
-	-Wl,--as-needed \
-	-Wl,--gc-sections \
-	-Wl,--warn-shared-textrel
-
-
-LOCAL_LDFLAGS := $(LOCAL_LDFLAGS_$(GYP_CONFIGURATION))
-
-LOCAL_STATIC_LIBRARIES := \
-	third_party_WebKit_Source_core_webcore_generated_gyp \
-	skia_skia_library_gyp
-
-# Enable grouping to fix circular references
-LOCAL_GROUP_STATIC_LIBRARIES := true
 
 LOCAL_SHARED_LIBRARIES := \
 	libstlport \

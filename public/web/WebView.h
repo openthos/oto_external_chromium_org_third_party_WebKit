@@ -288,13 +288,9 @@ public:
     // Sets the ratio as computed by computePageScaleConstraints.
     virtual void setDeviceScaleFactor(float) = 0;
 
-
-    // Fixed Layout --------------------------------------------------------
-
-    // Locks main frame's layout size to specified size. Passing WebSize(0, 0)
-    // removes the lock.
-    virtual void setFixedLayoutSize(const WebSize&) = 0;
-
+    // Set and reset the device color profile.
+    virtual void setDeviceColorProfile(const WebVector<char>&) = 0;
+    virtual void resetDeviceColorProfile() = 0;
 
     // Auto-Resize -----------------------------------------------------------
 
@@ -372,12 +368,6 @@ public:
     // special case, meaning inspect the current page and not a specific
     // point.
     virtual void inspectElementAt(const WebPoint&) = 0;
-
-    // FIXME: These are deprecated. Remove them.
-    virtual WebString inspectorSettingsDeprecated() const { return WebString(); };
-    virtual void setInspectorSettings(const WebString&) { };
-    virtual bool inspectorSettingDeprecated(const WebString& key, WebString* value) const { return false; };
-    virtual void setInspectorSetting(const WebString& key, const WebString& value) { };
 
     // Set an override of device scale factor passed from WebView to
     // compositor. Pass zero to cancel override. This is used to implement

@@ -46,6 +46,9 @@ public:
 
     BLINK_EXPORT static void enableDatabase(bool);
 
+    BLINK_EXPORT static void enableCompositedSelectionUpdate(bool);
+    BLINK_EXPORT static bool isCompositedSelectionUpdateEnabled();
+
     BLINK_EXPORT static void enableDisplayList2dCanvas(bool);
 
     BLINK_EXPORT static void enableEncryptedMedia(bool);
@@ -104,8 +107,6 @@ public:
 
     BLINK_EXPORT static void enableTouchIconLoading(bool);
 
-    BLINK_EXPORT static void enableWebAnimationsSVG(bool);
-
     BLINK_EXPORT static void enableWebAudio(bool);
 
     BLINK_EXPORT static void enableWebGLDraftExtensions(bool);
@@ -121,8 +122,6 @@ public:
     BLINK_EXPORT static void enableOverlayFullscreenVideo(bool);
 
     BLINK_EXPORT static void enableSharedWorker(bool);
-
-    BLINK_EXPORT static void enableTargetedStyleRecalc(bool);
 
     BLINK_EXPORT static void enablePreciseMemoryInfo(bool);
 

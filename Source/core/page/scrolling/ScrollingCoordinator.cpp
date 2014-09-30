@@ -158,14 +158,13 @@ void ScrollingCoordinator::updateAfterCompositingChangeIfNeeded()
     // The mainFrame view doesn't get included in the FrameTree below, so we
     // update its size separately.
     if (WebLayer* scrollingWebLayer = frameView ? toWebLayer(frameView->layerForScrolling()) : 0) {
-        scrollingWebLayer->setBounds(frameView->contentsSize());
-        // If there is a fullscreen element, set the scroll clip layer to 0 so main frame won't scroll.
+        // If there is a fullscreen element, set the scroll bounds to empty so the main frame won't scroll.
         Document* mainFrameDocument = m_page->deprecatedLocalMainFrame()->document();
         Element* fullscreenElement = Fullscreen::fullscreenElementFrom(*mainFrameDocument);
         if (fullscreenElement && fullscreenElement != mainFrameDocument->documentElement())
-            scrollingWebLayer->setScrollClipLayer(0);
+            scrollingWebLayer->setBounds(IntSize());
         else
-            scrollingWebLayer->setScrollClipLayer(toWebLayer(frameView->layerForContainer()));
+            scrollingWebLayer->setBounds(frameView->contentsSize());
     }
 
     const FrameTree& tree = m_page->mainFrame()->tree();
@@ -779,6 +778,11 @@ static void accumulateDocumentTouchEventTargetRects(LayerHitTestRects& rects, co
         if (!node || !node->inDocument())
             continue;
 
+        // If the document belongs to an invisible subframe it does not have a composited layer
+        // and should be skipped.
+        if (node->document().isInInvisibleSubframe())
+            continue;
+
         if (node->isDocumentNode() && node != document) {
             accumulateDocumentTouchEventTargetRects(rects, toDocument(node));
         } else if (RenderObject* renderer = node->renderer()) {
@@ -809,7 +813,6 @@ static void accumulateDocumentTouchEventTargetRects(LayerHitTestRects& rects, co
             }
         }
     }
-
 }
 
 void ScrollingCoordinator::computeTouchEventTargetRects(LayerHitTestRects& rects)
@@ -919,6 +922,9 @@ MainThreadScrollingReasons ScrollingCoordinator::mainThreadScrollingReasons() co
 {
     MainThreadScrollingReasons reasons = static_cast<MainThreadScrollingReasons>(0);
 
+    if (!m_page->settings().threadedScrollingEnabled())
+        reasons |= ThreadedScrollingDisabled;
+
     if (!m_page->mainFrame()->isLocalFrame())
         return reasons;
     FrameView* frameView = m_page->deprecatedLocalMainFrame()->view();
@@ -943,6 +949,8 @@ String ScrollingCoordinator::mainThreadScrollingReasonsAsText(MainThreadScrollin
         stringBuilder.appendLiteral("Has viewport constrained objects without supporting fixed layers, ");
     if (reasons & ScrollingCoordinator::HasNonLayerViewportConstrainedObjects)
         stringBuilder.appendLiteral("Has non-layer viewport-constrained objects, ");
+    if (reasons & ScrollingCoordinator::ThreadedScrollingDisabled)
+        stringBuilder.appendLiteral("Threaded scrolling is disabled, ");
 
     if (stringBuilder.length())
         stringBuilder.resize(stringBuilder.length() - 2);

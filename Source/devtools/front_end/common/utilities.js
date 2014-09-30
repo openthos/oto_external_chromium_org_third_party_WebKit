@@ -169,6 +169,20 @@ String.prototype.escapeHTML = function()
 /**
  * @return {string}
  */
+String.prototype.unescapeHTML = function()
+{
+    return this.replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&#58;/g, ":")
+        .replace(/&quot;/g, "\"")
+        .replace(/&#60;/g, "<")
+        .replace(/&#62;/g, ">")
+        .replace(/&amp;/g, "&");
+}
+
+/**
+ * @return {string}
+ */
 String.prototype.collapseWhitespace = function()
 {
     return this.replace(/[\s\xA0]+/g, " ");
@@ -1150,6 +1164,15 @@ function countRegexMatches(regex, content)
 }
 
 /**
+ * @param {number} spacesCount
+ * @return {string}
+ */
+function spacesPadding(spacesCount)
+{
+    return Array(spacesCount).join("\u00a0");
+}
+
+/**
  * @param {number} value
  * @param {number} symbolsCount
  * @return {string}
@@ -1158,8 +1181,7 @@ function numberToStringWithSpacesPadding(value, symbolsCount)
 {
     var numberString = value.toString();
     var paddingLength = Math.max(0, symbolsCount - numberString.length);
-    var paddingString = Array(paddingLength + 1).join("\u00a0");
-    return paddingString + numberString;
+    return spacesPadding(paddingLength) + numberString;
 }
 
 /**
@@ -1640,37 +1662,32 @@ StringSet.prototype = {
 
 /**
  * @param {string} url
- * @param {boolean=} async
- * @param {function(?string)=} callback
- * @return {?string}
+ * @return {!Promise.<string>}
  */
-function loadXHR(url, async, callback)
+function loadXHR(url)
 {
-    function onReadyStateChanged()
-    {
-        if (xhr.readyState !== XMLHttpRequest.DONE)
-            return;
+    return new Promise(load);
 
-        if (xhr.status === 200) {
-            callback(xhr.responseText);
-            return;
+    function load(successCallback, failureCallback)
+    {
+        function onReadyStateChanged()
+        {
+            if (xhr.readyState !== XMLHttpRequest.DONE)
+                return;
+            if (xhr.status !== 200) {
+                xhr.onreadystatechange = null;
+                failureCallback(new Error(xhr.status));
+                return;
+            }
+            xhr.onreadystatechange = null;
+            successCallback(xhr.responseText);
         }
 
-        callback(null);
-   }
-
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", url, async);
-    if (async)
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", url, true);
         xhr.onreadystatechange = onReadyStateChanged;
-    xhr.send(null);
-
-    if (!async) {
-        if (xhr.status === 200)
-            return xhr.responseText;
-        return null;
+        xhr.send(null);
     }
-    return null;
 }
 
 /**
@@ -1725,31 +1742,6 @@ CallbackBarrier.prototype = {
 function suppressUnused(value)
 {
 }
-
-/**
- * @constructor
- * @param {!T} targetObject
- * @template T
- */
-function WeakReference(targetObject)
-{
-    this._targetObject = targetObject;
-}
-
-WeakReference.prototype = {
-    /**
-     * @return {?T}
-     */
-    get: function()
-    {
-        return this._targetObject;
-    },
-
-    clear: function()
-    {
-        this._targetObject = null;
-    }
-};
 
 /**
  * @param {function()} callback

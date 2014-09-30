@@ -26,7 +26,8 @@
 
 [
     DoNotCheckConstants,
-    WillBeGarbageCollected,
+    GarbageCollected,
+    Iterable,
 ] interface Internals {
     DOMString address(Node node);
 
@@ -50,7 +51,6 @@
     [RaisesException] boolean hasContentElement(Node root);
     [RaisesException, TypeChecking=Interface] unsigned long countElementShadow(Node Root);
     [TypeChecking=Interface] DOMString shadowPseudoId(Element element);
-    [TypeChecking=Interface] void setShadowPseudoId(Element element, DOMString id);
     [RaisesException, TypeChecking=Interface] boolean isValidContentSelect(Element contentElement);
     [TypeChecking=Interface] Node treeScopeRootNode(Node node);
     [TypeChecking=Interface] Node parentTreeScope(Node node);
@@ -75,6 +75,7 @@
     DOMString visiblePlaceholder(Element element);
 
     [TypeChecking=Interface] void selectColorInColorChooser(Element element, DOMString colorValue);
+    [TypeChecking=Interface] void endColorChooser(Element element);
 
     // If the argument is omitted, the top-level document is used.
     boolean hasAutofocusRequest(optional Document document);
@@ -116,9 +117,9 @@
     [TypeChecking=Interface] unsigned long lengthFromRange(Element scope, Range range);
     [TypeChecking=Interface] DOMString rangeAsText(Range range);
 
-    [RaisesException, TypeChecking=Interface] WebKitPoint touchPositionAdjustedToBestClickableNode(long x, long y, long width, long height, Document document);
+    [RaisesException, TypeChecking=Interface] DOMPoint touchPositionAdjustedToBestClickableNode(long x, long y, long width, long height, Document document);
     [RaisesException, TypeChecking=Interface] Node touchNodeAdjustedToBestClickableNode(long x, long y, long width, long height, Document document);
-    [RaisesException, TypeChecking=Interface] WebKitPoint touchPositionAdjustedToBestContextMenuNode(long x, long y, long width, long height, Document document);
+    [RaisesException, TypeChecking=Interface] DOMPoint touchPositionAdjustedToBestContextMenuNode(long x, long y, long width, long height, Document document);
     [RaisesException, TypeChecking=Interface] Node touchNodeAdjustedToBestContextMenuNode(long x, long y, long width, long height, Document document);
     [RaisesException, TypeChecking=Interface] ClientRect bestZoomableAreaForTouchPoint(long x, long y, long width, long height, Document document);
 
@@ -195,6 +196,7 @@
 
     void mediaPlayerRequestFullscreen(HTMLMediaElement mediaElement);
     double effectiveMediaVolume(HTMLMediaElement mediaElement);
+    void mediaPlayerRemoteRouteAvailabilityChanged(HTMLMediaElement mediaElement, boolean available);
 
     void registerURLSchemeAsBypassingContentSecurityPolicy(DOMString scheme);
     void removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(DOMString scheme);
@@ -276,5 +278,8 @@
     DOMString serializeNavigationMarkup();
     void hideAllTransitionElements();
 
-    [RaisesException] void forcePluginPlaceholder(HTMLElement plugin, DOMString htmlSource);
+    [RaisesException, TypeChecking=Interface] void forcePluginPlaceholder(HTMLElement plugin, DOMString htmlSource);
+    [RaisesException, TypeChecking=Interface] void forcePluginPlaceholder(HTMLElement plugin, Dictionary options);
+
+    DictionaryTest dictionaryTest();
 };

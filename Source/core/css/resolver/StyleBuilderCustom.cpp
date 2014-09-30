@@ -51,7 +51,6 @@
 #include "core/css/CSSHelper.h"
 #include "core/css/CSSImageSetValue.h"
 #include "core/css/CSSLineBoxContainValue.h"
-#include "core/css/parser/BisonCSSParser.h"
 #include "core/css/CSSPrimitiveValueMappings.h"
 #include "core/css/CSSPropertyMetadata.h"
 #include "core/css/Counter.h"
@@ -119,10 +118,6 @@ void StyleBuilder::applyProperty(CSSPropertyID id, StyleResolverState& state, CS
         // Limit the properties that can be applied to only the ones honored by :visited.
         return;
     }
-
-    CSSPrimitiveValue* primitiveValue = value->isPrimitiveValue() ? toCSSPrimitiveValue(value) : 0;
-    if (primitiveValue && primitiveValue->getValueID() == CSSValueCurrentcolor)
-        state.style()->setHasCurrentColor();
 
     if (isInherit && !state.parentStyle()->hasExplicitlyInheritedProperties() && !CSSPropertyMetadata::isInheritedProperty(id))
         state.parentStyle()->setHasExplicitlyInheritedProperties();
@@ -250,21 +245,6 @@ void StyleBuilderFunctions::applyInheritCSSPropertyFontFamily(StyleResolverState
 void StyleBuilderFunctions::applyValueCSSPropertyFontFamily(StyleResolverState& state, CSSValue* value)
 {
     state.fontBuilder().setFontFamilyValue(value);
-}
-
-void StyleBuilderFunctions::applyInitialCSSPropertyFontSize(StyleResolverState& state)
-{
-    state.fontBuilder().setFontSizeInitial();
-}
-
-void StyleBuilderFunctions::applyInheritCSSPropertyFontSize(StyleResolverState& state)
-{
-    state.fontBuilder().setFontSizeInherit(state.parentFontDescription());
-}
-
-void StyleBuilderFunctions::applyValueCSSPropertyFontSize(StyleResolverState& state, CSSValue* value)
-{
-    state.fontBuilder().setFontSizeValue(value, state.parentStyle(), state.rootElementStyle());
 }
 
 void StyleBuilderFunctions::applyValueCSSPropertyGlyphOrientationVertical(StyleResolverState& state, CSSValue* value)
@@ -832,25 +812,6 @@ void StyleBuilderFunctions::applyValueCSSPropertyWebkitFilter(StyleResolverState
         state.style()->setFilter(operations);
 }
 
-// FIXME: We should use the same system for this as the rest of the pseudo-shorthands (e.g. background-position)
-void StyleBuilderFunctions::applyInitialCSSPropertyWebkitPerspectiveOrigin(StyleResolverState& state)
-{
-    applyInitialCSSPropertyWebkitPerspectiveOriginX(state);
-    applyInitialCSSPropertyWebkitPerspectiveOriginY(state);
-}
-
-void StyleBuilderFunctions::applyInheritCSSPropertyWebkitPerspectiveOrigin(StyleResolverState& state)
-{
-    applyInheritCSSPropertyWebkitPerspectiveOriginX(state);
-    applyInheritCSSPropertyWebkitPerspectiveOriginY(state);
-}
-
-void StyleBuilderFunctions::applyValueCSSPropertyWebkitPerspectiveOrigin(StyleResolverState&, CSSValue* value)
-{
-    // This is expanded in the parser
-    ASSERT_NOT_REACHED();
-}
-
 void StyleBuilderFunctions::applyInitialCSSPropertyWebkitTextEmphasisStyle(StyleResolverState& state)
 {
     state.style()->setTextEmphasisFill(RenderStyle::initialTextEmphasisFill());
@@ -1166,28 +1127,25 @@ void StyleBuilderFunctions::applyInheritCSSPropertyBaselineShift(StyleResolverSt
 
 void StyleBuilderFunctions::applyValueCSSPropertyBaselineShift(StyleResolverState& state, CSSValue* value)
 {
-    if (!value->isPrimitiveValue())
-        return;
-
     SVGRenderStyle& svgStyle = state.style()->accessSVGStyle();
     CSSPrimitiveValue* primitiveValue = toCSSPrimitiveValue(value);
-    if (primitiveValue->getValueID()) {
-        switch (primitiveValue->getValueID()) {
-        case CSSValueBaseline:
-            svgStyle.setBaselineShift(BS_BASELINE);
-            break;
-        case CSSValueSub:
-            svgStyle.setBaselineShift(BS_SUB);
-            break;
-        case CSSValueSuper:
-            svgStyle.setBaselineShift(BS_SUPER);
-            break;
-        default:
-            break;
-        }
-    } else {
+    if (!primitiveValue->isValueID()) {
         svgStyle.setBaselineShift(BS_LENGTH);
         svgStyle.setBaselineShiftValue(SVGLength::fromCSSPrimitiveValue(primitiveValue));
+        return;
+    }
+    switch (primitiveValue->getValueID()) {
+    case CSSValueBaseline:
+        svgStyle.setBaselineShift(BS_BASELINE);
+        return;
+    case CSSValueSub:
+        svgStyle.setBaselineShift(BS_SUB);
+        return;
+    case CSSValueSuper:
+        svgStyle.setBaselineShift(BS_SUPER);
+        return;
+    default:
+        ASSERT_NOT_REACHED();
     }
 }
 

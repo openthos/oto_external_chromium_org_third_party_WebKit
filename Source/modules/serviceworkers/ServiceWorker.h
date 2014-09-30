@@ -47,6 +47,7 @@ class ScriptState;
 class ScriptPromiseResolver;
 
 class ServiceWorker FINAL : public AbstractWorker, public WebServiceWorkerProxy {
+    DEFINE_WRAPPERTYPEINFO();
 public:
     // For CallbackPromiseAdapter
     typedef WebServiceWorker WebType;
@@ -56,6 +57,7 @@ public:
     static void dispose(WebType*);
 
     void postMessage(ExecutionContext*, PassRefPtr<SerializedScriptValue> message, const MessagePortArray*, ExceptionState&);
+    void terminate(ExceptionState&);
 
     String scriptURL() const;
     const AtomicString& state() const;
@@ -82,7 +84,7 @@ private:
     ServiceWorker(ExecutionContext*, PassOwnPtr<WebServiceWorker>);
     void setProxyState(ProxyState);
     void onPromiseResolved();
-    void waitOnPromise(ScriptPromise);
+    void waitOnPromise(ScriptPromiseResolver*);
 
     // ActiveDOMObject overrides.
     virtual bool hasPendingActivity() const OVERRIDE;

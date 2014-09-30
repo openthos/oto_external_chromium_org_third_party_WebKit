@@ -6,7 +6,6 @@ LOCAL_MODULE_CLASS := GYP
 LOCAL_MODULE := third_party_WebKit_Source_modules_make_modules_generated_gyp
 LOCAL_MODULE_STEM := make_modules_generated
 LOCAL_MODULE_SUFFIX := .stamp
-LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_TARGET_ARCH := $(TARGET_$(GYP_VAR_PREFIX)ARCH)
 gyp_intermediate_dir := $(call local-intermediates-dir,,$(GYP_VAR_PREFIX))
 gyp_shared_intermediate_dir := $(call intermediates-dir-for,GYP,shared,,,$(GYP_VAR_PREFIX))
@@ -22,7 +21,7 @@ $(gyp_shared_intermediate_dir)/blink/modules/IndexedDBNames.cpp: gyp_var_prefix 
 $(gyp_shared_intermediate_dir)/blink/modules/IndexedDBNames.cpp: gyp_intermediate_dir := $(abspath $(gyp_intermediate_dir))
 $(gyp_shared_intermediate_dir)/blink/modules/IndexedDBNames.cpp: gyp_shared_intermediate_dir := $(abspath $(gyp_shared_intermediate_dir))
 $(gyp_shared_intermediate_dir)/blink/modules/IndexedDBNames.cpp: export PATH := $(subst $(ANDROID_BUILD_PATHS),,$(PATH))
-$(gyp_shared_intermediate_dir)/blink/modules/IndexedDBNames.cpp: $(LOCAL_PATH)/third_party/jinja2/__init__.py $(LOCAL_PATH)/third_party/markupsafe/__init__.py $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/hasher.py $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/in_file.py $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/in_generator.py $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/license.py $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/name_macros.py $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/name_utilities.py $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/template_expander.py $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/templates/macros.tmpl $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/make_names.py $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/templates/MakeNames.cpp.tmpl $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/templates/MakeNames.h.tmpl $(LOCAL_PATH)/third_party/WebKit/Source/modules/indexeddb/IndexedDBNames.in $(GYP_TARGET_DEPENDENCIES)
+$(gyp_shared_intermediate_dir)/blink/modules/IndexedDBNames.cpp: $(LOCAL_PATH)/third_party/jinja2/__init__.py $(LOCAL_PATH)/third_party/markupsafe/__init__.py $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/hasher.py $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/in_file.py $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/in_generator.py $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/license.py $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/name_utilities.py $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/template_expander.py $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/templates/macros.tmpl $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/make_names.py $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/templates/MakeNames.cpp.tmpl $(LOCAL_PATH)/third_party/WebKit/Source/build/scripts/templates/MakeNames.h.tmpl $(LOCAL_PATH)/third_party/WebKit/Source/modules/indexeddb/IndexedDBNames.in $(GYP_TARGET_DEPENDENCIES)
 	@echo "Gyp action: third_party_WebKit_Source_modules_modules_generated_gyp_make_modules_generated_target_IndexedDBNames ($@)"
 	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/modules; mkdir -p $(gyp_shared_intermediate_dir)/blink/modules; python ../build/scripts/make_names.py indexeddb/IndexedDBNames.in --output_dir "$(gyp_shared_intermediate_dir)/blink/modules"
 

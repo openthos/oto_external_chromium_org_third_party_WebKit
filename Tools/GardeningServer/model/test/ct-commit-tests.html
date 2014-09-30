@@ -24,7 +24,7 @@ describe('ct-commit model', function() {
   });
 
   it('incomplete', function() {
-    url = "http://mockbase.com?{revision}";
+    url = "https://mockbase.com?{revision}";
     repository = 'blink';
     revision = 158545;
     commit = CTCommit.createIncomplete(url, revision, repository);
@@ -48,11 +48,11 @@ describe('ct-commit model', function() {
           "R=jochen@chromium.org\n" +
           "CC=abarth@chromium.org\n" +
           "\n" +
+          "Revert of Cr-Commit-Position: refs/heads/master@{#158000}" +
           "Review URL: https://chromiumcodereview.appspot.com/25022002\n" +
           "\n" +
-          "git-svn-id: svn://svn.chromium.org/chrome/trunk@158545 bbb929c8-8fbe-4397-9dbb-9b2b20218538";
-
-      url = "http://mockbase.com?{revision}";
+          "Cr-Commit-Position: refs/heads/master@{#158545}\n"
+      url = "https://mockbase.com?{revision}";
       author = "mkwst@chromium.org";
       repository = 'chromium';
       commit = CTCommit.create(author, message, url, repository);
@@ -66,10 +66,11 @@ describe('ct-commit model', function() {
           "R=jochen@chromium.org\n" +
           "CC=abarth@chromium.org\n" +
           "\n" +
+          "Revert of git-svn-id: svn://svn.chromium.org/blink/trunk@158000 bbb929c8-8fbe-4397-9dbb-9b2b20218538" +
           "Review URL: https://chromiumcodereview.appspot.com/25022002\n" +
           "\n" +
           "git-svn-id: svn://svn.chromium.org/blink/trunk@158545 bbb929c8-8fbe-4397-9dbb-9b2b20218538";
-      url = "http://mockbase.com?{revision}";
+      url = "https://mockbase.com?{revision}";
       author = "mkwst@chromium.org";
       repository = 'blink';
       commit = CTCommit.create(author, message, url, repository);

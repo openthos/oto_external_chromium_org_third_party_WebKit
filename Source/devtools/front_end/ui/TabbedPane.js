@@ -749,7 +749,7 @@ WebInspector.TabbedPane.prototype = {
      */
     _insertBefore: function(tab, index)
     {
-        this._tabsElement.insertBefore(tab._tabElement, this._tabsElement.childNodes[index]);
+        this._tabsElement.insertBefore(tab._tabElement || null, this._tabsElement.childNodes[index]);
         var oldIndex = this._tabs.indexOf(tab);
         this._tabs.splice(oldIndex, 1);
         if (oldIndex < index)
@@ -827,7 +827,7 @@ WebInspector.TabbedPaneTab.prototype = {
 
     /**
      * @param {string} iconClass
-     * @param {string} iconTooltip
+     * @param {string=} iconTooltip
      * @return {boolean}
      */
     _setIconClass: function(iconClass, iconTooltip)
@@ -1154,7 +1154,8 @@ WebInspector.ExtensibleTabbedPaneController = function(tabbedPane, extensionPoin
 WebInspector.ExtensibleTabbedPaneController.prototype = {
     _initialize: function()
     {
-        this._extensions = {};
+        /** @type {!StringMap.<!Runtime.Extension>} */
+        this._extensions = new StringMap();
         var extensions = self.runtime.extensions(this._extensionPoint);
 
         for (var i = 0; i < extensions.length; ++i) {
@@ -1164,7 +1165,7 @@ WebInspector.ExtensibleTabbedPaneController.prototype = {
             var settingName = descriptor["setting"];
             var setting = settingName ? /** @type {!WebInspector.Setting|undefined} */ (WebInspector.settings[settingName]) : null;
 
-            this._extensions[id] = extensions[i];
+            this._extensions.set(id, extensions[i]);
 
             if (setting) {
                 setting.addChangeListener(this._toggleSettingBasedView.bind(this, id, title, setting));
@@ -1196,19 +1197,28 @@ WebInspector.ExtensibleTabbedPaneController.prototype = {
         var tabId = this._tabbedPane.selectedTabId;
         if (!tabId)
             return;
-        var view = this._viewForId(tabId);
+        var view = this.viewForId(tabId);
         if (view)
             this._tabbedPane.changeTabView(tabId, view);
     },
 
     /**
+     * @return {!Array.<string>}
+     */
+    viewIds: function()
+    {
+        return this._extensions.keys();
+    },
+
+    /**
+     * @param {string} id
      * @return {?WebInspector.View}
      */
-    _viewForId: function(id)
+    viewForId: function(id)
     {
         if (this._views.has(id))
             return /** @type {!WebInspector.View} */ (this._views.get(id));
-        var view = this._extensions[id] ? /** @type {!WebInspector.View} */ (this._extensions[id].instance()) : null;
+        var view = this._extensions.has(id) ? /** @type {!WebInspector.View} */ (this._extensions.get(id).instance()) : null;
         this._views.set(id, view);
         if (this._viewCallback && view)
             this._viewCallback(id, view);

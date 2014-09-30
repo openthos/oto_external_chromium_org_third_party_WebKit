@@ -86,6 +86,8 @@ public:
 
     virtual bool supportsSelectionForegroundColors() const OVERRIDE { return false; }
 
+    virtual bool isModalColorChooser() const { return false; }
+
 protected:
     RenderThemeChromiumMac();
     virtual ~RenderThemeChromiumMac();
@@ -121,8 +123,6 @@ protected:
 private:
     virtual String fileListNameForWidth(Locale&, const FileList*, const Font&, int width) const OVERRIDE;
 
-    IntRect inflateRect(const IntRect&, const IntSize&, const int* margins, float zoomLevel = 1.0f) const;
-
     FloatRect convertToPaintingRect(const RenderObject* inputRenderer, const RenderObject* partRenderer, const FloatRect& inputRect, const IntRect&) const;
 
     // Get the control size based off the font. Used by some of the controls (like buttons).
@@ -155,7 +155,6 @@ private:
 
     NSPopUpButtonCell* popupButton() const;
     NSSearchFieldCell* search() const;
-    NSMenu* searchMenuTemplate() const;
     NSTextFieldCell* textField() const;
 
     NSLevelIndicatorStyle levelIndicatorStyleFor(ControlPart) const;

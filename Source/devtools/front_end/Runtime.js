@@ -30,6 +30,7 @@
 
 // This gets all concatenated module descriptors in the release mode.
 var allDescriptors = [];
+var applicationDescriptor;
 var _loadedScripts = {};
 
 /**
@@ -46,7 +47,8 @@ function loadResource(url)
         console.error(url + " -> " + new Error().stack);
         throw e;
     }
-    return xhr.responseText;
+    // xhr.status === 0 if loading from bundle.
+    return xhr.status < 400 ? xhr.responseText : "";
 }
 
 
@@ -94,8 +96,10 @@ function loadScript(scriptName)
         return;
     _loadedScripts[sourceURL] = true;
     var scriptSource = loadResource(sourceURL);
-    if (!scriptSource)
-        throw "empty response arrived for script '" + sourceURL + "'";
+    if (!scriptSource) {
+        console.error("Empty response arrived for script '" + sourceURL + "'");
+        return;
+    }
     var oldPrefix = self._importScriptPathPrefix;
     self._importScriptPathPrefix += scriptName.substring(0, scriptName.lastIndexOf("/") + 1);
     try {
@@ -106,7 +110,7 @@ function loadScript(scriptName)
 }
 
 (function() {
-    var baseUrl = location.origin + location.pathname;
+    var baseUrl = self.location ? self.location.origin + self.location.pathname : "";
     self._importScriptPathPrefix = baseUrl.substring(0, baseUrl.lastIndexOf("/") + 1);
 })();
 
@@ -137,9 +141,15 @@ var Runtime = function()
      * @type {!Object.<string, !Runtime.ModuleDescriptor>}
      */
     this._descriptorsMap = {};
+
     for (var i = 0; i < allDescriptors.length; ++i)
         this._descriptorsMap[allDescriptors[i]["name"]] = allDescriptors[i];
 }
+
+/**
+ * @type {!Object.<string, string>}
+ */
+Runtime._queryParamsObject = { __proto__: null };
 
 /**
  * @return {boolean}
@@ -217,11 +227,117 @@ Runtime.startWorker = function(moduleName)
     }
 }
 
+/**
+ * @param {string} appName
+ */
+Runtime.startApplication = function(appName)
+{
+    console.timeStamp("Runtime.startApplication");
+    var experiments = Runtime._experimentsSetting();
+
+    var allDescriptorsByName = {};
+    for (var i = 0; Runtime.isReleaseMode() && i < allDescriptors.length; ++i) {
+        var d = allDescriptors[i];
+        allDescriptorsByName[d["name"]] = d;
+    }
+    var moduleDescriptors = applicationDescriptor || Runtime._parseJsonURL(appName + ".json");
+    var allModules = [];
+    var coreModuleNames = [];
+    moduleDescriptors.forEach(populateModules);
+
+    /**
+     * @param {!Object} desc
+     */
+    function populateModules(desc)
+    {
+        if (!isActive(desc))
+            return;
+        var name = desc.name;
+        var moduleJSON = allDescriptorsByName[name];
+        if (!moduleJSON) {
+            moduleJSON = Runtime._parseJsonURL(name + "/module.json");
+            moduleJSON["name"] = name;
+        }
+        allModules.push(moduleJSON);
+        if (desc["type"] === "autostart")
+            coreModuleNames.push(name);
+    }
+
+    /**
+     * @param {!Object} descriptor
+     * @return {boolean}
+     */
+    function isActive(descriptor)
+    {
+        var activatorExperiment = descriptor["experiment"];
+        if (activatorExperiment) {
+            var shouldBePresent = activatorExperiment.charAt(0) !== "!";
+            if (!shouldBePresent)
+                activatorExperiment = activatorExperiment.substr(1);
+            if (!!experiments[activatorExperiment] !== shouldBePresent)
+                return false;
+        }
+        return descriptor["type"] !== "worker";
+    }
+
+    Runtime._initializeApplication(allModules);
+    self.runtime.loadAutoStartModules(coreModuleNames);
+}
+
+/**
+ * @param {string} name
+ * @return {?string}
+ */
+Runtime.queryParam = function(name)
+{
+    return Runtime._queryParamsObject[name] || null;
+}
+
+/**
+ * @return {!Object}
+ */
+Runtime._experimentsSetting = function()
+{
+    try {
+        return /** @type {!Object} */ (JSON.parse(self.localStorage && self.localStorage["experiments"] ? self.localStorage["experiments"] : "{}"));
+    } catch (e) {
+        console.error("Failed to parse localStorage['experiments']");
+        return {};
+    }
+}
+
+/**
+ * @param {!Array.<!Runtime.ModuleDescriptor>} descriptors
+ */
+Runtime._initializeApplication = function(descriptors)
+{
+    self.runtime = new Runtime();
+    var names = [];
+    for (var i = 0; i < descriptors.length; ++i) {
+        var name = descriptors[i]["name"];
+        self.runtime._descriptorsMap[name] = descriptors[i];
+        names.push(name);
+    }
+    self.runtime._registerModules(names);
+}
+
+/**
+ * @param {string} url
+ * @return {*}
+ */
+Runtime._parseJsonURL = function(url)
+{
+    var json = loadResource(url);
+    if (!json)
+        throw new Error("Resource not found at " + url + " " + new Error().stack);
+    return JSON.parse(json);
+}
+
 Runtime.prototype = {
     /**
      * @param {!Array.<string>} configuration
      */
-    registerModules: function(configuration)
+    _registerModules: function(configuration)
     {
         for (var i = 0; i < configuration.length; ++i)
             this._registerModule(configuration[i]);
@@ -236,6 +352,7 @@ Runtime.prototype = {
             var content = loadResource(moduleName + "/module.json");
             if (!content)
                 throw new Error("Module is not defined: " + moduleName + " " + new Error().stack);
+
             var module = /** @type {!Runtime.ModuleDescriptor} */ (self.eval("(" + content + ")"));
             module["name"] = moduleName;
             this._descriptorsMap[moduleName] = module;
@@ -251,6 +368,19 @@ Runtime.prototype = {
     loadModule: function(moduleName)
     {
         this._modulesMap[moduleName]._load();
+    },
+
+    /**
+     * @param {!Array.<string>} moduleNames
+     */
+    loadAutoStartModules: function(moduleNames)
+    {
+        for (var i = 0; i < moduleNames.length; ++i) {
+            if (Runtime.isReleaseMode())
+                self.runtime._modulesMap[moduleNames[i]]._loaded = true;
+            else
+                self.runtime.loadModule(moduleNames[i]);
+        }
     },
 
     /**
@@ -337,6 +467,9 @@ Runtime.prototype = {
         function filter(extension)
         {
             if (extension._type !== type && extension._typeClass() !== type)
+                return false;
+            var activatorExperiment = extension.descriptor()["experiment"];
+            if (activatorExperiment && !Runtime.experiments.isEnabled(activatorExperiment))
                 return false;
             return !context || extension.isApplicable(context);
         }
@@ -503,7 +636,7 @@ Runtime.Module = function(manager, descriptor)
     this._manager = manager;
     this._descriptor = descriptor;
     this._name = descriptor.name;
-    var extensions = /** @type {?Array.<!Runtime.ExtensionDescriptor>}*/ (descriptor.extensions);
+    var extensions = /** @type {?Array.<!Runtime.ExtensionDescriptor>} */ (descriptor.extensions);
     for (var i = 0; extensions && i < extensions.length; ++i)
         this._manager._extensions.push(new Runtime.Extension(this, extensions[i]));
     this._loaded = false;
@@ -626,6 +759,185 @@ Runtime.Extension.prototype = {
 }
 
 /**
- * @type {!Runtime}
+ * @constructor
  */
+Runtime.ExperimentsSupport = function()
+{
+    this._supportEnabled = Runtime.queryParam("experiments") !== null;
+    this._experiments = [];
+    this._experimentNames = {};
+    this._enabledTransiently = {};
+}
+
+Runtime.ExperimentsSupport.prototype = {
+    /**
+     * @return {!Array.<!Runtime.Experiment>}
+     */
+    allExperiments: function()
+    {
+        return this._experiments.slice();
+    },
+
+    /**
+     * @return {boolean}
+     */
+    supportEnabled: function()
+    {
+        return this._supportEnabled;
+    },
+
+    /**
+     * @param {!Object} value
+     */
+    _setExperimentsSetting: function(value)
+    {
+        if (!self.localStorage)
+            return;
+        self.localStorage["experiments"] = JSON.stringify(value);
+    },
+
+    /**
+     * @param {string} experimentName
+     * @param {string} experimentTitle
+     * @param {boolean=} hidden
+     */
+    register: function(experimentName, experimentTitle, hidden)
+    {
+        console.assert(!this._experimentNames[experimentName], "Duplicate registration of experiment " + experimentName);
+        this._experimentNames[experimentName] = true;
+        this._experiments.push(new Runtime.Experiment(this, experimentName, experimentTitle, !!hidden));
+    },
+
+    /**
+     * @param {string} experimentName
+     * @return {boolean}
+     */
+    isEnabled: function(experimentName)
+    {
+        this._checkExperiment(experimentName);
+
+        if (this._enabledTransiently[experimentName])
+            return true;
+        if (!this.supportEnabled())
+            return false;
+
+        return !!Runtime._experimentsSetting()[experimentName];
+    },
+
+    /**
+     * @param {string} experimentName
+     * @param {boolean} enabled
+     */
+    setEnabled: function(experimentName, enabled)
+    {
+        this._checkExperiment(experimentName);
+        if (!enabled)
+            delete this._enabledTransiently[experimentName];
+        var experimentsSetting = Runtime._experimentsSetting();
+        experimentsSetting[experimentName] = enabled;
+        this._setExperimentsSetting(experimentsSetting);
+    },
+
+    /**
+     * @param {!Array.<string>} experimentNames
+     */
+    setDefaultExperiments: function(experimentNames)
+    {
+        for (var i = 0; i < experimentNames.length; ++i) {
+            this._checkExperiment(experimentNames[i]);
+            this._enabledTransiently[experimentNames[i]] = true;
+        }
+    },
+
+    /**
+     * @param {string} experimentName
+     */
+    enableForTest: function(experimentName)
+    {
+        this._checkExperiment(experimentName);
+        this._enabledTransiently[experimentName] = true;
+    },
+
+    cleanUpStaleExperiments: function()
+    {
+        var experimentsSetting = Runtime._experimentsSetting();
+        var cleanedUpExperimentSetting = {};
+        for (var i = 0; i < this._experiments.length; ++i) {
+            var experimentName = this._experiments[i].name;
+            if (experimentsSetting[experimentName])
+                cleanedUpExperimentSetting[experimentName] = true;
+        }
+        this._setExperimentsSetting(cleanedUpExperimentSetting);
+    },
+
+    /**
+     * @param {string} experimentName
+     */
+    _checkExperiment: function(experimentName)
+    {
+        console.assert(this._experimentNames[experimentName], "Unknown experiment " + experimentName);
+    }
+}
+
+/**
+ * @constructor
+ * @param {!Runtime.ExperimentsSupport} experiments
+ * @param {string} name
+ * @param {string} title
+ * @param {boolean} hidden
+ */
+Runtime.Experiment = function(experiments, name, title, hidden)
+{
+    this.name = name;
+    this.title = title;
+    this.hidden = hidden;
+    this._experiments = experiments;
+}
+
+Runtime.Experiment.prototype = {
+    /**
+     * @return {boolean}
+     */
+    isEnabled: function()
+    {
+        return this._experiments.isEnabled(this.name);
+    },
+
+    /**
+     * @param {boolean} enabled
+     */
+    setEnabled: function(enabled)
+    {
+        this._experiments.setEnabled(this.name, enabled);
+    }
+}
+
+{(function parseQueryParameters()
+{
+    var queryParams = location.search;
+    if (!queryParams)
+        return;
+    var params = queryParams.substring(1).split("&");
+    for (var i = 0; i < params.length; ++i) {
+        var pair = params[i].split("=");
+        Runtime._queryParamsObject[pair[0]] = pair[1];
+    }
+
+    // Patch settings from the URL param (for tests).
+    var settingsParam = Runtime.queryParam("settings");
+    if (settingsParam) {
+        try {
+            var settings = JSON.parse(window.decodeURI(settingsParam));
+            for (var key in settings)
+                window.localStorage[key] = settings[key];
+        } catch(e) {
+            // Ignore malformed settings.
+        }
+    }
+})();}
+
+// This must be constructed after the query parameters have been parsed.
+Runtime.experiments = new Runtime.ExperimentsSupport();
+
+/** @type {!Runtime} */
 var runtime;

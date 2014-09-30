@@ -21,7 +21,6 @@
 #include <gtest/gtest.h>
 
 using namespace blink;
-using namespace blink;
 
 namespace {
 
@@ -363,7 +362,7 @@ protected:
     virtual void TearDown() OVERRIDE;
 
     // A simple platform that mocks out the clock.
-    class TimeProxyPlatform : public blink::Platform {
+    class TimeProxyPlatform : public Platform {
     public:
         TimeProxyPlatform()
             : m_timeCounter(0.)
@@ -373,24 +372,24 @@ protected:
         void install()
         {
             // Check that the proxy wasn't installed yet.
-            ASSERT_NE(blink::Platform::current(), this);
-            m_fallbackPlatform = blink::Platform::current();
+            ASSERT_NE(Platform::current(), this);
+            m_fallbackPlatform = Platform::current();
             m_timeCounter = m_fallbackPlatform->currentTime();
-            blink::Platform::initialize(this);
-            ASSERT_EQ(blink::Platform::current(), this);
+            Platform::initialize(this);
+            ASSERT_EQ(Platform::current(), this);
         }
 
         void remove()
         {
             // Check that the proxy was installed.
-            ASSERT_EQ(blink::Platform::current(), this);
-            blink::Platform::initialize(m_fallbackPlatform);
-            ASSERT_EQ(blink::Platform::current(), m_fallbackPlatform);
+            ASSERT_EQ(Platform::current(), this);
+            Platform::initialize(m_fallbackPlatform);
+            ASSERT_EQ(Platform::current(), m_fallbackPlatform);
             m_fallbackPlatform = 0;
         }
 
     private:
-        blink::Platform& ensureFallback()
+        Platform& ensureFallback()
         {
             ASSERT(m_fallbackPlatform);
             return *m_fallbackPlatform;
@@ -430,7 +429,7 @@ protected:
         virtual WebCompositorSupport* compositorSupport() OVERRIDE { return ensureFallback().compositorSupport(); }
 
         double m_timeCounter;
-        blink::Platform* m_fallbackPlatform;
+        Platform* m_fallbackPlatform;
     };
 
     TimeProxyPlatform m_proxyTimePlatform;

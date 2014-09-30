@@ -33,6 +33,7 @@
 #include "platform/scroll/ScrollableArea.h"
 
 #include "platform/HostWindow.h"
+#include "platform/Logging.h"
 #include "platform/graphics/GraphicsLayer.h"
 #include "platform/geometry/FloatPoint.h"
 #include "platform/scroll/ProgrammaticScrollAnimator.h"

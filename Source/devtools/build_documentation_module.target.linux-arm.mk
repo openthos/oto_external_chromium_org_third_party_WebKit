@@ -6,7 +6,6 @@ LOCAL_MODULE_CLASS := GYP
 LOCAL_MODULE := third_party_WebKit_Source_devtools_build_documentation_module_gyp
 LOCAL_MODULE_STEM := build_documentation_module
 LOCAL_MODULE_SUFFIX := .stamp
-LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_TARGET_ARCH := $(TARGET_$(GYP_VAR_PREFIX)ARCH)
 gyp_intermediate_dir := $(call local-intermediates-dir,,$(GYP_VAR_PREFIX))
 gyp_shared_intermediate_dir := $(call intermediates-dir-for,GYP,shared,,,$(GYP_VAR_PREFIX))
@@ -20,7 +19,7 @@ $(gyp_shared_intermediate_dir)/resources/inspector/documentation.js: gyp_var_pre
 $(gyp_shared_intermediate_dir)/resources/inspector/documentation.js: gyp_intermediate_dir := $(abspath $(gyp_intermediate_dir))
 $(gyp_shared_intermediate_dir)/resources/inspector/documentation.js: gyp_shared_intermediate_dir := $(abspath $(gyp_shared_intermediate_dir))
 $(gyp_shared_intermediate_dir)/resources/inspector/documentation.js: export PATH := $(subst $(ANDROID_BUILD_PATHS),,$(PATH))
-$(gyp_shared_intermediate_dir)/resources/inspector/documentation.js: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/scripts/concatenate_module_scripts.py $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/documentation/module.json $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/documentation/CSSArticle.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/documentation/DocumentationURLProvider.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/documentation/DocumentationView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/documentation/JSArticle.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/documentation/WikiParser.js $(GYP_TARGET_DEPENDENCIES)
+$(gyp_shared_intermediate_dir)/resources/inspector/documentation.js: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/scripts/concatenate_module_scripts.py $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/documentation/module.json $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/documentation/DocumentationCatalog.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/documentation/DocumentationView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/documentation/JSArticle.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/documentation/WikiParser.js $(GYP_TARGET_DEPENDENCIES)
 	@echo "Gyp action: third_party_WebKit_Source_devtools_devtools_gyp_build_documentation_module_target_build_documentation_module ($@)"
 	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/devtools; mkdir -p $(gyp_shared_intermediate_dir)/resources/inspector; python scripts/concatenate_module_scripts.py front_end/documentation/module.json "$(gyp_shared_intermediate_dir)/resources/inspector/documentation.js"
 

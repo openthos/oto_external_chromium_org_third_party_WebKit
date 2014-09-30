@@ -5,7 +5,6 @@ include $(CLEAR_VARS)
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 LOCAL_MODULE := third_party_WebKit_Source_core_webcore_remaining_gyp
 LOCAL_MODULE_SUFFIX := .a
-LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_TARGET_ARCH := $(TARGET_$(GYP_VAR_PREFIX)ARCH)
 gyp_intermediate_dir := $(call local-intermediates-dir,,$(GYP_VAR_PREFIX))
 gyp_shared_intermediate_dir := $(call intermediates-dir-for,GYP,shared,,,$(GYP_VAR_PREFIX))
@@ -78,6 +77,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/animation/animatable/AnimatableVisibility.cpp \
 	third_party/WebKit/Source/core/animation/Animation.cpp \
 	third_party/WebKit/Source/core/animation/AnimationClock.cpp \
+	third_party/WebKit/Source/core/animation/AnimationInputHelpers.cpp \
 	third_party/WebKit/Source/core/animation/AnimationPlayer.cpp \
 	third_party/WebKit/Source/core/animation/AnimationNode.cpp \
 	third_party/WebKit/Source/core/animation/AnimationNodeTiming.cpp \
@@ -202,7 +202,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/css/RemoteFontFaceSource.cpp \
 	third_party/WebKit/Source/core/css/RuleFeature.cpp \
 	third_party/WebKit/Source/core/css/RuleSet.cpp \
-	third_party/WebKit/Source/core/css/RuntimeCSSEnabled.cpp \
 	third_party/WebKit/Source/core/css/SVGCSSComputedStyleDeclaration.cpp \
 	third_party/WebKit/Source/core/css/SelectorChecker.cpp \
 	third_party/WebKit/Source/core/css/SelectorFilter.cpp \
@@ -219,6 +218,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/css/invalidation/DescendantInvalidationSet.cpp \
 	third_party/WebKit/Source/core/css/invalidation/StyleInvalidator.cpp \
 	third_party/WebKit/Source/core/css/invalidation/StyleSheetInvalidationAnalysis.cpp \
+	third_party/WebKit/Source/core/css/parser/CSSParser.cpp \
 	third_party/WebKit/Source/core/css/parser/CSSParserMode.cpp \
 	third_party/WebKit/Source/core/css/parser/CSSParserValues.cpp \
 	third_party/WebKit/Source/core/css/parser/CSSPropertyParser.cpp \
@@ -372,6 +372,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/frame/Settings.cpp \
 	third_party/WebKit/Source/core/frame/SettingsDelegate.cpp \
 	third_party/WebKit/Source/core/frame/SmartClip.cpp \
+	third_party/WebKit/Source/core/frame/SubresourceIntegrity.cpp \
 	third_party/WebKit/Source/core/frame/SuspendableTimer.cpp \
 	third_party/WebKit/Source/core/frame/UseCounter.cpp \
 	third_party/WebKit/Source/core/frame/csp/CSPDirectiveList.cpp \
@@ -383,7 +384,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/imagebitmap/ImageBitmapFactories.cpp \
 	third_party/WebKit/Source/core/inspector/AsyncCallStackTracker.cpp \
 	third_party/WebKit/Source/core/inspector/ConsoleMessage.cpp \
-	third_party/WebKit/Source/core/inspector/InspectorConsoleMessage.cpp \
+	third_party/WebKit/Source/core/inspector/ConsoleMessageStorage.cpp \
 	third_party/WebKit/Source/core/inspector/ContentSearchUtils.cpp \
 	third_party/WebKit/Source/core/inspector/DOMEditor.cpp \
 	third_party/WebKit/Source/core/inspector/DOMPatchSupport.cpp \
@@ -434,6 +435,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/inspector/PageConsoleAgent.cpp \
 	third_party/WebKit/Source/core/inspector/PageDebuggerAgent.cpp \
 	third_party/WebKit/Source/core/inspector/PageRuntimeAgent.cpp \
+	third_party/WebKit/Source/core/inspector/PromiseTracker.cpp \
 	third_party/WebKit/Source/core/inspector/ScriptArguments.cpp \
 	third_party/WebKit/Source/core/inspector/ScriptAsyncCallStack.cpp \
 	third_party/WebKit/Source/core/inspector/ScriptCallFrame.cpp \
@@ -483,6 +485,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/page/Chrome.cpp \
 	third_party/WebKit/Source/core/page/ContextMenuController.cpp \
 	third_party/WebKit/Source/core/page/CreateWindow.cpp \
+	third_party/WebKit/Source/core/page/CustomContextMenuProvider.cpp \
 	third_party/WebKit/Source/core/page/DOMWindowPagePopup.cpp \
 	third_party/WebKit/Source/core/page/DragController.cpp \
 	third_party/WebKit/Source/core/page/DragData.cpp \
@@ -511,6 +514,31 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/page/WindowFocusAllowedIndicator.cpp \
 	third_party/WebKit/Source/core/page/scrolling/ScrollingConstraints.cpp \
 	third_party/WebKit/Source/core/page/scrolling/ScrollingCoordinator.cpp \
+	third_party/WebKit/Source/core/paint/BlockPainter.cpp \
+	third_party/WebKit/Source/core/paint/BlockFlowPainter.cpp \
+	third_party/WebKit/Source/core/paint/BoxDecorationData.cpp \
+	third_party/WebKit/Source/core/paint/BoxPainter.cpp \
+	third_party/WebKit/Source/core/paint/BackgroundImageGeometry.cpp \
+	third_party/WebKit/Source/core/paint/GridPainter.cpp \
+	third_party/WebKit/Source/core/paint/DetailsMarkerPainter.cpp \
+	third_party/WebKit/Source/core/paint/HTMLCanvasPainter.cpp \
+	third_party/WebKit/Source/core/paint/ImagePainter.cpp \
+	third_party/WebKit/Source/core/paint/InlineFlowBoxPainter.cpp \
+	third_party/WebKit/Source/core/paint/InlinePainter.cpp \
+	third_party/WebKit/Source/core/paint/LineBoxListPainter.cpp \
+	third_party/WebKit/Source/core/paint/ListMarkerPainter.cpp \
+	third_party/WebKit/Source/core/paint/ListItemPainter.cpp \
+	third_party/WebKit/Source/core/paint/ObjectPainter.cpp \
+	third_party/WebKit/Source/core/paint/MultiColumnSetPainter.cpp \
+	third_party/WebKit/Source/core/paint/ReplicaPainter.cpp \
+	third_party/WebKit/Source/core/paint/SVGForeignObjectPainter.cpp \
+	third_party/WebKit/Source/core/paint/SVGImagePainter.cpp \
+	third_party/WebKit/Source/core/paint/SVGTextPainter.cpp \
+	third_party/WebKit/Source/core/paint/TablePainter.cpp \
+	third_party/WebKit/Source/core/paint/TableRowPainter.cpp \
+	third_party/WebKit/Source/core/paint/TableSectionPainter.cpp \
+	third_party/WebKit/Source/core/paint/VideoPainter.cpp \
+	third_party/WebKit/Source/core/paint/ViewPainter.cpp \
 	third_party/WebKit/Source/core/plugins/DOMMimeType.cpp \
 	third_party/WebKit/Source/core/plugins/DOMMimeTypeArray.cpp \
 	third_party/WebKit/Source/core/plugins/DOMPlugin.cpp \
@@ -554,7 +582,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/core/xml/XMLHttpRequestProgressEventThrottle.cpp \
 	third_party/WebKit/Source/core/xml/XMLHttpRequestUpload.cpp \
 	third_party/WebKit/Source/core/xml/XMLSerializer.cpp \
-	third_party/WebKit/Source/core/xml/XMLTreeViewer.cpp \
 	third_party/WebKit/Source/core/xml/XPathEvaluator.cpp \
 	third_party/WebKit/Source/core/xml/XPathExpression.cpp \
 	third_party/WebKit/Source/core/xml/XPathExpressionNode.cpp \
@@ -586,7 +613,6 @@ MY_CFLAGS_Debug := \
 	-fstack-protector \
 	--param=ssp-buffer-size=4 \
 	-Werror \
-	-fno-exceptions \
 	-fno-strict-aliasing \
 	-Wall \
 	-Wno-unused-parameter \
@@ -612,6 +638,7 @@ MY_CFLAGS_Debug := \
 	-Wno-unused-but-set-variable \
 	-Os \
 	-g \
+	-gdwarf-4 \
 	-fdata-sections \
 	-ffunction-sections \
 	-fomit-frame-pointer \
@@ -635,14 +662,15 @@ MY_DEFS_Debug := \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
-	'-DDATA_REDUCTION_DEV_HOST="http://proxy-dev.googlezip.net:80/"' \
+	'-DDATA_REDUCTION_DEV_HOST="https://proxy-dev.googlezip.net:443/"' \
+	'-DDATA_REDUCTION_DEV_FALLBACK_HOST="http://proxy-dev.googlezip.net:80/"' \
 	'-DSPDY_PROXY_AUTH_ORIGIN="https://proxy.googlezip.net:443/"' \
 	'-DDATA_REDUCTION_PROXY_PROBE_URL="http://check.googlezip.net/connect"' \
 	'-DDATA_REDUCTION_PROXY_WARMUP_URL="http://www.gstatic.com/generate_204"' \
 	'-DVIDEO_HOLE=1' \
+	'-DENABLE_LOAD_COMPLETION_HACKS=1' \
 	'-DBLINK_IMPLEMENTATION=1' \
 	'-DINSIDE_BLINK' \
-	'-DENABLE_CUSTOM_SCHEME_HANDLER=0' \
 	'-DENABLE_SVG_FONTS=1' \
 	'-DWTF_USE_CONCATENATED_IMPULSE_RESPONSES=1' \
 	'-DWTF_USE_WEBAUDIO_OPENMAX_DL_FFT=1' \
@@ -657,10 +685,7 @@ MY_DEFS_Debug := \
 	'-DSK_ATTR_DEPRECATED=SK_NOTHING_ARG1' \
 	'-DGR_GL_IGNORE_ES3_MSAA=0' \
 	'-DSK_WILL_NEVER_DRAW_PERSPECTIVE_TEXT' \
-	'-DSK_SUPPORT_LEGACY_PICTURE_CLONE' \
-	'-DSK_SUPPORT_LEGACY_GETDEVICE' \
-	'-DSK_IGNORE_ETC1_SUPPORT' \
-	'-DSK_IGNORE_GPU_DITHER' \
+	'-DSK_SUPPORT_LEGACY_TEXTRENDERMODE' \
 	'-DSK_BUILD_FOR_ANDROID' \
 	'-DSK_USE_POSIX_THREADS' \
 	'-DSK_DEFERRED_CANVAS_USES_FACTORIES=1' \
@@ -685,7 +710,6 @@ MY_DEFS_Debug := \
 
 # Include paths placed before CFLAGS/CPPFLAGS
 LOCAL_C_INCLUDES_Debug := \
-	$(gyp_shared_intermediate_dir)/shim_headers/ashmem/target \
 	$(gyp_shared_intermediate_dir)/shim_headers/icuuc/target \
 	$(gyp_shared_intermediate_dir)/shim_headers/icui18n/target \
 	$(gyp_shared_intermediate_dir) \
@@ -731,6 +755,7 @@ LOCAL_C_INCLUDES_Debug := \
 
 # Flags passed to only C++ (and not C) files.
 LOCAL_CPPFLAGS_Debug := \
+	-fno-exceptions \
 	-fno-rtti \
 	-fno-threadsafe-statics \
 	-fvisibility-inlines-hidden \
@@ -748,7 +773,6 @@ MY_CFLAGS_Release := \
 	-fstack-protector \
 	--param=ssp-buffer-size=4 \
 	-Werror \
-	-fno-exceptions \
 	-fno-strict-aliasing \
 	-Wall \
 	-Wno-unused-parameter \
@@ -797,14 +821,15 @@ MY_DEFS_Release := \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
-	'-DDATA_REDUCTION_DEV_HOST="http://proxy-dev.googlezip.net:80/"' \
+	'-DDATA_REDUCTION_DEV_HOST="https://proxy-dev.googlezip.net:443/"' \
+	'-DDATA_REDUCTION_DEV_FALLBACK_HOST="http://proxy-dev.googlezip.net:80/"' \
 	'-DSPDY_PROXY_AUTH_ORIGIN="https://proxy.googlezip.net:443/"' \
 	'-DDATA_REDUCTION_PROXY_PROBE_URL="http://check.googlezip.net/connect"' \
 	'-DDATA_REDUCTION_PROXY_WARMUP_URL="http://www.gstatic.com/generate_204"' \
 	'-DVIDEO_HOLE=1' \
+	'-DENABLE_LOAD_COMPLETION_HACKS=1' \
 	'-DBLINK_IMPLEMENTATION=1' \
 	'-DINSIDE_BLINK' \
-	'-DENABLE_CUSTOM_SCHEME_HANDLER=0' \
 	'-DENABLE_SVG_FONTS=1' \
 	'-DWTF_USE_CONCATENATED_IMPULSE_RESPONSES=1' \
 	'-DWTF_USE_WEBAUDIO_OPENMAX_DL_FFT=1' \
@@ -819,10 +844,7 @@ MY_DEFS_Release := \
 	'-DSK_ATTR_DEPRECATED=SK_NOTHING_ARG1' \
 	'-DGR_GL_IGNORE_ES3_MSAA=0' \
 	'-DSK_WILL_NEVER_DRAW_PERSPECTIVE_TEXT' \
-	'-DSK_SUPPORT_LEGACY_PICTURE_CLONE' \
-	'-DSK_SUPPORT_LEGACY_GETDEVICE' \
-	'-DSK_IGNORE_ETC1_SUPPORT' \
-	'-DSK_IGNORE_GPU_DITHER' \
+	'-DSK_SUPPORT_LEGACY_TEXTRENDERMODE' \
 	'-DSK_BUILD_FOR_ANDROID' \
 	'-DSK_USE_POSIX_THREADS' \
 	'-DSK_DEFERRED_CANVAS_USES_FACTORIES=1' \
@@ -848,7 +870,6 @@ MY_DEFS_Release := \
 
 # Include paths placed before CFLAGS/CPPFLAGS
 LOCAL_C_INCLUDES_Release := \
-	$(gyp_shared_intermediate_dir)/shim_headers/ashmem/target \
 	$(gyp_shared_intermediate_dir)/shim_headers/icuuc/target \
 	$(gyp_shared_intermediate_dir)/shim_headers/icui18n/target \
 	$(gyp_shared_intermediate_dir) \
@@ -894,6 +915,7 @@ LOCAL_C_INCLUDES_Release := \
 
 # Flags passed to only C++ (and not C) files.
 LOCAL_CPPFLAGS_Release := \
+	-fno-exceptions \
 	-fno-rtti \
 	-fno-threadsafe-statics \
 	-fvisibility-inlines-hidden \
@@ -911,47 +933,6 @@ LOCAL_C_INCLUDES := $(GYP_COPIED_SOURCE_ORIGIN_DIRS) $(LOCAL_C_INCLUDES_$(GYP_CO
 LOCAL_CPPFLAGS := $(LOCAL_CPPFLAGS_$(GYP_CONFIGURATION))
 LOCAL_ASFLAGS := $(LOCAL_CFLAGS)
 ### Rules for final target.
-
-LOCAL_LDFLAGS_Debug := \
-	-Wl,-z,now \
-	-Wl,-z,relro \
-	-Wl,--fatal-warnings \
-	-Wl,-z,noexecstack \
-	-fPIC \
-	-m64 \
-	-fuse-ld=gold \
-	-nostdlib \
-	-Wl,--no-undefined \
-	-Wl,--exclude-libs=ALL \
-	-Wl,--warn-shared-textrel \
-	-Wl,-O1 \
-	-Wl,--as-needed
-
-
-LOCAL_LDFLAGS_Release := \
-	-Wl,-z,now \
-	-Wl,-z,relro \
-	-Wl,--fatal-warnings \
-	-Wl,-z,noexecstack \
-	-fPIC \
-	-m64 \
-	-fuse-ld=gold \
-	-nostdlib \
-	-Wl,--no-undefined \
-	-Wl,--exclude-libs=ALL \
-	-Wl,-O1 \
-	-Wl,--as-needed \
-	-Wl,--gc-sections \
-	-Wl,--warn-shared-textrel
-
-
-LOCAL_LDFLAGS := $(LOCAL_LDFLAGS_$(GYP_CONFIGURATION))
-
-LOCAL_STATIC_LIBRARIES := \
-	skia_skia_library_gyp
-
-# Enable grouping to fix circular references
-LOCAL_GROUP_STATIC_LIBRARIES := true
 
 LOCAL_SHARED_LIBRARIES := \
 	libstlport \

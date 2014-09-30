@@ -29,6 +29,7 @@
 #include "config.h"
 #include "core/accessibility/AXNodeObject.h"
 
+#include "core/InputTypeNames.h"
 #include "core/accessibility/AXObjectCache.h"
 #include "core/dom/NodeTraversal.h"
 #include "core/dom/Text.h"
@@ -190,21 +191,27 @@ AccessibilityRole AXNodeObject::determineAccessibilityRole()
         return StaticTextRole;
     if (isHTMLButtonElement(*node()))
         return buttonRoleType();
+    if (isHTMLDetailsElement(*node()))
+        return DetailsRole;
+    if (isHTMLSummaryElement(*node())) {
+        if (node()->parentNode() && isHTMLDetailsElement(node()->parentNode()))
+            return DisclosureTriangleRole;
+        return UnknownRole;
+    }
+
     if (isHTMLInputElement(*node())) {
         HTMLInputElement& input = toHTMLInputElement(*node());
-        if (input.isCheckbox())
+        const AtomicString& type = input.type();
+        if (type == InputTypeNames::checkbox)
             return CheckBoxRole;
-        if (input.isRadioButton())
+        if (type == InputTypeNames::radio)
             return RadioButtonRole;
         if (input.isTextButton())
             return buttonRoleType();
-        if (input.isRangeControl())
+        if (type == InputTypeNames::range)
             return SliderRole;
-
-        const AtomicString& type = input.getAttribute(typeAttr);
-        if (equalIgnoringCase(type, "color"))
+        if (type == InputTypeNames::color)
             return ColorWellRole;
-
         return TextFieldRole;
     }
     if (isHTMLSelectElement(*node())) {
@@ -221,6 +228,10 @@ AccessibilityRole AXNodeObject::determineAccessibilityRole()
         return ParagraphRole;
     if (isHTMLLabelElement(*node()))
         return LabelRole;
+    if (node()->isElementNode() && node()->hasTagName(figcaptionTag))
+        return FigcaptionRole;
+    if (node()->isElementNode() && node()->hasTagName(figureTag))
+        return FigureRole;
     if (node()->isElementNode() && toElement(node())->isFocusable())
         return GroupRole;
     if (isHTMLAnchorElement(*node()) && isClickable())
@@ -242,7 +253,7 @@ AccessibilityRole AXNodeObject::determineAriaRoleAttribute() const
     AccessibilityRole role = ariaRoleToWebCoreRole(ariaRole);
 
     // ARIA states if an item can get focus, it should not be presentational.
-    if (role == PresentationalRole && canSetFocusAttribute())
+    if ((role == NoneRole || role == PresentationalRole) && canSetFocusAttribute())
         return UnknownRole;
 
     if (role == ButtonRole)
@@ -509,7 +520,7 @@ bool AXNodeObject::isInputImage() const
 {
     Node* node = this->node();
     if (roleValue() == ButtonRole && isHTMLInputElement(node))
-        return toHTMLInputElement(*node).isImageButton();
+        return toHTMLInputElement(*node).type() == InputTypeNames::image;
 
     return false;
 }
@@ -547,7 +558,7 @@ bool AXNodeObject::isNativeCheckboxOrRadio() const
         return false;
 
     HTMLInputElement* input = toHTMLInputElement(node);
-    return input->isCheckbox() || input->isRadioButton();
+    return input->type() == InputTypeNames::checkbox || input->type() == InputTypeNames::radio;
 }
 
 bool AXNodeObject::isNativeImage() const
@@ -563,7 +574,7 @@ bool AXNodeObject::isNativeImage() const
         return true;
 
     if (isHTMLInputElement(*node))
-        return toHTMLInputElement(*node).isImageButton();
+        return toHTMLInputElement(*node).type() == InputTypeNames::image;
 
     return false;
 }
@@ -577,10 +588,8 @@ bool AXNodeObject::isNativeTextControl() const
     if (isHTMLTextAreaElement(*node))
         return true;
 
-    if (isHTMLInputElement(*node)) {
-        HTMLInputElement* input = toHTMLInputElement(node);
-        return input->isText() || input->isNumberField();
-    }
+    if (isHTMLInputElement(*node))
+        return toHTMLInputElement(node)->isTextField();
 
     return false;
 }
@@ -608,7 +617,7 @@ bool AXNodeObject::isPasswordField() const
     if (ariaRoleAttribute() != UnknownRole)
         return false;
 
-    return toHTMLInputElement(node)->isPasswordField();
+    return toHTMLInputElement(node)->type() == InputTypeNames::password;
 }
 
 bool AXNodeObject::isProgressIndicator() const
@@ -952,7 +961,7 @@ float AXNodeObject::valueForRange() const
 
     if (isHTMLInputElement(node())) {
         HTMLInputElement& input = toHTMLInputElement(*node());
-        if (input.isRangeControl())
+        if (input.type() == InputTypeNames::range)
             return input.valueAsNumber();
     }
 
@@ -966,7 +975,7 @@ float AXNodeObject::maxValueForRange() const
 
     if (isHTMLInputElement(node())) {
         HTMLInputElement& input = toHTMLInputElement(*node());
-        if (input.isRangeControl())
+        if (input.type() == InputTypeNames::range)
             return input.maximum();
     }
 
@@ -980,7 +989,7 @@ float AXNodeObject::minValueForRange() const
 
     if (isHTMLInputElement(node())) {
         HTMLInputElement& input = toHTMLInputElement(*node());
-        if (input.isRangeControl())
+        if (input.type() == InputTypeNames::range)
             return input.minimum();
     }
 
@@ -1391,7 +1400,7 @@ bool AXNodeObject::canHaveChildren() const
     case ScrollBarRole:
         return false;
     case StaticTextRole:
-        if (!axObjectCache()->inlineTextBoxAccessibility())
+        if (!axObjectCache()->inlineTextBoxAccessibilityEnabled())
             return false;
     default:
         return true;

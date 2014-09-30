@@ -137,7 +137,6 @@ RenderLayer::RenderLayer(RenderLayerModelObject* renderer, LayerType type)
     , m_potentialCompositingReasonsFromStyle(CompositingReasonNone)
     , m_compositingReasons(CompositingReasonNone)
     , m_groupedMapping(0)
-    , m_paintInvalidator(*renderer)
     , m_clipper(*renderer)
 {
     updateStackingNode();
@@ -179,8 +178,7 @@ RenderLayer::~RenderLayer()
 String RenderLayer::debugName() const
 {
     if (isReflection()) {
-        ASSERT(m_reflectionInfo);
-        return m_reflectionInfo->debugName();
+        return renderer()->parent()->debugName() + " (reflection)";
     }
     return renderer()->debugName();
 }
@@ -224,14 +222,6 @@ bool RenderLayer::paintsWithFilters() const
     // https://code.google.com/p/chromium/issues/detail?id=343759
     DisableCompositingQueryAsserts disabler;
     return !m_compositedLayerMapping || compositingState() != PaintsIntoOwnBacking;
-}
-
-bool RenderLayer::requiresFullLayerImageForFilters() const
-{
-    if (!paintsWithFilters())
-        return false;
-    FilterEffectRenderer* filter = filterRenderer();
-    return filter ? filter->hasFilterThatMovesPixels() : false;
 }
 
 LayoutSize RenderLayer::subpixelAccumulation() const
@@ -529,19 +519,34 @@ void RenderLayer::updatePagination()
     }
 }
 
-LayoutPoint RenderLayer::positionFromPaintInvalidationContainer(const RenderObject* renderObject, const RenderLayerModelObject* paintInvalidationContainer, const PaintInvalidationState* paintInvalidationState)
+LayoutPoint RenderLayer::positionFromPaintInvalidationBacking(const RenderObject* renderObject, const RenderLayerModelObject* paintInvalidationContainer, const PaintInvalidationState* paintInvalidationState)
 {
-    if (!paintInvalidationContainer || !paintInvalidationContainer->layer()->groupedMapping())
-        return renderObject->positionFromPaintInvalidationContainer(paintInvalidationContainer, paintInvalidationState);
+    FloatPoint point = renderObject->localToContainerPoint(FloatPoint(), paintInvalidationContainer, 0, 0, paintInvalidationState);
 
-    RenderLayerModelObject* transformedAncestor = paintInvalidationContainer->layer()->enclosingTransformedAncestor()->renderer();
-    LayoutPoint point = renderObject->positionFromPaintInvalidationContainer(paintInvalidationContainer, paintInvalidationState);
+    // FIXME: Eventually we are going to unify coordinates in GraphicsLayer space.
+    if (paintInvalidationContainer && paintInvalidationContainer->layer()->groupedMapping())
+        mapPointToPaintBackingCoordinates(paintInvalidationContainer, point);
+
+    return LayoutPoint(point);
+}
+
+void RenderLayer::mapPointToPaintBackingCoordinates(const RenderLayerModelObject* paintInvalidationContainer, FloatPoint& point)
+{
+    RenderLayer* paintInvalidationLayer = paintInvalidationContainer->layer();
+    if (!paintInvalidationLayer->groupedMapping()) {
+        point.move(paintInvalidationLayer->compositedLayerMapping()->contentOffsetInCompositingLayer());
+        return;
+    }
+
+    RenderLayerModelObject* transformedAncestor = paintInvalidationLayer->enclosingTransformedAncestor()->renderer();
     if (!transformedAncestor)
-        return point;
+        return;
 
-    point = LayoutPoint(paintInvalidationContainer->localToContainerPoint(point, transformedAncestor));
-    point.moveBy(-paintInvalidationContainer->layer()->groupedMapping()->squashingOffsetFromTransformedAncestor());
-    return point;
+    // |paintInvalidationContainer| may have a local 2D transform on it, so take that into account when mapping into the space of the
+    // transformed ancestor.
+    point = paintInvalidationContainer->localToContainerPoint(point, transformedAncestor);
+
+    point.moveBy(-paintInvalidationLayer->groupedMapping()->squashingOffsetFromTransformedAncestor());
 }
 
 void RenderLayer::mapRectToPaintBackingCoordinates(const RenderLayerModelObject* paintInvalidationContainer, LayoutRect& rect)
@@ -565,13 +570,8 @@ void RenderLayer::mapRectToPaintBackingCoordinates(const RenderLayerModelObject*
 
 void RenderLayer::mapRectToPaintInvalidationBacking(const RenderObject* renderObject, const RenderLayerModelObject* paintInvalidationContainer, LayoutRect& rect, const PaintInvalidationState* paintInvalidationState)
 {
-    // FIXME: Passing paintInvalidationState directly to mapRectToPaintInvalidationBacking causes incorrect invalidations.
-    // Should avoid slowRectMapping by correctly adjusting paintInvalidationState. crbug.com/402983.
-    ForceHorriblySlowRectMapping slowRectMapping(paintInvalidationState);
-    ViewportConstrainedPosition viewportConstraint = renderObject->isRenderView() ? IsNotFixedPosition : ViewportConstraintDoesNotMatter;
-
     if (!paintInvalidationContainer->layer()->groupedMapping()) {
-        renderObject->mapRectToPaintInvalidationBacking(paintInvalidationContainer, rect, viewportConstraint, paintInvalidationState);
+        renderObject->mapRectToPaintInvalidationBacking(paintInvalidationContainer, rect, paintInvalidationState);
         return;
     }
 
@@ -579,17 +579,18 @@ void RenderLayer::mapRectToPaintInvalidationBacking(const RenderObject* renderOb
     // layer. This is because all layers that squash together need to issue paint invalidations w.r.t. a single container that is
     // an ancestor of all of them, in order to properly take into account any local transforms etc.
     // FIXME: remove this special-case code that works around the paint invalidation code structure.
-    renderObject->mapRectToPaintInvalidationBacking(paintInvalidationContainer, rect, viewportConstraint, paintInvalidationState);
+    renderObject->mapRectToPaintInvalidationBacking(paintInvalidationContainer, rect, paintInvalidationState);
 
-    RenderLayer::mapRectToPaintBackingCoordinates(paintInvalidationContainer, rect);
+    mapRectToPaintBackingCoordinates(paintInvalidationContainer, rect);
 }
 
 LayoutRect RenderLayer::computePaintInvalidationRect(const RenderObject* renderObject, const RenderLayer* paintInvalidationContainer, const PaintInvalidationState* paintInvalidationState)
 {
     if (!paintInvalidationContainer->groupedMapping())
         return renderObject->computePaintInvalidationRect(paintInvalidationContainer->renderer(), paintInvalidationState);
-    LayoutRect rect = renderObject->clippedOverflowRectForPaintInvalidation(paintInvalidationContainer->renderer());
-    mapRectToPaintInvalidationBacking(paintInvalidationContainer->renderer(), paintInvalidationContainer->renderer(), rect, paintInvalidationState);
+
+    LayoutRect rect = renderObject->clippedOverflowRectForPaintInvalidation(paintInvalidationContainer->renderer(), paintInvalidationState);
+    mapRectToPaintBackingCoordinates(paintInvalidationContainer->renderer(), rect);
     return rect;
 }
 
@@ -907,7 +908,7 @@ RenderLayer* RenderLayer::enclosingPositionedAncestor() const
 RenderLayer* RenderLayer::enclosingTransformedAncestor() const
 {
     RenderLayer* curr = parent();
-    while (curr && !curr->isRootLayer() && !curr->transform())
+    while (curr && !curr->isRootLayer() && !curr->renderer()->hasTransform())
         curr = curr->parent();
 
     return curr;
@@ -982,17 +983,6 @@ RenderLayer* RenderLayer::enclosingLayerForPaintInvalidation() const
 
     for (const RenderLayer* curr = parent(); curr; curr = curr->parent()) {
         if (curr->isPaintInvalidationContainer())
-            return const_cast<RenderLayer*>(curr);
-    }
-
-    return 0;
-}
-
-RenderLayer* RenderLayer::enclosingFilterLayer(IncludeSelfOrNot includeSelf) const
-{
-    const RenderLayer* curr = (includeSelf == IncludeSelf) ? this : parent();
-    for (; curr; curr = curr->parent()) {
-        if (curr->requiresFullLayerImageForFilters())
             return const_cast<RenderLayer*>(curr);
     }
 
@@ -1299,7 +1289,6 @@ void RenderLayer::removeOnlyThisLayer()
         return;
 
     m_clipper.clearClipRectsIncludingDescendants();
-    paintInvalidator().paintInvalidationIncludingNonCompositingDescendants();
 
     RenderLayer* nextSib = nextSibling();
 
@@ -1315,7 +1304,6 @@ void RenderLayer::removeOnlyThisLayer()
         removeChild(current);
         m_parent->addChild(current, nextSib);
 
-        current->renderer()->setShouldDoFullPaintInvalidation(true);
         // FIXME: We should call a specialized version of this function.
         current->updateLayerPositionsAfterLayout();
         current = next;
@@ -1738,7 +1726,7 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
     GraphicsContextStateSaver clipStateSaver(*context, false);
     RenderStyle* style = renderer()->style();
     RenderSVGResourceClipper* resourceClipper = 0;
-    ClipperContext clipperContext;
+    RenderSVGResourceClipper::ClipperState clipperState = RenderSVGResourceClipper::ClipperNotApplied;
 
     // Clip-path, like border radius, must not be applied to the contents of a composited-scrolling container.
     // It must, however, still be applied to the mask layer, so that the compositor can properly mask the
@@ -1773,7 +1761,7 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
 
                 resourceClipper = toRenderSVGResourceClipper(toRenderSVGResourceContainer(element->renderer()));
                 if (!resourceClipper->applyClippingToContext(renderer(), rootRelativeBounds,
-                    paintingInfo.paintDirtyRect, context, clipperContext)) {
+                    paintingInfo.paintDirtyRect, context, clipperState)) {
                     // No need to post-apply the clipper if this failed.
                     resourceClipper = 0;
                 }
@@ -1926,7 +1914,7 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
     }
 
     if (resourceClipper)
-        resourceClipper->postApplyStatefulResource(renderer(), context, clipperContext);
+        resourceClipper->postApplyStatefulResource(renderer(), context, clipperState);
 }
 
 void RenderLayer::paintLayerByApplyingTransform(GraphicsContext* context, const LayerPaintingInfo& paintingInfo, PaintLayerFlags paintFlags, const LayoutPoint& translationOffset)
@@ -2426,7 +2414,10 @@ bool RenderLayer::hitTest(const HitTestRequest& request, const HitTestLocation& 
         // We didn't hit any layer. If we are the root layer and the mouse is -- or just was -- down,
         // return ourselves. We do this so mouse events continue getting delivered after a drag has
         // exited the WebView, and so hit testing over a scrollbar hits the content document.
-        if (!request.isChildFrameHitTest() && (request.active() || request.release()) && isRootLayer()) {
+        // In addtion, it is possible for the mouse to stay in the document but there is no element.
+        // At that time, the events of the mouse should be fired.
+        LayoutPoint hitPoint = hitTestLocation.point();
+        if (!request.isChildFrameHitTest() && ((request.active() || request.release()) || (request.move() && hitTestArea.contains(hitPoint.x(), hitPoint.y()))) && isRootLayer()) {
             renderer()->updateHitTestResult(result, toRenderView(renderer())->flipForWritingMode(hitTestLocation.point()));
             insideLayer = this;
         }
@@ -3615,9 +3606,6 @@ void RenderLayer::updateOrRemoveFilterEffectRenderer()
     if (!filterInfo->renderer()) {
         RefPtr<FilterEffectRenderer> filterRenderer = FilterEffectRenderer::create();
         filterInfo->setRenderer(filterRenderer.release());
-
-        // We can optimize away code paths in other places if we know that there are no software filters.
-        renderer()->document().view()->setHasSoftwareFilters(true);
     }
 
     // If the filter fails to build, remove it from the layer. It will still attempt to

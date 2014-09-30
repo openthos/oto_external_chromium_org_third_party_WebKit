@@ -43,8 +43,6 @@
 #include "wtf/PassRefPtr.h"
 #include "wtf/Uint8ClampedArray.h"
 
-class SkCanvas;
-
 namespace blink {
 
 class DrawingBuffer;
@@ -90,7 +88,7 @@ public:
     GraphicsContext* context() const;
 
     // Called at the end of a task that rendered a whole frame
-    void finalizeFrame();
+    void finalizeFrame(const FloatRect &dirtyRect);
     void didFinalizeFrame();
 
     bool isDirty();
@@ -118,6 +116,7 @@ public:
     bool copyToPlatformTexture(WebGraphicsContext3D*, Platform3DObject, GLenum, GLenum, GLint, bool, bool);
 
     Platform3DObject getBackingTexture();
+    void didModifyBackingTexture();
 
     bool copyRenderingResultsFromDrawingBuffer(DrawingBuffer*, bool fromFrontBuffer = false);
 

@@ -14,8 +14,6 @@
 WebInspector.Target = function(name, connection, callback)
 {
     Protocol.Agents.call(this, connection.agentsMap());
-    /** @type {!WeakReference.<!WebInspector.Target>} */
-    this._weakReference = new WeakReference(this);
     this._name = name;
     this._connection = connection;
     connection.addEventListener(InspectorBackendClass.Connection.Events.Disconnected, this._onDisconnect, this);
@@ -27,10 +25,11 @@ WebInspector.Target = function(name, connection, callback)
     /** @type {!Object.<string, boolean>} */
     this._capabilities = {};
     this.pageAgent().canScreencast(this._initializeCapability.bind(this, WebInspector.Target.Capabilities.CanScreencast, null));
-    if (WebInspector.experimentsSettings.timelinePowerProfiler.isEnabled())
+    this.pageAgent().canEmulate(this._initializeCapability.bind(this, WebInspector.Target.Capabilities.CanEmulate, null));
+    if (Runtime.experiments.isEnabled("timelinePowerProfiler"))
         this.powerAgent().canProfilePower(this._initializeCapability.bind(this, WebInspector.Target.Capabilities.CanProfilePower, null));
     this.workerAgent().canInspectWorkers(this._initializeCapability.bind(this, WebInspector.Target.Capabilities.CanInspectWorkers, this._loadedWithCapabilities.bind(this, callback)));
-    if (WebInspector.experimentsSettings.timelineOnTraceEvents.isEnabled())
+    if (Runtime.experiments.isEnabled("timelineOnTraceEvents"))
         this.consoleAgent().setTracingBasedTimeline(true);
 }
 
@@ -41,7 +40,8 @@ WebInspector.Target.Capabilities = {
     CanScreencast: "CanScreencast",
     HasTouchInputs: "HasTouchInputs",
     CanProfilePower: "CanProfilePower",
-    CanInspectWorkers: "CanInspectWorkers"
+    CanInspectWorkers: "CanInspectWorkers",
+    CanEmulate: "CanEmulate"
 }
 
 WebInspector.Target._nextId = 1;
@@ -63,14 +63,6 @@ WebInspector.Target.prototype = {
     name: function()
     {
         return this._name;
-    },
-
-    /**
-     * @return {!WeakReference.<!WebInspector.Target>}
-     */
-    weakReference: function()
-    {
-       return this._weakReference;
     },
 
     /**
@@ -145,7 +137,7 @@ WebInspector.Target.prototype = {
             WebInspector.workerManager = this.workerManager;
 
         if (this.hasCapability(WebInspector.Target.Capabilities.CanProfilePower))
-            WebInspector.powerProfiler = new WebInspector.PowerProfiler();
+            WebInspector.powerProfiler = new WebInspector.PowerProfiler(this);
 
         /** @type {!WebInspector.TimelineManager} */
         this.timelineManager = new WebInspector.TimelineManager(this);
@@ -167,6 +159,12 @@ WebInspector.Target.prototype = {
 
         /** @type {!WebInspector.HeapProfilerModel} */
         this.heapProfilerModel = new WebInspector.HeapProfilerModel(this);
+
+        /** @type {!WebInspector.IndexedDBModel} */
+        this.indexedDBModel = new WebInspector.IndexedDBModel(this);
+
+        /** @type {!WebInspector.LayerTreeModel} */
+        this.layerTreeModel = new WebInspector.LayerTreeModel(this);
 
         if (callback)
             callback(this);
@@ -193,10 +191,9 @@ WebInspector.Target.prototype = {
     /**
      * @return {boolean}
      */
-    isMobile: function()
+    canEmulate: function()
     {
-        // FIXME: either add a separate capability or rename CanScreencast to IsMobile.
-        return this.hasCapability(WebInspector.Target.Capabilities.CanScreencast);
+        return this.hasCapability(WebInspector.Target.Capabilities.CanEmulate);
     },
 
     _onDisconnect: function()
@@ -207,7 +204,6 @@ WebInspector.Target.prototype = {
 
     _dispose: function()
     {
-        this._weakReference.clear();
         this.debuggerModel.dispose();
         this.networkManager.dispose();
         this.cpuProfilerModel.dispose();

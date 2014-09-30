@@ -5,7 +5,6 @@ include $(CLEAR_VARS)
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 LOCAL_MODULE := third_party_WebKit_Source_platform_blink_platform_gyp
 LOCAL_MODULE_SUFFIX := .a
-LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_TARGET_ARCH := $(TARGET_$(GYP_VAR_PREFIX)ARCH)
 gyp_intermediate_dir := $(call local-intermediates-dir,,$(GYP_VAR_PREFIX))
 gyp_shared_intermediate_dir := $(call intermediates-dir-for,GYP,shared,,,$(GYP_VAR_PREFIX))
@@ -20,8 +19,7 @@ GYP_TARGET_DEPENDENCIES := \
 	$(call intermediates-dir-for,GYP,third_party_icu_icuuc_gyp,,,$(GYP_VAR_PREFIX))/icuuc.stamp \
 	$(call intermediates-dir-for,GYP,third_party_libwebp_libwebp_gyp,,,$(GYP_VAR_PREFIX))/webp.stamp \
 	$(call intermediates-dir-for,GYP,v8_tools_gyp_v8_gyp,,,$(GYP_VAR_PREFIX))/v8.stamp \
-	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_platform_make_platform_generated_gyp,,,$(GYP_VAR_PREFIX))/make_platform_generated.stamp \
-	$(call intermediates-dir-for,GYP,third_party_libjpeg_libjpeg_gyp,,,$(GYP_VAR_PREFIX))/libjpeg.stamp
+	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_platform_make_platform_generated_gyp,,,$(GYP_VAR_PREFIX))/make_platform_generated.stamp
 
 GYP_GENERATED_OUTPUTS :=
 
@@ -44,8 +42,6 @@ GYP_COPIED_SOURCE_ORIGIN_DIRS := \
 
 LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/Clock.cpp \
-	third_party/WebKit/Source/platform/ColorChooser.cpp \
-	third_party/WebKit/Source/platform/ColorChooserClient.cpp \
 	third_party/WebKit/Source/platform/ContentType.cpp \
 	third_party/WebKit/Source/platform/ContextMenu.cpp \
 	third_party/WebKit/Source/platform/ContextMenuItem.cpp \
@@ -53,8 +49,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/Crypto.cpp \
 	third_party/WebKit/Source/platform/Cursor.cpp \
 	third_party/WebKit/Source/platform/DateComponents.cpp \
-	third_party/WebKit/Source/platform/DateTimeChooser.cpp \
-	third_party/WebKit/Source/platform/DateTimeChooserClient.cpp \
 	third_party/WebKit/Source/platform/Decimal.cpp \
 	third_party/WebKit/Source/platform/DragImage.cpp \
 	third_party/WebKit/Source/platform/EventTracer.cpp \
@@ -77,11 +71,11 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/PermissionCallbacks.cpp \
 	third_party/WebKit/Source/platform/PlatformInstrumentation.cpp \
 	third_party/WebKit/Source/platform/PlatformKeyboardEvent.cpp \
+	third_party/WebKit/Source/platform/PlatformResourceLoader.cpp \
 	third_party/WebKit/Source/platform/PlatformScreen.cpp \
 	third_party/WebKit/Source/platform/PlatformThreadData.cpp \
 	third_party/WebKit/Source/platform/Prerender.cpp \
 	third_party/WebKit/Source/platform/PurgeableVector.cpp \
-	third_party/WebKit/Source/platform/SSLKeyGenerator.cpp \
 	third_party/WebKit/Source/platform/ScriptForbiddenScope.cpp \
 	third_party/WebKit/Source/platform/SecureTextInput.cpp \
 	third_party/WebKit/Source/platform/SharedBuffer.cpp \
@@ -95,6 +89,8 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/UserGestureIndicator.cpp \
 	third_party/WebKit/Source/platform/URLPatternMatcher.cpp \
 	third_party/WebKit/Source/platform/UUID.cpp \
+	third_party/WebKit/Source/platform/WebThread.cpp \
+	third_party/WebKit/Source/platform/WebThreadSupportingGC.cpp \
 	third_party/WebKit/Source/platform/Widget.cpp \
 	third_party/WebKit/Source/platform/animation/KeyframeValueList.cpp \
 	third_party/WebKit/Source/platform/animation/TimingFunction.cpp \
@@ -104,7 +100,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/audio/AudioDSPKernelProcessor.cpp \
 	third_party/WebKit/Source/platform/audio/AudioDelayDSPKernel.cpp \
 	third_party/WebKit/Source/platform/audio/AudioDestination.cpp \
-	third_party/WebKit/Source/platform/audio/AudioDestinationConsumer.cpp \
 	third_party/WebKit/Source/platform/audio/AudioFIFO.cpp \
 	third_party/WebKit/Source/platform/audio/AudioProcessor.cpp \
 	third_party/WebKit/Source/platform/audio/AudioPullFIFO.cpp \
@@ -227,6 +222,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/fonts/FontFallbackList.cpp \
 	third_party/WebKit/Source/platform/fonts/FontFamily.cpp \
 	third_party/WebKit/Source/platform/fonts/FontFeatureSettings.cpp \
+	third_party/WebKit/Source/platform/fonts/FontPlatformData.cpp \
 	third_party/WebKit/Source/platform/fonts/GenericFontFamilySettings.cpp \
 	third_party/WebKit/Source/platform/fonts/GlyphPageTreeNode.cpp \
 	third_party/WebKit/Source/platform/fonts/SVGGlyph.cpp \
@@ -236,7 +232,6 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/fonts/WidthIterator.cpp \
 	third_party/WebKit/Source/platform/fonts/android/FontCacheAndroid.cpp \
 	third_party/WebKit/Source/platform/fonts/harfbuzz/FontHarfBuzz.cpp \
-	third_party/WebKit/Source/platform/fonts/harfbuzz/FontPlatformDataHarfBuzz.cpp \
 	third_party/WebKit/Source/platform/fonts/harfbuzz/HarfBuzzFace.cpp \
 	third_party/WebKit/Source/platform/fonts/harfbuzz/HarfBuzzFaceSkia.cpp \
 	third_party/WebKit/Source/platform/fonts/harfbuzz/HarfBuzzShaper.cpp \
@@ -288,6 +283,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/graphics/filters/SourceAlpha.cpp \
 	third_party/WebKit/Source/platform/graphics/filters/SourceGraphic.cpp \
 	third_party/WebKit/Source/platform/graphics/filters/SpotLightSource.cpp \
+	third_party/WebKit/Source/platform/graphics/gpu/AcceleratedImageBufferSurface.cpp \
 	third_party/WebKit/Source/platform/graphics/gpu/DrawingBuffer.cpp \
 	third_party/WebKit/Source/platform/graphics/gpu/Extensions3DUtil.cpp \
 	third_party/WebKit/Source/platform/graphics/gpu/WebGLImageBufferSurface.cpp \
@@ -305,8 +301,8 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/graphics/CrossfadeGeneratedImage.cpp \
 	third_party/WebKit/Source/platform/graphics/DecodingImageGenerator.cpp \
 	third_party/WebKit/Source/platform/graphics/DeferredImageDecoder.cpp \
-	third_party/WebKit/Source/platform/graphics/DisplayList.cpp \
 	third_party/WebKit/Source/platform/graphics/DrawLooperBuilder.cpp \
+	third_party/WebKit/Source/platform/graphics/FirstPaintInvalidationTracking.cpp \
 	third_party/WebKit/Source/platform/graphics/FrameData.cpp \
 	third_party/WebKit/Source/platform/graphics/GeneratedImage.cpp \
 	third_party/WebKit/Source/platform/graphics/Gradient.cpp \
@@ -327,7 +323,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/graphics/ImageOrientation.cpp \
 	third_party/WebKit/Source/platform/graphics/ImageSource.cpp \
 	third_party/WebKit/Source/platform/graphics/LoggingCanvas.cpp \
-	third_party/WebKit/Source/platform/graphics/OpaqueRectTrackingContentLayerDelegate.cpp \
+	third_party/WebKit/Source/platform/graphics/ContentLayerDelegate.cpp \
 	third_party/WebKit/Source/platform/graphics/Path.cpp \
 	third_party/WebKit/Source/platform/graphics/PathTraversalState.cpp \
 	third_party/WebKit/Source/platform/graphics/Pattern.cpp \
@@ -380,7 +376,7 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/plugins/PluginData.cpp \
 	third_party/WebKit/Source/platform/plugins/PluginListBuilder.cpp \
 	third_party/WebKit/Source/platform/scheduler/Scheduler.cpp \
-	third_party/WebKit/Source/platform/scroll/FramelessScrollView.cpp \
+	third_party/WebKit/Source/platform/scheduler/TracedTask.cpp \
 	third_party/WebKit/Source/platform/scroll/ProgrammaticScrollAnimator.cpp \
 	third_party/WebKit/Source/platform/scroll/ScrollAnimator.cpp \
 	third_party/WebKit/Source/platform/scroll/ScrollAnimatorNone.cpp \
@@ -434,6 +430,8 @@ LOCAL_SRC_FILES := \
 	third_party/WebKit/Source/platform/weborigin/SchemeRegistry.cpp \
 	third_party/WebKit/Source/platform/weborigin/SecurityOrigin.cpp \
 	third_party/WebKit/Source/platform/weborigin/SecurityPolicy.cpp \
+	third_party/WebKit/Source/platform/heap/CallbackStack.cpp \
+	third_party/WebKit/Source/platform/heap/Handle.cpp \
 	third_party/WebKit/Source/platform/heap/Heap.cpp \
 	third_party/WebKit/Source/platform/heap/ThreadState.cpp \
 	third_party/WebKit/Source/platform/heap/Visitor.cpp
@@ -444,7 +442,6 @@ MY_CFLAGS_Debug := \
 	-fstack-protector \
 	--param=ssp-buffer-size=4 \
 	 \
-	-fno-exceptions \
 	-fno-strict-aliasing \
 	-Wall \
 	-Wno-unused-parameter \
@@ -453,8 +450,6 @@ MY_CFLAGS_Debug := \
 	-pipe \
 	-fPIC \
 	-Wno-unused-local-typedefs \
-	-EL \
-	-mhard-float \
 	-ffunction-sections \
 	-funwind-tables \
 	-g \
@@ -469,6 +464,7 @@ MY_CFLAGS_Debug := \
 	-Wno-unused-but-set-variable \
 	-Os \
 	-g \
+	-gdwarf-4 \
 	-fdata-sections \
 	-ffunction-sections \
 	-fomit-frame-pointer \
@@ -492,14 +488,15 @@ MY_DEFS_Debug := \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
-	'-DDATA_REDUCTION_DEV_HOST="http://proxy-dev.googlezip.net:80/"' \
+	'-DDATA_REDUCTION_DEV_HOST="https://proxy-dev.googlezip.net:443/"' \
+	'-DDATA_REDUCTION_DEV_FALLBACK_HOST="http://proxy-dev.googlezip.net:80/"' \
 	'-DSPDY_PROXY_AUTH_ORIGIN="https://proxy.googlezip.net:443/"' \
 	'-DDATA_REDUCTION_PROXY_PROBE_URL="http://check.googlezip.net/connect"' \
 	'-DDATA_REDUCTION_PROXY_WARMUP_URL="http://www.gstatic.com/generate_204"' \
 	'-DVIDEO_HOLE=1' \
+	'-DENABLE_LOAD_COMPLETION_HACKS=1' \
 	'-DBLINK_PLATFORM_IMPLEMENTATION=1' \
 	'-DINSIDE_BLINK' \
-	'-DENABLE_CUSTOM_SCHEME_HANDLER=0' \
 	'-DENABLE_SVG_FONTS=1' \
 	'-DWTF_USE_CONCATENATED_IMPULSE_RESPONSES=1' \
 	'-DWTF_USE_WEBAUDIO_OPENMAX_DL_FFT=1' \
@@ -512,10 +509,7 @@ MY_DEFS_Debug := \
 	'-DSK_ATTR_DEPRECATED=SK_NOTHING_ARG1' \
 	'-DGR_GL_IGNORE_ES3_MSAA=0' \
 	'-DSK_WILL_NEVER_DRAW_PERSPECTIVE_TEXT' \
-	'-DSK_SUPPORT_LEGACY_PICTURE_CLONE' \
-	'-DSK_SUPPORT_LEGACY_GETDEVICE' \
-	'-DSK_IGNORE_ETC1_SUPPORT' \
-	'-DSK_IGNORE_GPU_DITHER' \
+	'-DSK_SUPPORT_LEGACY_TEXTRENDERMODE' \
 	'-DSK_BUILD_FOR_ANDROID' \
 	'-DSK_USE_POSIX_THREADS' \
 	'-DSK_DEFERRED_CANVAS_USES_FACTORIES=1' \
@@ -524,7 +518,6 @@ MY_DEFS_Debug := \
 	'-DCHROME_PNG_WRITE_SUPPORT' \
 	'-DPNG_USER_CONFIG' \
 	'-DCHROME_PNG_READ_PACK_SUPPORT' \
-	'-DUSE_SYSTEM_LIBJPEG' \
 	'-DUSE_OPENSSL=1' \
 	'-DUSE_OPENSSL_CERTS=1' \
 	'-D__STDC_CONSTANT_MACROS' \
@@ -541,7 +534,6 @@ MY_DEFS_Debug := \
 
 # Include paths placed before CFLAGS/CPPFLAGS
 LOCAL_C_INCLUDES_Debug := \
-	$(gyp_shared_intermediate_dir)/shim_headers/ashmem/target \
 	$(gyp_shared_intermediate_dir)/shim_headers/icuuc/target \
 	$(gyp_shared_intermediate_dir)/shim_headers/icui18n/target \
 	$(gyp_shared_intermediate_dir) \
@@ -574,7 +566,7 @@ LOCAL_C_INCLUDES_Debug := \
 	$(LOCAL_PATH)/third_party/qcms/src \
 	$(LOCAL_PATH)/v8/include \
 	$(LOCAL_PATH)/third_party/iccjpeg \
-	$(PWD)/external/jpeg \
+	$(LOCAL_PATH)/third_party/libjpeg_turbo \
 	$(LOCAL_PATH)/third_party/harfbuzz-ng/src \
 	$(LOCAL_PATH)/third_party/openmax_dl \
 	$(PWD)/frameworks/wilhelm/include \
@@ -584,6 +576,7 @@ LOCAL_C_INCLUDES_Debug := \
 
 # Flags passed to only C++ (and not C) files.
 LOCAL_CPPFLAGS_Debug := \
+	-fno-exceptions \
 	-fno-rtti \
 	-fno-threadsafe-statics \
 	-fvisibility-inlines-hidden \
@@ -602,7 +595,6 @@ MY_CFLAGS_Release := \
 	-fstack-protector \
 	--param=ssp-buffer-size=4 \
 	 \
-	-fno-exceptions \
 	-fno-strict-aliasing \
 	-Wall \
 	-Wno-unused-parameter \
@@ -611,8 +603,6 @@ MY_CFLAGS_Release := \
 	-pipe \
 	-fPIC \
 	-Wno-unused-local-typedefs \
-	-EL \
-	-mhard-float \
 	-ffunction-sections \
 	-funwind-tables \
 	-g \
@@ -650,14 +640,15 @@ MY_DEFS_Release := \
 	'-DENABLE_PRINTING=1' \
 	'-DENABLE_MANAGED_USERS=1' \
 	'-DDATA_REDUCTION_FALLBACK_HOST="http://compress.googlezip.net:80/"' \
-	'-DDATA_REDUCTION_DEV_HOST="http://proxy-dev.googlezip.net:80/"' \
+	'-DDATA_REDUCTION_DEV_HOST="https://proxy-dev.googlezip.net:443/"' \
+	'-DDATA_REDUCTION_DEV_FALLBACK_HOST="http://proxy-dev.googlezip.net:80/"' \
 	'-DSPDY_PROXY_AUTH_ORIGIN="https://proxy.googlezip.net:443/"' \
 	'-DDATA_REDUCTION_PROXY_PROBE_URL="http://check.googlezip.net/connect"' \
 	'-DDATA_REDUCTION_PROXY_WARMUP_URL="http://www.gstatic.com/generate_204"' \
 	'-DVIDEO_HOLE=1' \
+	'-DENABLE_LOAD_COMPLETION_HACKS=1' \
 	'-DBLINK_PLATFORM_IMPLEMENTATION=1' \
 	'-DINSIDE_BLINK' \
-	'-DENABLE_CUSTOM_SCHEME_HANDLER=0' \
 	'-DENABLE_SVG_FONTS=1' \
 	'-DWTF_USE_CONCATENATED_IMPULSE_RESPONSES=1' \
 	'-DWTF_USE_WEBAUDIO_OPENMAX_DL_FFT=1' \
@@ -670,10 +661,7 @@ MY_DEFS_Release := \
 	'-DSK_ATTR_DEPRECATED=SK_NOTHING_ARG1' \
 	'-DGR_GL_IGNORE_ES3_MSAA=0' \
 	'-DSK_WILL_NEVER_DRAW_PERSPECTIVE_TEXT' \
-	'-DSK_SUPPORT_LEGACY_PICTURE_CLONE' \
-	'-DSK_SUPPORT_LEGACY_GETDEVICE' \
-	'-DSK_IGNORE_ETC1_SUPPORT' \
-	'-DSK_IGNORE_GPU_DITHER' \
+	'-DSK_SUPPORT_LEGACY_TEXTRENDERMODE' \
 	'-DSK_BUILD_FOR_ANDROID' \
 	'-DSK_USE_POSIX_THREADS' \
 	'-DSK_DEFERRED_CANVAS_USES_FACTORIES=1' \
@@ -682,7 +670,6 @@ MY_DEFS_Release := \
 	'-DCHROME_PNG_WRITE_SUPPORT' \
 	'-DPNG_USER_CONFIG' \
 	'-DCHROME_PNG_READ_PACK_SUPPORT' \
-	'-DUSE_SYSTEM_LIBJPEG' \
 	'-DUSE_OPENSSL=1' \
 	'-DUSE_OPENSSL_CERTS=1' \
 	'-D__STDC_CONSTANT_MACROS' \
@@ -700,7 +687,6 @@ MY_DEFS_Release := \
 
 # Include paths placed before CFLAGS/CPPFLAGS
 LOCAL_C_INCLUDES_Release := \
-	$(gyp_shared_intermediate_dir)/shim_headers/ashmem/target \
 	$(gyp_shared_intermediate_dir)/shim_headers/icuuc/target \
 	$(gyp_shared_intermediate_dir)/shim_headers/icui18n/target \
 	$(gyp_shared_intermediate_dir) \
@@ -733,7 +719,7 @@ LOCAL_C_INCLUDES_Release := \
 	$(LOCAL_PATH)/third_party/qcms/src \
 	$(LOCAL_PATH)/v8/include \
 	$(LOCAL_PATH)/third_party/iccjpeg \
-	$(PWD)/external/jpeg \
+	$(LOCAL_PATH)/third_party/libjpeg_turbo \
 	$(LOCAL_PATH)/third_party/harfbuzz-ng/src \
 	$(LOCAL_PATH)/third_party/openmax_dl \
 	$(PWD)/frameworks/wilhelm/include \
@@ -743,6 +729,7 @@ LOCAL_C_INCLUDES_Release := \
 
 # Flags passed to only C++ (and not C) files.
 LOCAL_CPPFLAGS_Release := \
+	-fno-exceptions \
 	-fno-rtti \
 	-fno-threadsafe-statics \
 	-fvisibility-inlines-hidden \
@@ -761,47 +748,6 @@ LOCAL_C_INCLUDES := $(GYP_COPIED_SOURCE_ORIGIN_DIRS) $(LOCAL_C_INCLUDES_$(GYP_CO
 LOCAL_CPPFLAGS := $(LOCAL_CPPFLAGS_$(GYP_CONFIGURATION))
 LOCAL_ASFLAGS := $(LOCAL_CFLAGS)
 ### Rules for final target.
-
-LOCAL_LDFLAGS_Debug := \
-	-Wl,-z,now \
-	-Wl,-z,relro \
-	-Wl,--fatal-warnings \
-	-Wl,-z,noexecstack \
-	-fPIC \
-	-EL \
-	-Wl,--no-keep-memory \
-	-nostdlib \
-	-Wl,--no-undefined \
-	-Wl,--exclude-libs=ALL \
-	-Wl,--warn-shared-textrel \
-	-Wl,-O1 \
-	-Wl,--as-needed
-
-
-LOCAL_LDFLAGS_Release := \
-	-Wl,-z,now \
-	-Wl,-z,relro \
-	-Wl,--fatal-warnings \
-	-Wl,-z,noexecstack \
-	-fPIC \
-	-EL \
-	-Wl,--no-keep-memory \
-	-nostdlib \
-	-Wl,--no-undefined \
-	-Wl,--exclude-libs=ALL \
-	-Wl,-O1 \
-	-Wl,--as-needed \
-	-Wl,--gc-sections \
-	-Wl,--warn-shared-textrel
-
-
-LOCAL_LDFLAGS := $(LOCAL_LDFLAGS_$(GYP_CONFIGURATION))
-
-LOCAL_STATIC_LIBRARIES := \
-	skia_skia_library_gyp
-
-# Enable grouping to fix circular references
-LOCAL_GROUP_STATIC_LIBRARIES := true
 
 LOCAL_SHARED_LIBRARIES := \
 	libstlport \

@@ -42,12 +42,14 @@
 #include "core/css/resolver/ViewportStyleResolver.h"
 #include "core/dom/ClientRect.h"
 #include "core/dom/ClientRectList.h"
+#include "core/dom/DOMPoint.h"
 #include "core/dom/DOMStringList.h"
 #include "core/dom/Document.h"
 #include "core/dom/DocumentMarker.h"
 #include "core/dom/DocumentMarkerController.h"
 #include "core/dom/Element.h"
 #include "core/dom/ExceptionCode.h"
+#include "core/dom/Iterator.h"
 #include "core/dom/NodeRenderStyle.h"
 #include "core/dom/PseudoElement.h"
 #include "core/dom/Range.h"
@@ -67,12 +69,12 @@
 #include "core/editing/TextIterator.h"
 #include "core/fetch/MemoryCache.h"
 #include "core/fetch/ResourceFetcher.h"
-#include "core/frame/LocalDOMWindow.h"
 #include "core/frame/EventHandlerRegistry.h"
+#include "core/frame/FrameConsole.h"
 #include "core/frame/FrameView.h"
+#include "core/frame/LocalDOMWindow.h"
 #include "core/frame/LocalFrame.h"
 #include "core/frame/Settings.h"
-#include "core/frame/WebKitPoint.h"
 #include "core/html/HTMLContentElement.h"
 #include "core/html/HTMLIFrameElement.h"
 #include "core/html/HTMLInputElement.h"
@@ -82,8 +84,10 @@
 #include "core/html/HTMLTextAreaElement.h"
 #include "core/html/canvas/CanvasRenderingContext2D.h"
 #include "core/html/forms/FormController.h"
+#include "core/html/shadow/PluginPlaceholderElement.h"
 #include "core/html/shadow/ShadowElementNames.h"
 #include "core/html/shadow/TextControlInnerElements.h"
+#include "core/inspector/ConsoleMessageStorage.h"
 #include "core/inspector/InspectorClient.h"
 #include "core/inspector/InspectorConsoleAgent.h"
 #include "core/inspector/InspectorController.h"
@@ -109,6 +113,7 @@
 #include "core/rendering/RenderView.h"
 #include "core/rendering/compositing/CompositedLayerMapping.h"
 #include "core/rendering/compositing/RenderLayerCompositor.h"
+#include "core/testing/DictionaryTest.h"
 #include "core/testing/GCObservation.h"
 #include "core/testing/InternalProfilers.h"
 #include "core/testing/InternalSettings.h"
@@ -141,6 +146,34 @@
 
 namespace blink {
 
+namespace {
+
+class InternalsIterator FINAL : public Iterator {
+public:
+    InternalsIterator() : m_current(0) { }
+
+    virtual ScriptValue next(ScriptState* scriptState, ExceptionState& exceptionState) OVERRIDE
+    {
+        v8::Isolate* isolate = scriptState->isolate();
+        int value = m_current * m_current;
+        if (m_current >= 5)
+            return ScriptValue(scriptState, v8DoneIteratorResult(isolate));
+        ++m_current;
+        return ScriptValue(scriptState, v8IteratorResult(scriptState, value));
+    }
+
+    virtual ScriptValue next(ScriptState* scriptState, ScriptValue value, ExceptionState& exceptionState) OVERRIDE
+    {
+        exceptionState.throwTypeError("Not implemented");
+        return ScriptValue();
+    }
+
+private:
+    int m_current;
+};
+
+} // namespace
+
 // FIXME: oilpan: These will be removed soon.
 static MockPagePopupDriver* s_pagePopupDriver = 0;
 
@@ -171,9 +204,9 @@ static SpellCheckRequester* spellCheckRequester(Document* document)
 
 const char* Internals::internalsId = "internals";
 
-PassRefPtrWillBeRawPtr<Internals> Internals::create(Document* document)
+Internals* Internals::create(Document* document)
 {
-    return adoptRefWillBeNoop(new Internals(document));
+    return new Internals(document);
 }
 
 Internals::~Internals()
@@ -206,7 +239,6 @@ Internals::Internals(Document* document)
     : ContextLifecycleObserver(document)
     , m_runtimeFlags(InternalRuntimeFlags::create())
 {
-    ScriptWrappable::init(this);
 }
 
 Document* Internals::contextDocument() const
@@ -257,7 +289,7 @@ String Internals::address(Node* node)
     return String(buf);
 }
 
-PassRefPtrWillBeRawPtr<GCObservation> Internals::observeGC(ScriptValue scriptValue)
+GCObservation* Internals::observeGC(ScriptValue scriptValue)
 {
     v8::Handle<v8::Value> observedValue = scriptValue.v8Value();
     ASSERT(!observedValue.IsEmpty());
@@ -392,25 +424,7 @@ bool Internals::hasSelectorForPseudoClassInShadow(Element* host, const String& p
         exceptionState.throwDOMException(InvalidAccessError, "The host element does not have a shadow.");
         return 0;
     }
-
-    const SelectRuleFeatureSet& featureSet = host->shadow()->ensureSelectFeatureSet();
-    if (pseudoClass == "checked")
-        return featureSet.hasSelectorForChecked();
-    if (pseudoClass == "enabled")
-        return featureSet.hasSelectorForEnabled();
-    if (pseudoClass == "disabled")
-        return featureSet.hasSelectorForDisabled();
-    if (pseudoClass == "indeterminate")
-        return featureSet.hasSelectorForIndeterminate();
-    if (pseudoClass == "link")
-        return featureSet.hasSelectorForLink();
-    if (pseudoClass == "target")
-        return featureSet.hasSelectorForTarget();
-    if (pseudoClass == "visited")
-        return featureSet.hasSelectorForVisited();
-
-    ASSERT_NOT_REACHED();
-    return false;
+    return host->shadow()->ensureSelectFeatureSet().hasSelectorForPseudoType(CSSSelector::parsePseudoType(AtomicString(pseudoClass), false));
 }
 
 unsigned short Internals::compareTreeScopePosition(const Node* node1, const Node* node2, ExceptionState& exceptionState) const
@@ -586,12 +600,6 @@ const AtomicString& Internals::shadowPseudoId(Element* element)
     return element->shadowPseudoId();
 }
 
-void Internals::setShadowPseudoId(Element* element, const AtomicString& id)
-{
-    ASSERT(element);
-    return element->setShadowPseudoId(id);
-}
-
 String Internals::visiblePlaceholder(Element* element)
 {
     if (element && isHTMLTextFormControlElement(*element)) {
@@ -611,6 +619,14 @@ void Internals::selectColorInColorChooser(Element* element, const String& colorV
     if (!color.setFromString(colorValue))
         return;
     toHTMLInputElement(*element).selectColorInColorChooser(color);
+}
+
+void Internals::endColorChooser(Element* element)
+{
+    ASSERT(element);
+    if (!isHTMLInputElement(*element))
+        return;
+    toHTMLInputElement(*element).endColorChooser();
 }
 
 bool Internals::hasAutofocusRequest(Document* document)
@@ -961,12 +977,12 @@ String Internals::rangeAsText(const Range* range)
 // FIXME: The next four functions are very similar - combine them once
 // bestClickableNode/bestContextMenuNode have been combined..
 
-PassRefPtrWillBeRawPtr<WebKitPoint> Internals::touchPositionAdjustedToBestClickableNode(long x, long y, long width, long height, Document* document, ExceptionState& exceptionState)
+DOMPoint* Internals::touchPositionAdjustedToBestClickableNode(long x, long y, long width, long height, Document* document, ExceptionState& exceptionState)
 {
     ASSERT(document);
     if (!document->frame()) {
         exceptionState.throwDOMException(InvalidAccessError, "The document provided is invalid.");
-        return nullptr;
+        return 0;
     }
 
     document->updateLayout();
@@ -983,9 +999,9 @@ PassRefPtrWillBeRawPtr<WebKitPoint> Internals::touchPositionAdjustedToBestClicka
 
     bool foundNode = eventHandler.bestClickableNodeForHitTestResult(result, adjustedPoint, targetNode);
     if (foundNode)
-        return WebKitPoint::create(adjustedPoint.x(), adjustedPoint.y());
+        return DOMPoint::create(adjustedPoint.x(), adjustedPoint.y());
 
-    return nullptr;
+    return 0;
 }
 
 Node* Internals::touchNodeAdjustedToBestClickableNode(long x, long y, long width, long height, Document* document, ExceptionState& exceptionState)
@@ -1011,12 +1027,12 @@ Node* Internals::touchNodeAdjustedToBestClickableNode(long x, long y, long width
     return targetNode;
 }
 
-PassRefPtrWillBeRawPtr<WebKitPoint> Internals::touchPositionAdjustedToBestContextMenuNode(long x, long y, long width, long height, Document* document, ExceptionState& exceptionState)
+DOMPoint* Internals::touchPositionAdjustedToBestContextMenuNode(long x, long y, long width, long height, Document* document, ExceptionState& exceptionState)
 {
     ASSERT(document);
     if (!document->frame()) {
         exceptionState.throwDOMException(InvalidAccessError, "The document provided is invalid.");
-        return nullptr;
+        return 0;
     }
 
     document->updateLayout();
@@ -1033,9 +1049,9 @@ PassRefPtrWillBeRawPtr<WebKitPoint> Internals::touchPositionAdjustedToBestContex
 
     bool foundNode = eventHandler.bestContextMenuNodeForHitTestResult(result, adjustedPoint, targetNode);
     if (foundNode)
-        return WebKitPoint::create(adjustedPoint.x(), adjustedPoint.y());
+        return DOMPoint::create(adjustedPoint.x(), adjustedPoint.y());
 
-    return WebKitPoint::create(x, y);
+    return DOMPoint::create(x, y);
 }
 
 Node* Internals::touchNodeAdjustedToBestContextMenuNode(long x, long y, long width, long height, Document* document, ExceptionState& exceptionState)
@@ -1283,7 +1299,7 @@ static void accumulateLayerRectList(RenderLayerCompositor* compositor, GraphicsL
         accumulateLayerRectList(compositor, graphicsLayer->children()[i], rects);
 }
 
-PassRefPtrWillBeRawPtr<LayerRectList> Internals::touchEventTargetLayerRects(Document* document, ExceptionState& exceptionState)
+LayerRectList* Internals::touchEventTargetLayerRects(Document* document, ExceptionState& exceptionState)
 {
     ASSERT(document);
     if (!document->view() || !document->page() || document != contextDocument()) {
@@ -1300,8 +1316,8 @@ PassRefPtrWillBeRawPtr<LayerRectList> Internals::touchEventTargetLayerRects(Docu
     if (RenderView* view = document->renderView()) {
         if (RenderLayerCompositor* compositor = view->compositor()) {
             if (GraphicsLayer* rootLayer = compositor->rootGraphicsLayer()) {
-                RefPtrWillBeRawPtr<LayerRectList> rects = LayerRectList::create();
-                accumulateLayerRectList(compositor, rootLayer, rects.get());
+                LayerRectList* rects = LayerRectList::create();
+                accumulateLayerRectList(compositor, rootLayer, rects);
                 return rects;
             }
         }
@@ -1416,13 +1432,11 @@ String Internals::dumpRefCountedInstanceCounts() const
 
 Vector<String> Internals::consoleMessageArgumentCounts(Document* document) const
 {
-    InstrumentingAgents* instrumentingAgents = instrumentationForPage(document->page());
-    if (!instrumentingAgents)
+    LocalFrame* frame = document->frame();
+    if (!frame)
         return Vector<String>();
-    InspectorConsoleAgent* consoleAgent = instrumentingAgents->inspectorConsoleAgent();
-    if (!consoleAgent)
-        return Vector<String>();
-    Vector<unsigned> counts = consoleAgent->consoleMessageArgumentCounts();
+
+    Vector<unsigned> counts = frame->console().messageStorage()->argumentCounts();
     Vector<String> result(counts.size());
     for (size_t i = 0; i < counts.size(); i++)
         result[i] = String::number(counts[i]);
@@ -1726,6 +1740,11 @@ double Internals::effectiveMediaVolume(HTMLMediaElement* mediaElement)
     return mediaElement->effectiveMediaVolume();
 }
 
+void Internals::mediaPlayerRemoteRouteAvailabilityChanged(HTMLMediaElement* mediaElement, bool available)
+{
+    mediaElement->remoteRouteAvailabilityChanged(available);
+}
+
 void Internals::registerURLSchemeAsBypassingContentSecurityPolicy(const String& scheme)
 {
     SchemeRegistry::registerURLSchemeAsBypassingContentSecurityPolicy(scheme);
@@ -1736,7 +1755,7 @@ void Internals::removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(const 
     SchemeRegistry::removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(scheme);
 }
 
-PassRefPtrWillBeRawPtr<TypeConversions> Internals::typeConversions() const
+TypeConversions* Internals::typeConversions() const
 {
     return TypeConversions::create();
 }
@@ -1744,6 +1763,11 @@ PassRefPtrWillBeRawPtr<TypeConversions> Internals::typeConversions() const
 PrivateScriptTest* Internals::privateScriptTest() const
 {
     return PrivateScriptTest::create(frame());
+}
+
+DictionaryTest* Internals::dictionaryTest() const
+{
+    return DictionaryTest::create();
 }
 
 Vector<String> Internals::getReferencedFilePaths() const
@@ -2061,14 +2085,15 @@ namespace {
 
 class AddOneFunction : public ScriptFunction {
 public:
-    static PassOwnPtr<ScriptFunction> create(ExecutionContext* context)
+    static v8::Handle<v8::Function> createFunction(ScriptState* scriptState)
     {
-        return adoptPtr(new AddOneFunction(toIsolate(context)));
+        AddOneFunction* self = new AddOneFunction(scriptState);
+        return self->bindToV8Function();
     }
 
 private:
-    AddOneFunction(v8::Isolate* isolate)
-        : ScriptFunction(isolate)
+    explicit AddOneFunction(ScriptState* scriptState)
+        : ScriptFunction(scriptState)
     {
     }
 
@@ -2077,8 +2102,7 @@ private:
         v8::Local<v8::Value> v8Value = value.v8Value();
         ASSERT(v8Value->IsNumber());
         int intValue = v8Value.As<v8::Integer>()->Value();
-        ScriptValue result  = ScriptValue(ScriptState::current(isolate()), v8::Integer::New(isolate(), intValue + 1));
-        return result;
+        return ScriptValue(scriptState(), v8::Integer::New(scriptState()->isolate(), intValue + 1));
     }
 };
 
@@ -2102,7 +2126,7 @@ ScriptPromise Internals::createRejectedPromise(ScriptState* scriptState, ScriptV
 
 ScriptPromise Internals::addOneToPromise(ScriptState* scriptState, ScriptPromise promise)
 {
-    return promise.then(AddOneFunction::create(scriptState->executionContext()));
+    return promise.then(AddOneFunction::createFunction(scriptState));
 }
 
 ScriptPromise Internals::promiseCheck(ScriptState* scriptState, long arg1, bool arg2, const Dictionary& arg3, const String& arg4, const Vector<String>& arg5, ExceptionState& exceptionState)
@@ -2213,16 +2237,42 @@ void Internals::hideAllTransitionElements()
 
 void Internals::forcePluginPlaceholder(HTMLElement* element, const String& htmlSource, ExceptionState& exceptionState)
 {
-    if (!element) {
-        exceptionState.throwDOMException(InvalidAccessError, ExceptionMessages::argumentNullOrIncorrectType(1, "HTMLElement"));
-        return;
-    }
     if (!element->isPluginElement()) {
         exceptionState.throwDOMException(InvalidNodeTypeError, "The element provided is not a plugin.");
         return;
     }
+
     element->ensureUserAgentShadowRoot().setInnerHTML(htmlSource, exceptionState);
+    if (exceptionState.hadException())
+        return;
+
     toHTMLPlugInElement(element)->setUsePlaceholderContent(true);
+}
+
+void Internals::forcePluginPlaceholder(HTMLElement* element, const Dictionary& options, ExceptionState& exceptionState)
+{
+    if (!element->isPluginElement()) {
+        exceptionState.throwDOMException(InvalidNodeTypeError, "The element provided is not a plugin.");
+        return;
+    }
+
+    RefPtrWillBeRawPtr<PluginPlaceholderElement> placeholder = PluginPlaceholderElement::create(element->document());
+    String stringValue;
+    if (DictionaryHelper::get(options, "message", stringValue))
+        placeholder->setMessage(stringValue);
+
+    ShadowRoot& shadowRoot = element->ensureUserAgentShadowRoot();
+    shadowRoot.removeChildren();
+    shadowRoot.appendChild(placeholder.release(), exceptionState);
+    if (exceptionState.hadException())
+        return;
+
+    toHTMLPlugInElement(element)->setUsePlaceholderContent(true);
+}
+
+Iterator* Internals::iterator(ScriptState* scriptState, ExceptionState& exceptionState)
+{
+    return new InternalsIterator;
 }
 
 } // namespace blink

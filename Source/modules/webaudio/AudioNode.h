@@ -51,6 +51,7 @@ class ExceptionState;
 
 class AudioNode : public RefCountedGarbageCollectedWillBeGarbageCollectedFinalized<AudioNode>, public EventTargetWithInlineData {
     DEFINE_EVENT_TARGET_REFCOUNTING_WILL_BE_REMOVED(RefCountedGarbageCollected<AudioNode>);
+    DEFINE_WRAPPERTYPEINFO();
     WILL_BE_USING_GARBAGE_COLLECTED_MIXIN(AudioNode);
 public:
     enum { ProcessingSizeInFrames = 128 };
@@ -149,8 +150,6 @@ public:
     static void printNodeCounts();
 #endif
 
-    bool isDisposeCalled() const { return m_isDisposeCalled; }
-
     // tailTime() is the length of time (not counting latency time) where non-zero output may occur after continuous silent input.
     virtual double tailTime() const = 0;
     // latencyTime() is the length of time it takes for non-zero output to appear after non-zero input is provided. This only applies to
@@ -184,6 +183,8 @@ public:
     virtual const AtomicString& interfaceName() const OVERRIDE FINAL;
     virtual ExecutionContext* executionContext() const OVERRIDE FINAL;
 
+    void updateChannelCountMode();
+
     virtual void trace(Visitor*) OVERRIDE;
 
 protected:
@@ -213,7 +214,6 @@ private:
     volatile int m_connectionRefCount;
 
     bool m_isDisabled;
-    bool m_isDisposeCalled;
 
 #if DEBUG_AUDIONODE_REFERENCES
     static bool s_isNodeCountInitialized;
@@ -221,6 +221,9 @@ private:
 #endif
     static unsigned s_instanceCount;
 
+    // The new channel count mode that will be used to set the actual mode in the pre or post
+    // rendering phase.
+    ChannelCountMode m_newChannelCountMode;
 protected:
     unsigned m_channelCount;
     ChannelCountMode m_channelCountMode;

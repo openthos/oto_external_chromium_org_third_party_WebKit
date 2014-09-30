@@ -203,7 +203,7 @@ WebInspector.ExtensionServer.prototype = {
 
     _onApplyStyleSheet: function(message)
     {
-        if (!WebInspector.experimentsSettings.applyCustomStylesheet.isEnabled())
+        if (!Runtime.experiments.isEnabled("applyCustomStylesheet"))
             return;
         var styleSheet = document.createElement("style");
         styleSheet.textContent = message.styleSheet;
@@ -962,7 +962,7 @@ WebInspector.ExtensionServer.prototype = {
             if (contextSecurityOrigin) {
                 for (var i = 0; i < executionContexts.length; ++i) {
                     var executionContext = executionContexts[i];
-                    if (executionContext.frameId === frame.id && executionContext.name === contextSecurityOrigin && !executionContext.isMainWorldContext)
+                    if (executionContext.frameId === frame.id && executionContext.origin === contextSecurityOrigin && !executionContext.isMainWorldContext)
                         context = executionContext;
 
                 }

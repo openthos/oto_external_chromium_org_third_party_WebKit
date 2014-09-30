@@ -175,7 +175,7 @@ void WorkerMessagingProxy::reportException(const String& errorMessage, int lineN
     RefPtrWillBeRawPtr<ErrorEvent> event = ErrorEvent::create(errorMessage, sourceURL, lineNumber, columnNumber, 0);
     bool errorHandled = !m_workerObject->dispatchEvent(event);
     if (!errorHandled)
-        m_executionContext->reportException(event, nullptr, NotSharableCrossOrigin);
+        m_executionContext->reportException(event, 0, nullptr, NotSharableCrossOrigin);
 }
 
 void WorkerMessagingProxy::reportConsoleMessage(MessageSource source, MessageLevel level, const String& message, int lineNumber, const String& sourceURL)
@@ -190,7 +190,7 @@ void WorkerMessagingProxy::reportConsoleMessage(MessageSource source, MessageLev
         return;
 
     RefPtrWillBeRawPtr<ConsoleMessage> consoleMessage = ConsoleMessage::create(source, level, message, sourceURL, lineNumber);
-    consoleMessage->setWorkerId(this);
+    consoleMessage->setWorkerGlobalScopeProxy(this);
     frame->console().addMessage(consoleMessage.release());
 }
 
@@ -289,7 +289,7 @@ void WorkerMessagingProxy::terminateInternally()
     Document* document = toDocument(m_executionContext.get());
     LocalFrame* frame = document->frame();
     if (frame)
-        frame->console().adoptWorkerConsoleMessages(this);
+        frame->console().adoptWorkerMessagesAfterTermination(this);
 }
 
 } // namespace blink

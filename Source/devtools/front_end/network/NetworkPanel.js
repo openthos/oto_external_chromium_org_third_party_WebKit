@@ -90,7 +90,7 @@ WebInspector.NetworkLogView = function(filterBar, coulmnsVisibilitySetting)
 WebInspector.NetworkLogView.HTTPSchemas = {"http": true, "https": true, "ws": true, "wss": true};
 WebInspector.NetworkLogView._responseHeaderColumns = ["Cache-Control", "Connection", "Content-Encoding", "Content-Length", "ETag", "Keep-Alive", "Last-Modified", "Server", "Vary"];
 WebInspector.NetworkLogView.defaultColumnsVisibility = {
-    method: true, status: true, scheme: false, domain: false, remoteAddress: false, type: true, initiator: true, cookies: false, setCookies: false, size: true, time: true,
+    method: true, status: true, scheme: false, domain: false, remoteAddress: false, type: true, initiator: true, cookies: false, setCookies: false, size: true, time: true, connectionId: false,
     "Cache-Control": false, "Connection": false, "Content-Encoding": false, "Content-Length": false, "ETag": false, "Keep-Alive": false, "Last-Modified": false, "Server": false, "Vary": false
 };
 WebInspector.NetworkLogView._defaultRefreshDelay = 500;
@@ -101,6 +101,7 @@ WebInspector.NetworkLogView.FilterType = {
     HasResponseHeader: "HasResponseHeader",
     Method: "Method",
     MimeType: "MimeType",
+    Scheme: "Scheme",
     SetCookieDomain: "SetCookieDomain",
     SetCookieName: "SetCookieName",
     SetCookieValue: "SetCookieValue",
@@ -124,6 +125,7 @@ WebInspector.NetworkLogView._columnTitles = {
     "setCookies": WebInspector.UIString("Set-Cookies"),
     "size": WebInspector.UIString("Size"),
     "time": WebInspector.UIString("Time"),
+    "connectionId": WebInspector.UIString("Connection Id"),
     "timeline": WebInspector.UIString("Timeline"),
 
     // Response header columns
@@ -204,6 +206,7 @@ WebInspector.NetworkLogView.prototype = {
         this.element.id = "network-container";
 
         this._createSortingFunctions();
+        this._createCalculators();
         this._createTable();
         this._createTimelineGrid();
         this._summaryBarElement = this.element.createChild("div", "network-summary-bar");
@@ -213,8 +216,6 @@ WebInspector.NetworkLogView.prototype = {
         this._popoverHelper = new WebInspector.PopoverHelper(this.element, this._getPopoverAnchor.bind(this), this._showPopover.bind(this), this._onHidePopover.bind(this));
         // Enable faster hint.
         this._popoverHelper.setTimeout(100);
-
-        this._setCalculator(new WebInspector.NetworkTransferTimeCalculator());
 
         this.switchViewMode(true);
     },
@@ -364,6 +365,13 @@ WebInspector.NetworkLogView.prototype = {
             align: WebInspector.DataGrid.Align.Right
         });
 
+        columns.push({
+            id: "connectionId",
+            title: WebInspector.NetworkLogView._columnTitles["connectionId"],
+            sortable: true,
+            weight: 6
+        });
+
         var responseHeaderColumns = WebInspector.NetworkLogView._responseHeaderColumns;
         for (var i = 0; i < responseHeaderColumns.length; ++i) {
             var headerName = responseHeaderColumns[i];
@@ -387,6 +395,7 @@ WebInspector.NetworkLogView.prototype = {
         });
 
         this._dataGrid = new WebInspector.SortableDataGrid(columns);
+        this._dataGrid.setStickToBottom(true);
         this._updateColumns();
         this._dataGrid.setName("networkLog");
         this._dataGrid.setResizeMethod(WebInspector.DataGrid.ResizeMethod.Last);
@@ -473,23 +482,32 @@ WebInspector.NetworkLogView.prototype = {
         this._sortingFunctions.setCookies = WebInspector.NetworkDataGridNode.ResponseCookiesCountComparator;
         this._sortingFunctions.size = WebInspector.NetworkDataGridNode.SizeComparator;
         this._sortingFunctions.time = WebInspector.NetworkDataGridNode.RequestPropertyComparator.bind(null, "duration", false);
+        this._sortingFunctions.connectionId = WebInspector.NetworkDataGridNode.RequestPropertyComparator.bind(null, "connectionId", false);
         this._sortingFunctions.timeline = WebInspector.NetworkDataGridNode.RequestPropertyComparator.bind(null, "startTime", false);
         this._sortingFunctions.startTime = WebInspector.NetworkDataGridNode.RequestPropertyComparator.bind(null, "startTime", false);
         this._sortingFunctions.endTime = WebInspector.NetworkDataGridNode.RequestPropertyComparator.bind(null, "endTime", false);
         this._sortingFunctions.responseTime = WebInspector.NetworkDataGridNode.RequestPropertyComparator.bind(null, "responseReceivedTime", false);
         this._sortingFunctions.duration = WebInspector.NetworkDataGridNode.RequestPropertyComparator.bind(null, "duration", true);
         this._sortingFunctions.latency = WebInspector.NetworkDataGridNode.RequestPropertyComparator.bind(null, "latency", true);
+    },
 
-        var timeCalculator = new WebInspector.NetworkTransferTimeCalculator();
-        var durationCalculator = new WebInspector.NetworkTransferDurationCalculator();
+    _createCalculators: function()
+    {
+        /** @type {!WebInspector.NetworkTransferTimeCalculator} */
+        this._timeCalculator = new WebInspector.NetworkTransferTimeCalculator();
+        /** @type {!WebInspector.NetworkTransferDurationCalculator} */
+        this._durationCalculator = new WebInspector.NetworkTransferDurationCalculator();
 
+        /** @type {!Object.<string, !WebInspector.NetworkTimeCalculator>} */
         this._calculators = {};
-        this._calculators.timeline = timeCalculator;
-        this._calculators.startTime = timeCalculator;
-        this._calculators.endTime = timeCalculator;
-        this._calculators.responseTime = timeCalculator;
-        this._calculators.duration = durationCalculator;
-        this._calculators.latency = durationCalculator;
+        this._calculators.timeline = this._timeCalculator;
+        this._calculators.startTime = this._timeCalculator;
+        this._calculators.endTime = this._timeCalculator;
+        this._calculators.responseTime = this._timeCalculator;
+        this._calculators.duration = this._durationCalculator;
+        this._calculators.latency = this._durationCalculator;
+
+        this._calculator = this._timeCalculator;
     },
 
     _sortItems: function()
@@ -524,15 +542,10 @@ WebInspector.NetworkLogView.prototype = {
         var selectedOption = this._timelineSortSelector[selectedIndex];
         var value = selectedOption.value;
 
+        this._setCalculator(this._calculators[value]);
         var sortingFunction = this._sortingFunctions[value];
         this._dataGrid.sortNodes(sortingFunction);
         this._highlightNthMatchedRequestForSearch(this._updateMatchCountAndFindMatchIndex(this._currentMatchedRequestNode), false);
-        var calculator = this._calculators[value];
-        this._setCalculator(calculator);
-        if (calculator.startAtZero)
-            this._timelineGrid.hideEventDividers();
-        else
-            this._timelineGrid.showEventDividers();
         this._dataGrid.markColumnAsSortedBy("timeline", WebInspector.DataGrid.Order.Ascending);
     },
 
@@ -553,7 +566,7 @@ WebInspector.NetworkLogView.prototype = {
             this._summaryBarElement.removeChildren();
             this._summaryBarElement.createChild("div", "warning-icon-small");
             var text = WebInspector.UIString("No requests captured. Reload the page to see detailed information on the network activity.");
-            this._summaryBarElement.appendChild(document.createTextNode(text));
+            this._summaryBarElement.createTextChild(text);
             this._summaryBarElement.title = text;
             return;
         }
@@ -695,6 +708,11 @@ WebInspector.NetworkLogView.prototype = {
         this._calculator = x;
         this._calculator.reset();
 
+        if (this._calculator.startAtZero)
+            this._timelineGrid.hideEventDividers();
+        else
+            this._timelineGrid.showEventDividers();
+
         this._invalidateAllItems();
         this.refresh();
     },
@@ -765,7 +783,6 @@ WebInspector.NetworkLogView.prototype = {
         }
 
         this._removeAllNodeHighlights();
-        var wasScrolledToLastRow = this._dataGrid.isScrolledToLastRow();
         var boundariesChanged = false;
         var calculator = this.calculator();
         if (calculator.updateBoundariesForEventTime) {
@@ -804,13 +821,11 @@ WebInspector.NetworkLogView.prototype = {
             this._updateDividersIfNeeded();
             var nodes = this._nodesByRequestId.values();
             for (var i = 0; i < nodes.length; ++i)
-                nodes[i].refreshGraph(calculator);
+                nodes[i].refreshGraph();
         }
 
         this._staleRequestIds = {};
         this._updateSummaryBar();
-        if (wasScrolledToLastRow)
-            this._dataGrid.scrollToLastRow();
     },
 
     _onRecordButtonClicked: function()
@@ -903,6 +918,7 @@ WebInspector.NetworkLogView.prototype = {
         this._suggestionBuilder.addItem(WebInspector.NetworkLogView.FilterType.Domain, request.domain);
         this._suggestionBuilder.addItem(WebInspector.NetworkLogView.FilterType.Method, request.requestMethod);
         this._suggestionBuilder.addItem(WebInspector.NetworkLogView.FilterType.MimeType, request.mimeType);
+        this._suggestionBuilder.addItem(WebInspector.NetworkLogView.FilterType.Scheme, "" + request.scheme);
         this._suggestionBuilder.addItem(WebInspector.NetworkLogView.FilterType.StatusCode, "" + request.statusCode);
 
         var responseHeaders = request.responseHeaders;
@@ -1015,8 +1031,12 @@ WebInspector.NetworkLogView.prototype = {
         if (anchor && anchor.parentElement.request && anchor.parentElement.request.timing)
             return anchor;
         anchor = element.enclosingNodeOrSelfWithClass("network-script-initiated");
-        if (anchor && anchor.request && anchor.request.initiator)
-            return anchor;
+        if (anchor && anchor.request) {
+            var request = /** @type {!WebInspector.NetworkRequest} */ (anchor.request);
+            var initiator = anchor.request.initiator();
+            if (initiator && (initiator.stackTrace || initiator.asyncStackTrace))
+                return anchor;
+        }
     },
 
     /**
@@ -1062,9 +1082,12 @@ WebInspector.NetworkLogView.prototype = {
             }
         }
 
-        appendStackTrace.call(this, request.initiator.stackTrace);
+        // Initiator is not null, checked in _getPopoverAnchor.
+        var initiator = /** @type {!NetworkAgent.Initiator} */ (request.initiator());
+        if (initiator.stackTrace)
+            appendStackTrace.call(this, initiator.stackTrace);
 
-        var asyncStackTrace = request.initiator.asyncStackTrace;
+        var asyncStackTrace = initiator.asyncStackTrace;
         while (asyncStackTrace) {
             var callFrames = asyncStackTrace.callFrames;
             if (!callFrames || !callFrames.length)
@@ -1474,6 +1497,9 @@ WebInspector.NetworkLogView.prototype = {
         case WebInspector.NetworkLogView.FilterType.MimeType:
             return WebInspector.NetworkLogView._requestMimeTypeFilter.bind(null, value);
 
+        case WebInspector.NetworkLogView.FilterType.Scheme:
+            return WebInspector.NetworkLogView._requestSchemeFilter.bind(null, value);
+
         case WebInspector.NetworkLogView.FilterType.SetCookieDomain:
             return WebInspector.NetworkLogView._requestSetCookieDomainFilter.bind(null, value);
 
@@ -1702,6 +1728,16 @@ WebInspector.NetworkLogView._requestMethodFilter = function(value, request)
 WebInspector.NetworkLogView._requestMimeTypeFilter = function(value, request)
 {
     return request.mimeType === value;
+}
+
+/**
+ * @param {string} value
+ * @param {!WebInspector.NetworkRequest} request
+ * @return {boolean}
+ */
+WebInspector.NetworkLogView._requestSchemeFilter = function(value, request)
+{
+    return request.scheme === value;
 }
 
 /**
@@ -2491,6 +2527,7 @@ WebInspector.NetworkDataGridNode = function(parentView, request)
     this._linkifier = new WebInspector.Linkifier();
     this._isFilteredOut = true;
     this._isMatchingSearchQuery = false;
+    this._staleGraph = true;
 }
 
 WebInspector.NetworkDataGridNode.prototype = {
@@ -2519,7 +2556,7 @@ WebInspector.NetworkDataGridNode.prototype = {
         this._element.classList.toggle("network-error-row", this._isFailed());
         WebInspector.SortableDataGridNode.prototype.createCells.call(this);
 
-        this.refreshGraph(this._parentView.calculator());
+        this._updateGraph();
     },
 
     /**
@@ -2540,7 +2577,8 @@ WebInspector.NetworkDataGridNode.prototype = {
         case "remoteAddress": cell.setTextAndTitle(this._request.remoteAddress()); break;
         case "cookies": cell.setTextAndTitle(this._arrayLength(this._request.requestCookies)); break;
         case "setCookies": cell.setTextAndTitle(this._arrayLength(this._request.responseCookies)); break;
-        case "type": this._renderTypeCell(cell); break;
+        case "connectionId": cell.setTextAndTitle(this._request.connectionId); break;
+        case "type": cell.setTextAndTitle(this._request.mimeType || this._request.requestContentType() || ""); break;
         case "initiator": this._renderInitiatorCell(cell); break;
         case "size": this._renderSizeCell(cell); break;
         case "time": this._renderTimeCell(cell); break;
@@ -2557,6 +2595,16 @@ WebInspector.NetworkDataGridNode.prototype = {
     _arrayLength: function(array)
     {
         return array ? "" + array.length : "";
+    },
+
+    /**
+     * @override
+     * @protected
+     */
+    willAttach: function()
+    {
+        if (this._staleGraph)
+            this._updateGraph();
     },
 
     wasDetached: function()
@@ -2649,7 +2697,7 @@ WebInspector.NetworkDataGridNode.prototype = {
      */
     _isFailed: function()
     {
-        return !!this._request.failed || (this._request.statusCode >= 400);
+        return (this._request.failed && !this._request.statusCode) || (this._request.statusCode >= 400);
     },
 
     /**
@@ -2673,7 +2721,7 @@ WebInspector.NetworkDataGridNode.prototype = {
         iconElement.classList.add(this._request.type.name());
 
         cell.appendChild(iconElement);
-        cell.appendChild(document.createTextNode(this._request.name()));
+        cell.createTextChild(this._request.name());
         this._appendSubtitle(cell, this._request.path());
         cell.title = this._request.url;
     },
@@ -2688,38 +2736,23 @@ WebInspector.NetworkDataGridNode.prototype = {
         if (this._request.failed && !this._request.canceled) {
             var failText = WebInspector.UIString("(failed)");
             if (this._request.localizedFailDescription) {
-                cell.appendChild(document.createTextNode(failText));
+                cell.createTextChild(failText);
                 this._appendSubtitle(cell, this._request.localizedFailDescription);
                 cell.title = failText + " " + this._request.localizedFailDescription;
             } else
                 cell.setTextAndTitle(failText);
         } else if (this._request.statusCode) {
-            cell.appendChild(document.createTextNode("" + this._request.statusCode));
+            cell.createTextChild("" + this._request.statusCode);
             this._appendSubtitle(cell, this._request.statusText);
             cell.title = this._request.statusCode + " " + this._request.statusText;
         } else if (this._request.parsedURL.isDataURL()) {
             cell.setTextAndTitle(WebInspector.UIString("(data)"));
-        } else if (this._request.isPingRequest()) {
-            cell.setTextAndTitle(WebInspector.UIString("(ping)"));
         } else if (this._request.canceled) {
             cell.setTextAndTitle(WebInspector.UIString("(canceled)"));
         } else if (this._request.finished) {
             cell.setTextAndTitle(WebInspector.UIString("Finished"));
         } else {
             cell.setTextAndTitle(WebInspector.UIString("(pending)"));
-        }
-    },
-
-    /**
-     * @param {!Element} cell
-     */
-    _renderTypeCell: function(cell)
-    {
-        if (this._request.mimeType) {
-            cell.setTextAndTitle(this._request.mimeType);
-        } else {
-            cell.classList.toggle("network-dim-cell", !this._request.isPingRequest());
-            cell.setTextAndTitle(this._request.requestContentType() || "");
         }
     },
 
@@ -2809,24 +2842,32 @@ WebInspector.NetworkDataGridNode.prototype = {
         cellElement.appendChild(subtitleElement);
     },
 
-    /**
-     * @param {!WebInspector.NetworkTimeCalculator} calculator
-     */
-    refreshGraph: function(calculator)
+    refreshGraph: function()
     {
         if (!this._timelineCell)
             return;
+        this._staleGraph = true;
+        if (this.attached())
+            this.dataGrid.scheduleUpdate();
+    },
 
+    _updateGraph: function()
+    {
+        this._staleGraph = false;
+        if (!this._timelineCell)
+            return;
+
+        var calculator = this._parentView.calculator();
         var percentages = calculator.computeBarGraphPercentages(this._request);
         this._percentages = percentages;
 
         this._barAreaElement.classList.remove("hidden");
 
         this._barLeftElement.style.setProperty("left", percentages.start + "%");
-        this._barRightElement.style.setProperty("right", (100 - percentages.end) + "%");
+        this._barLeftElement.style.setProperty("right", (100 - percentages.middle) + "%");
 
-        this._barLeftElement.style.setProperty("right", (100 - percentages.end) + "%");
         this._barRightElement.style.setProperty("left", percentages.middle + "%");
+        this._barRightElement.style.setProperty("right", (100 - percentages.end) + "%");
 
         var labels = calculator.computeBarGraphLabels(this._request);
         this._labelLeftElement.textContent = labels.left;

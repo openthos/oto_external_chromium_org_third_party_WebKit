@@ -69,7 +69,6 @@ IDBCursor::IDBCursor(PassOwnPtr<WebIDBCursor> backend, WebIDBCursorDirection dir
     ASSERT(m_request);
     ASSERT(m_source->type() == IDBAny::IDBObjectStoreType || m_source->type() == IDBAny::IDBIndexType);
     ASSERT(m_transaction);
-    ScriptWrappable::init(this);
 }
 
 IDBCursor::~IDBCursor()
@@ -86,7 +85,7 @@ void IDBCursor::trace(Visitor* visitor)
     visitor->trace(m_primaryKey);
 }
 
-IDBRequest* IDBCursor::update(ScriptState* scriptState, ScriptValue& value, ExceptionState& exceptionState)
+IDBRequest* IDBCursor::update(ScriptState* scriptState, const ScriptValue& value, ExceptionState& exceptionState)
 {
     IDB_TRACE("IDBCursor::update");
 

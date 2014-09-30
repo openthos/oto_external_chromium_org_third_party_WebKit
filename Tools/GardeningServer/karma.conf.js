@@ -16,7 +16,10 @@ module.exports = function(config) {
       mocha: {
         ui: 'bdd',
         checkLeaks: true,
-        globals: ['net']
+        globals: ['net', 'scrolled', 'oCursor', 'availableWidth', 'topNotUsableSize',
+            'xLabelWidth', 'nblab', 'bottomNotUsableHeightWithoutXLabels',
+            'bottomNotUsableHeightWithXLabels', 'availableHeight', 'clrx', 'clrwidth',
+            'clry', 'clrheight', 'fmtYLabel', 'lgtxt', 'lgtxt2']
       },
       captureConsole: true
     },
@@ -42,6 +45,7 @@ module.exports = function(config) {
       'model/test/*.html',
       'scripts/test/*.html',
       'ui/test/*',
+      'bower_components/polymer/polymer.html'
     ],
 
     // list of files to exclude

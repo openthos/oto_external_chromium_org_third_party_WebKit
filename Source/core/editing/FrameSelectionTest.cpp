@@ -9,6 +9,7 @@
 #include "core/dom/Document.h"
 #include "core/dom/Element.h"
 #include "core/dom/Text.h"
+#include "core/frame/FrameView.h"
 #include "core/html/HTMLBodyElement.h"
 #include "core/html/HTMLDocument.h"
 #include "core/testing/DummyPageHolder.h"
@@ -27,10 +28,12 @@ class FrameSelectionTest : public ::testing::Test {
 protected:
     virtual void SetUp() OVERRIDE;
 
+    DummyPageHolder& dummyPageHolder() const { return *m_dummyPageHolder; }
     HTMLDocument& document() const;
     void setSelection(const VisibleSelection&);
-    const FrameSelection& selection() const;
+    FrameSelection& selection() const;
     Text* textNode() { return m_textNode.get(); }
+    int layoutCount() const { return m_dummyPageHolder->frameView().layoutCount(); }
 
 private:
     OwnPtr<DummyPageHolder> m_dummyPageHolder;
@@ -57,7 +60,7 @@ void FrameSelectionTest::setSelection(const VisibleSelection& newSelection)
     m_dummyPageHolder->frame().selection().setSelection(newSelection);
 }
 
-const FrameSelection& FrameSelectionTest::selection() const
+FrameSelection& FrameSelectionTest::selection() const
 {
     return m_dummyPageHolder->frame().selection();
 }
@@ -87,6 +90,52 @@ TEST_F(FrameSelectionTest, SetInvalidSelection)
     setSelection(invalidSelection);
 
     EXPECT_TRUE(selection().isNone());
+}
+
+TEST_F(FrameSelectionTest, InvalidateCaretRect)
+{
+    document().view()->updateLayoutAndStyleIfNeededRecursive();
+
+    VisibleSelection validSelection(Position(textNode(), 0), Position(textNode(), 0));
+    setSelection(validSelection);
+    selection().setCaretRectNeedsUpdate();
+    EXPECT_TRUE(selection().isCaretBoundsDirty());
+    selection().invalidateCaretRect();
+    EXPECT_FALSE(selection().isCaretBoundsDirty());
+
+    document().body()->removeChild(textNode());
+    document().updateLayoutIgnorePendingStylesheets();
+    selection().setCaretRectNeedsUpdate();
+    EXPECT_TRUE(selection().isCaretBoundsDirty());
+    selection().invalidateCaretRect();
+    EXPECT_FALSE(selection().isCaretBoundsDirty());
+}
+
+TEST_F(FrameSelectionTest, PaintCaretShouldNotLayout)
+{
+    document().view()->updateLayoutAndStyleIfNeededRecursive();
+
+    document().body()->setContentEditable("true", ASSERT_NO_EXCEPTION);
+    document().body()->focus();
+    EXPECT_TRUE(document().body()->focused());
+
+    VisibleSelection validSelection(Position(textNode(), 0), Position(textNode(), 0));
+    selection().setCaretVisible(true);
+    setSelection(validSelection);
+    EXPECT_TRUE(selection().isCaret());
+    EXPECT_TRUE(selection().ShouldPaintCaretForTesting());
+
+    int startCount = layoutCount();
+    {
+        // To force layout in next updateLayout calling, widen view.
+        FrameView& frameView = dummyPageHolder().frameView();
+        IntRect frameRect = frameView.frameRect();
+        frameRect.setWidth(frameRect.width() + 1);
+        frameRect.setHeight(frameRect.height() + 1);
+        dummyPageHolder().frameView().setFrameRect(frameRect);
+    }
+    selection().paintCaret(nullptr, LayoutPoint(), LayoutRect());
+    EXPECT_EQ(startCount, layoutCount());
 }
 
 }

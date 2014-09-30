@@ -45,9 +45,10 @@ namespace blink {
 class CanvasRenderingContext2D;
 class ClientRect;
 class ClientRectList;
-class WebKitPoint;
+class DOMPoint;
 class DOMStringList;
 class LocalDOMWindow;
+class DictionaryTest;
 class Document;
 class DocumentMarker;
 class Element;
@@ -59,6 +60,7 @@ class HTMLMediaElement;
 class InternalProfilers;
 class InternalRuntimeFlags;
 class InternalSettings;
+class Iterator;
 class LayerRectList;
 class LocalFrame;
 class Node;
@@ -72,9 +74,10 @@ template <typename NodeType> class StaticNodeTypeList;
 typedef StaticNodeTypeList<Node> StaticNodeList;
 class TypeConversions;
 
-class Internals FINAL : public RefCountedWillBeGarbageCollectedFinalized<Internals>, public ScriptWrappable, public ContextLifecycleObserver {
+class Internals FINAL : public GarbageCollectedFinalized<Internals>, public ScriptWrappable, public ContextLifecycleObserver {
+    DEFINE_WRAPPERTYPEINFO();
 public:
-    static PassRefPtrWillBeRawPtr<Internals> create(Document*);
+    static Internals* create(Document*);
     virtual ~Internals();
 
     static void resetToConsistentState(Page*);
@@ -83,7 +86,7 @@ public:
 
     String address(Node*);
 
-    PassRefPtrWillBeRawPtr<GCObservation> observeGC(ScriptValue);
+    GCObservation* observeGC(ScriptValue);
 
     bool isPreloaded(const String& url);
     bool isLoadingFromMemoryCache(const String& url);
@@ -101,7 +104,6 @@ public:
     bool hasContentElement(const Node*, ExceptionState&) const;
     size_t countElementShadow(const Node*, ExceptionState&) const;
     const AtomicString& shadowPseudoId(Element*);
-    void setShadowPseudoId(Element*, const AtomicString&);
 
     // CSS Animation / Transition testing.
     void pauseAnimations(double pauseTime, ExceptionState&);
@@ -128,6 +130,7 @@ public:
 
     String visiblePlaceholder(Element*);
     void selectColorInColorChooser(Element*, const String& colorValue);
+    void endColorChooser(Element*);
     bool hasAutofocusRequest(Document*);
     bool hasAutofocusRequest();
     Vector<String> formControlStateOfHistoryItem(ExceptionState&);
@@ -163,9 +166,9 @@ public:
     unsigned lengthFromRange(Element* scope, const Range*);
     String rangeAsText(const Range*);
 
-    PassRefPtrWillBeRawPtr<WebKitPoint> touchPositionAdjustedToBestClickableNode(long x, long y, long width, long height, Document*, ExceptionState&);
+    DOMPoint* touchPositionAdjustedToBestClickableNode(long x, long y, long width, long height, Document*, ExceptionState&);
     Node* touchNodeAdjustedToBestClickableNode(long x, long y, long width, long height, Document*, ExceptionState&);
-    PassRefPtrWillBeRawPtr<WebKitPoint> touchPositionAdjustedToBestContextMenuNode(long x, long y, long width, long height, Document*, ExceptionState&);
+    DOMPoint* touchPositionAdjustedToBestContextMenuNode(long x, long y, long width, long height, Document*, ExceptionState&);
     Node* touchNodeAdjustedToBestContextMenuNode(long x, long y, long width, long height, Document*, ExceptionState&);
     PassRefPtrWillBeRawPtr<ClientRect> bestZoomableAreaForTouchPoint(long x, long y, long width, long height, Document*, ExceptionState&);
 
@@ -179,7 +182,7 @@ public:
     unsigned wheelEventHandlerCount(Document*);
     unsigned scrollEventHandlerCount(Document*);
     unsigned touchEventHandlerCount(Document*);
-    PassRefPtrWillBeRawPtr<LayerRectList> touchEventTargetLayerRects(Document*, ExceptionState&);
+    LayerRectList* touchEventTargetLayerRects(Document*, ExceptionState&);
 
     // This is used to test rect based hit testing like what's done on touch screens.
     PassRefPtrWillBeRawPtr<StaticNodeList> nodesFromRect(Document*, int x, int y, unsigned topPadding, unsigned rightPadding,
@@ -246,11 +249,14 @@ public:
     void mediaPlayerRequestFullscreen(HTMLMediaElement*);
     double effectiveMediaVolume(HTMLMediaElement*);
 
+    void mediaPlayerRemoteRouteAvailabilityChanged(HTMLMediaElement *, bool);
+
     void registerURLSchemeAsBypassingContentSecurityPolicy(const String& scheme);
     void removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(const String& scheme);
 
-    PassRefPtrWillBeRawPtr<TypeConversions> typeConversions() const;
+    TypeConversions* typeConversions() const;
     PrivateScriptTest* privateScriptTest() const;
+    DictionaryTest* dictionaryTest() const;
 
     Vector<String> getReferencedFilePaths() const;
 
@@ -314,6 +320,9 @@ public:
     unsigned countHitRegions(CanvasRenderingContext2D*);
 
     void forcePluginPlaceholder(HTMLElement* plugin, const String& htmlSource, ExceptionState&);
+    void forcePluginPlaceholder(HTMLElement* plugin, const Dictionary& options, ExceptionState&);
+
+    Iterator* iterator(ScriptState*, ExceptionState&);
 
 private:
     explicit Internals(Document*);
@@ -323,10 +332,10 @@ private:
     PassRefPtrWillBeRawPtr<ClientRectList> annotatedRegions(Document*, bool draggable, ExceptionState&);
 
     DocumentMarker* markerAt(Node*, const String& markerType, unsigned index, ExceptionState&);
-    RefPtrWillBeMember<InternalRuntimeFlags> m_runtimeFlags;
-    RefPtrWillBeMember<InternalProfilers> m_profilers;
+    Member<InternalRuntimeFlags> m_runtimeFlags;
+    Member<InternalProfilers> m_profilers;
 };
 
 } // namespace blink
 
-#endif
+#endif // Internals_h

@@ -80,7 +80,13 @@ public:
 
     FrameView* frameView() const { return m_frameView; }
 
-    virtual void mapRectToPaintInvalidationBacking(const RenderLayerModelObject* paintInvalidationContainer, LayoutRect&, ViewportConstrainedPosition, const PaintInvalidationState*) const OVERRIDE;
+    enum ViewportConstrainedPosition {
+        IsNotFixedPosition,
+        IsFixedPosition,
+    };
+    void mapRectToPaintInvalidationBacking(const RenderLayerModelObject* paintInvalidationContainer, LayoutRect&, ViewportConstrainedPosition, const PaintInvalidationState*) const;
+    virtual void mapRectToPaintInvalidationBacking(const RenderLayerModelObject* paintInvalidationContainer, LayoutRect&, const PaintInvalidationState*) const OVERRIDE;
+
     void invalidatePaintForRectangle(const LayoutRect&) const;
 
     void invalidatePaintForViewAndCompositedLayers();
@@ -94,7 +100,7 @@ public:
     void clearSelection();
     RenderObject* selectionStart() const { return m_selectionStart; }
     RenderObject* selectionEnd() const { return m_selectionEnd; }
-    IntRect selectionBounds(bool clipToVisibleContent = true) const;
+    IntRect selectionBounds() const;
     void selectionStartEnd(int& startPos, int& endPos) const;
     void invalidatePaintForSelection() const;
 
@@ -164,18 +170,12 @@ private:
     virtual void mapAbsoluteToLocalPoint(MapCoordinatesFlags, TransformState&) const OVERRIDE;
     virtual void computeSelfHitTestRects(Vector<LayoutRect>&, const LayoutPoint& layerOffset) const OVERRIDE;
 
-
     bool shouldInvalidatePaint(const LayoutRect&) const;
-
-    bool rootFillsViewportBackground(RenderBox* rootBox) const;
 
     void layoutContent();
 #if ENABLE(ASSERT)
     void checkLayoutState();
 #endif
-
-    void positionDialog(RenderBox*);
-    void positionDialogs();
 
     friend class ForceHorriblySlowRectMapping;
 

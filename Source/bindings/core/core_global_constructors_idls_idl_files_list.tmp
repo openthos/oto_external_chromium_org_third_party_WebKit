@@ -33,6 +33,7 @@
 ../../core/css/FontFaceSetLoadEvent.idl
 ../../core/css/MediaList.idl
 ../../core/css/MediaQueryList.idl
+../../core/css/MediaQueryListEvent.idl
 ../../core/css/RGBColor.idl
 ../../core/css/Rect.idl
 ../../core/css/StyleMedia.idl
@@ -65,6 +66,7 @@
 ../../core/dom/DocumentFragment.idl
 ../../core/dom/DocumentType.idl
 ../../core/dom/Element.idl
+../../core/dom/Iterator.idl
 ../../core/dom/MessageChannel.idl
 ../../core/dom/MessagePort.idl
 ../../core/dom/MutationObserver.idl
@@ -128,7 +130,6 @@
 ../../core/frame/Location.idl
 ../../core/frame/Navigator.idl
 ../../core/frame/Screen.idl
-../../core/frame/WebKitPoint.idl
 ../../core/frame/Window.idl
 ../../core/html/FormData.idl
 ../../core/html/HTMLAllCollection.idl
@@ -259,6 +260,7 @@
 ../../core/html/canvas/WebGLUniformLocation.idl
 ../../core/html/canvas/WebGLVertexArrayObjectOES.idl
 ../../core/html/ime/InputMethodContext.idl
+../../core/html/shadow/PluginPlaceholderElement.idl
 ../../core/html/track/AudioTrack.idl
 ../../core/html/track/AudioTrackList.idl
 ../../core/html/track/TextTrack.idl

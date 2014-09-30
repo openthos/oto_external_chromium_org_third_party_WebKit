@@ -72,6 +72,7 @@
 #include "wtf/CurrentTime.h"
 #include "wtf/MathExtras.h"
 #include "wtf/Noncopyable.h"
+#include "wtf/ProcessID.h"
 #include "wtf/text/WTFString.h"
 
 namespace OverlayZOrders {
@@ -80,6 +81,8 @@ static const int highlight = 99;
 }
 
 namespace blink {
+
+static int s_nextDebuggerId = 1;
 
 class ClientMessageLoopAdapter : public PageScriptDebugServer::ClientMessageLoop {
 public:
@@ -198,7 +201,7 @@ private:
 WebDevToolsAgentImpl::WebDevToolsAgentImpl(
     WebViewImpl* webViewImpl,
     WebDevToolsAgentClient* client)
-    : m_debuggerId(client->debuggerId())
+    : m_debuggerId(s_nextDebuggerId++)
     , m_layerTreeId(0)
     , m_client(client)
     , m_webViewImpl(webViewImpl)
@@ -214,7 +217,9 @@ WebDevToolsAgentImpl::WebDevToolsAgentImpl(
     , m_pageScaleLimitsOverriden(false)
     , m_touchEventEmulationEnabled(false)
 {
-    long processId = client->processId();
+    ASSERT(isMainThread());
+
+    long processId = WTF::getCurrentProcessID();
     ASSERT(processId > 0);
     inspectorController()->setProcessId(processId);
 
@@ -456,102 +461,6 @@ void WebDevToolsAgentImpl::updatePageScaleFactorLimits()
     }
 }
 
-void WebDevToolsAgentImpl::getAllocatedObjects(HashSet<const void*>& set)
-{
-    class CountingVisitor : public WebDevToolsAgentClient::AllocatedObjectVisitor {
-    public:
-        CountingVisitor() : m_totalObjectsCount(0)
-        {
-        }
-
-        virtual bool visitObject(const void* ptr)
-        {
-            ++m_totalObjectsCount;
-            return true;
-        }
-        size_t totalObjectsCount() const
-        {
-            return m_totalObjectsCount;
-        }
-
-    private:
-        size_t m_totalObjectsCount;
-    };
-
-    CountingVisitor counter;
-    m_client->visitAllocatedObjects(&counter);
-
-    class PointerCollector : public WebDevToolsAgentClient::AllocatedObjectVisitor {
-    public:
-        explicit PointerCollector(size_t maxObjectsCount)
-            : m_maxObjectsCount(maxObjectsCount)
-            , m_index(0)
-            , m_success(true)
-            , m_pointers(new const void*[maxObjectsCount])
-        {
-        }
-        virtual ~PointerCollector()
-        {
-            delete[] m_pointers;
-        }
-        virtual bool visitObject(const void* ptr)
-        {
-            if (m_index == m_maxObjectsCount) {
-                m_success = false;
-                return false;
-            }
-            m_pointers[m_index++] = ptr;
-            return true;
-        }
-
-        bool success() const { return m_success; }
-
-        void copyTo(HashSet<const void*>& set)
-        {
-            for (size_t i = 0; i < m_index; i++)
-                set.add(m_pointers[i]);
-        }
-
-    private:
-        const size_t m_maxObjectsCount;
-        size_t m_index;
-        bool m_success;
-        const void** m_pointers;
-    };
-
-    // Double size to allow room for all objects that may have been allocated
-    // since we counted them.
-    size_t estimatedMaxObjectsCount = counter.totalObjectsCount() * 2;
-    while (true) {
-        PointerCollector collector(estimatedMaxObjectsCount);
-        m_client->visitAllocatedObjects(&collector);
-        if (collector.success()) {
-            collector.copyTo(set);
-            break;
-        }
-        estimatedMaxObjectsCount *= 2;
-    }
-}
-
-void WebDevToolsAgentImpl::dumpUncountedAllocatedObjects(const HashMap<const void*, size_t>& map)
-{
-    class InstrumentedObjectSizeProvider : public WebDevToolsAgentClient::InstrumentedObjectSizeProvider {
-    public:
-        InstrumentedObjectSizeProvider(const HashMap<const void*, size_t>& map) : m_map(map) { }
-        virtual size_t objectSize(const void* ptr) const
-        {
-            HashMap<const void*, size_t>::const_iterator i = m_map.find(ptr);
-            return i == m_map.end() ? 0 : i->value;
-        }
-
-    private:
-        const HashMap<const void*, size_t>& m_map;
-    };
-
-    InstrumentedObjectSizeProvider provider(map);
-    m_client->dumpUncountedAllocatedObjects(&provider);
-}
-
 void WebDevToolsAgentImpl::setTraceEventCallback(const String& categoryFilter, TraceEventCallback callback)
 {
     m_client->setTraceEventCallback(categoryFilter, callback);
@@ -674,6 +583,11 @@ void WebDevToolsAgentImpl::flush()
 void WebDevToolsAgentImpl::updateInspectorStateCookie(const String& state)
 {
     m_client->saveAgentRuntimeState(state);
+}
+
+void WebDevToolsAgentImpl::resumeStartup()
+{
+    m_client->resumeStartup();
 }
 
 void WebDevToolsAgentImpl::setLayerTreeId(int layerTreeId)

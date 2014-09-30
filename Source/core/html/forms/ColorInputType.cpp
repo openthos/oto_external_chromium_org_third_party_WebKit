@@ -42,9 +42,10 @@
 #include "core/html/HTMLDivElement.h"
 #include "core/html/HTMLInputElement.h"
 #include "core/html/HTMLOptionElement.h"
+#include "core/html/forms/ColorChooser.h"
 #include "core/page/Chrome.h"
+#include "core/rendering/RenderTheme.h"
 #include "core/rendering/RenderView.h"
-#include "platform/ColorChooser.h"
 #include "platform/RuntimeEnabledFeatures.h"
 #include "platform/UserGestureIndicator.h"
 #include "platform/graphics/Color.h"
@@ -87,11 +88,6 @@ ColorInputType::~ColorInputType()
 void ColorInputType::countUsage()
 {
     countUsageIfVisible(UseCounter::InputTypeColor);
-}
-
-bool ColorInputType::isColorControl() const
-{
-    return true;
 }
 
 const AtomicString& ColorInputType::formControlType() const
@@ -188,11 +184,14 @@ void ColorInputType::didChooseColor(const Color& color)
         return;
     element().setValueFromRenderer(color.serialized());
     element().updateView();
-    element().dispatchFormControlChangeEvent();
+    if (!RenderTheme::theme().isModalColorChooser())
+        element().dispatchFormControlChangeEvent();
 }
 
 void ColorInputType::didEndChooser()
 {
+    if (RenderTheme::theme().isModalColorChooser())
+        element().dispatchFormControlChangeEvent();
     m_chooser.clear();
 }
 
@@ -215,6 +214,11 @@ HTMLElement* ColorInputType::shadowColorSwatch() const
 {
     ShadowRoot* shadow = element().userAgentShadowRoot();
     return shadow ? toHTMLElement(shadow->firstChild()->firstChild()) : 0;
+}
+
+Element& ColorInputType::ownerElement() const
+{
+    return element();
 }
 
 IntRect ColorInputType::elementRectRelativeToRootView() const
@@ -251,6 +255,16 @@ Vector<ColorSuggestion> ColorInputType::suggestions() const
         }
     }
     return suggestions;
+}
+
+AXObject* ColorInputType::popupRootAXObject()
+{
+    return m_chooser ? m_chooser->rootAXObject() : 0;
+}
+
+ColorChooserClient* ColorInputType::colorChooserClient()
+{
+    return this;
 }
 
 } // namespace blink

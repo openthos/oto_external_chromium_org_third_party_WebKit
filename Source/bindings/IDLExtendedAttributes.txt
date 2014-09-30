@@ -62,14 +62,16 @@ Immutable
 ImplementedAs=*
 ImplementedInPrivateScript
 InitializedByEventConstructor
+Iterable
 LegacyTreatAsPartialInterface
 LogActivity=|GetterOnly|SetterOnly
 LogAllWorlds
-LogPreviousValue
 MeasureAs=*
 NamedConstructor=*
+NoImplHeader
 NoInterfaceObject
 NotEnumerable
+NotScriptWrappable
 OnlyExposedToPrivateScript
 OverrideBuiltins
 PartialInterfaceImplementedAs=*

@@ -46,7 +46,8 @@ public:
     virtual void openUI() OVERRIDE;
 
     // ColorChooser functions
-    void endChooser() OVERRIDE;
+    virtual void endChooser() OVERRIDE;
+    virtual AXObject* rootAXObject() OVERRIDE;
 
     // PagePopupClient functions:
     virtual IntSize contentSize() OVERRIDE;
@@ -55,6 +56,7 @@ public:
     virtual void setValueAndClosePopup(int, const String&) OVERRIDE;
     virtual void setValue(const String&) OVERRIDE;
     virtual void closePopup() OVERRIDE;
+    virtual Element& ownerElement() OVERRIDE;
     virtual void didClosePopup() OVERRIDE;
 
 private:

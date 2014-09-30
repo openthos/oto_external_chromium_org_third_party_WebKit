@@ -1,4 +1,5 @@
 css/FontFaceSetLoadEvent.idl
+css/MediaQueryListEvent.idl
 events/AnimationPlayerEvent.idl
 events/ApplicationCacheErrorEvent.idl
 events/AutocompleteErrorEvent.idl

@@ -25,13 +25,13 @@
 #include "core/rendering/RenderReplaced.h"
 
 #include "core/editing/PositionWithAffinity.h"
+#include "core/paint/BoxPainter.h"
 #include "core/rendering/GraphicsContextAnnotator.h"
 #include "core/rendering/RenderBlock.h"
 #include "core/rendering/RenderImage.h"
 #include "core/rendering/RenderLayer.h"
 #include "core/rendering/RenderView.h"
 #include "platform/LengthFunctions.h"
-#include "platform/RuntimeEnabledFeatures.h"
 #include "platform/graphics/GraphicsContext.h"
 
 namespace blink {
@@ -148,7 +148,7 @@ void RenderReplaced::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
             paintInfo.context->save();
             RoundedRect roundedInnerRect = style()->getRoundedInnerBorderFor(paintRect,
                 paddingTop() + borderTop(), paddingBottom() + borderBottom(), paddingLeft() + borderLeft(), paddingRight() + borderRight(), true, true);
-            clipRoundedInnerRect(paintInfo.context, paintRect, roundedInnerRect);
+            BoxPainter::clipRoundedInnerRect(paintInfo.context, paintRect, roundedInnerRect);
         }
     }
 
@@ -285,9 +285,7 @@ LayoutRect RenderReplaced::replacedContentRect(const LayoutSize* overriddenIntri
     ObjectFit objectFit = style()->objectFit();
 
     if (objectFit == ObjectFitFill && style()->objectPosition() == RenderStyle::initialObjectPosition()) {
-        if (!isVideo() || RuntimeEnabledFeatures::objectFitPositionEnabled())
-            return contentRect;
-        objectFit = ObjectFitContain;
+        return contentRect;
     }
 
     LayoutSize intrinsicSize = overriddenIntrinsicSize ? *overriddenIntrinsicSize : this->intrinsicSize();
@@ -492,7 +490,7 @@ PositionWithAffinity RenderReplaced::positionForPoint(const LayoutPoint& point)
     return RenderBox::positionForPoint(point);
 }
 
-LayoutRect RenderReplaced::selectionRectForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer, bool clipToVisibleContent)
+LayoutRect RenderReplaced::selectionRectForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer) const
 {
     ASSERT(!needsLayout());
 
@@ -500,11 +498,7 @@ LayoutRect RenderReplaced::selectionRectForPaintInvalidation(const RenderLayerMo
         return LayoutRect();
 
     LayoutRect rect = localSelectionRect();
-    if (clipToVisibleContent)
-        mapRectToPaintInvalidationBacking(paintInvalidationContainer, rect, ViewportConstraintDoesNotMatter, 0);
-    else
-        rect = localToContainerQuad(FloatRect(rect), paintInvalidationContainer).enclosingBoundingBox();
-
+    mapRectToPaintInvalidationBacking(paintInvalidationContainer, rect, 0);
     return rect;
 }
 
@@ -571,7 +565,7 @@ LayoutRect RenderReplaced::clippedOverflowRectForPaintInvalidation(const RenderL
     // The selectionRect can project outside of the overflowRect, so take their union
     // for paint invalidation to avoid selection painting glitches.
     LayoutRect r = isSelected() ? localSelectionRect() : visualOverflowRect();
-    mapRectToPaintInvalidationBacking(paintInvalidationContainer, r, ViewportConstraintDoesNotMatter, paintInvalidationState);
+    mapRectToPaintInvalidationBacking(paintInvalidationContainer, r, paintInvalidationState);
     return r;
 }
 

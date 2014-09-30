@@ -46,7 +46,6 @@
 #include <gtest/gtest.h>
 
 using namespace blink;
-using namespace blink;
 
 namespace {
 
@@ -123,6 +122,24 @@ TEST_F(ScrollingCoordinatorChromiumTest, fastScrollingByDefault)
     ASSERT_TRUE(rootScrollLayer->scrollable());
     ASSERT_FALSE(rootScrollLayer->shouldScrollOnMainThread());
     ASSERT_FALSE(rootScrollLayer->haveWheelEventHandlers());
+}
+
+TEST_F(ScrollingCoordinatorChromiumTest, fastScrollingCanBeDisabledWithSetting)
+{
+    navigateTo("about:blank");
+    webViewImpl()->settings()->setThreadedScrollingEnabled(false);
+    forceFullCompositingUpdate();
+
+    // Make sure the scrolling coordinator is active.
+    FrameView* frameView = frame()->view();
+    Page* page = frame()->page();
+    ASSERT_TRUE(page->scrollingCoordinator());
+    ASSERT_TRUE(page->scrollingCoordinator()->coordinatesScrollingForFrameView(frameView));
+
+    // Main scrolling should be enabled with the setting override.
+    WebLayer* rootScrollLayer = getRootScrollLayer();
+    ASSERT_TRUE(rootScrollLayer->scrollable());
+    ASSERT_TRUE(rootScrollLayer->shouldScrollOnMainThread());
 }
 
 static WebLayer* webLayerFromElement(Element* element)

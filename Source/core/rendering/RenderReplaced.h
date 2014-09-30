@@ -45,6 +45,8 @@ public:
     static const int defaultWidth;
     static const int defaultHeight;
 
+    virtual void paint(PaintInfo&, const LayoutPoint&) OVERRIDE;
+
 protected:
     virtual void willBeDestroyed() OVERRIDE;
 
@@ -68,7 +70,6 @@ protected:
     void setIntrinsicSize(const LayoutSize& intrinsicSize) { m_intrinsicSize = intrinsicSize; }
     virtual void intrinsicSizeChanged();
 
-    virtual void paint(PaintInfo&, const LayoutPoint&) OVERRIDE;
     bool shouldPaint(PaintInfo&, const LayoutPoint&);
     LayoutRect localSelectionRect(bool checkWhetherSelected = true) const; // This is in local coordinates, but it's a physical rect (so the top left corner is physical top left).
     virtual RenderBox* embeddedContentBox() const { return 0; }
@@ -87,7 +88,7 @@ private:
 
     virtual bool canBeSelectionLeaf() const OVERRIDE { return true; }
 
-    virtual LayoutRect selectionRectForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer, bool clipToVisibleContent = true) OVERRIDE FINAL;
+    virtual LayoutRect selectionRectForPaintInvalidation(const RenderLayerModelObject* paintInvalidationContainer) const OVERRIDE FINAL;
     void computeAspectRatioInformationForRenderBox(RenderBox*, FloatSize& constrainedSize, double& intrinsicRatio) const;
 
     mutable LayoutSize m_intrinsicSize;

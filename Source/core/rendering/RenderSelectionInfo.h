@@ -42,7 +42,7 @@ public:
 
     RenderSelectionInfoBase(RenderObject* o)
         : m_object(o)
-        , m_paintInvalidationContainer(o->containerForPaintInvalidation())
+        , m_paintInvalidationContainer(o->isRooted() ? o->containerForPaintInvalidation() : nullptr)
         , m_state(o->selectionState())
     {
     }
@@ -66,14 +66,14 @@ protected:
 // This struct is used when the selection changes to cache the old and new state of the selection for each RenderObject.
 class RenderSelectionInfo FINAL : public RenderSelectionInfoBase {
 public:
-    RenderSelectionInfo(RenderObject* o, bool clipToVisibleContent)
+    RenderSelectionInfo(RenderObject* o)
         : RenderSelectionInfoBase(o)
     {
-        if (o->canUpdateSelectionOnRootLineBoxes()) {
-            m_rect = o->selectionRectForPaintInvalidation(m_paintInvalidationContainer, clipToVisibleContent);
+        if (m_paintInvalidationContainer && o->canUpdateSelectionOnRootLineBoxes()) {
+            m_rect = o->selectionRectForPaintInvalidation(m_paintInvalidationContainer);
             // FIXME: groupedMapping() leaks the squashing abstraction. See RenderBlockSelectionInfo for more details.
-            if (m_paintInvalidationContainer && m_paintInvalidationContainer->layer()->groupedMapping())
-                RenderLayer::mapRectToPaintInvalidationBacking(m_paintInvalidationContainer, m_paintInvalidationContainer, m_rect);
+            if (m_paintInvalidationContainer->layer()->groupedMapping())
+                RenderLayer::mapRectToPaintBackingCoordinates(m_paintInvalidationContainer, m_rect);
         } else {
             m_rect = LayoutRect();
         }
@@ -90,14 +90,13 @@ private:
     LayoutRect m_rect; // relative to paint invalidation container
 };
 
-
 // This struct is used when the selection changes to cache the old and new state of the selection for each RenderBlock.
 class RenderBlockSelectionInfo FINAL : public RenderSelectionInfoBase {
 public:
     RenderBlockSelectionInfo(RenderBlock* b)
         : RenderSelectionInfoBase(b)
     {
-        if (b->canUpdateSelectionOnRootLineBoxes())
+        if (m_paintInvalidationContainer && b->canUpdateSelectionOnRootLineBoxes())
             m_rects = block()->selectionGapRectsForPaintInvalidation(m_paintInvalidationContainer);
         else
             m_rects = GapRects();
@@ -110,7 +109,7 @@ public:
         // RenderBox::mapRectToPaintInvalidationBacking to get called, which makes rect adjustments even if you pass the same
         // paintInvalidationContainer as the render object. Find out why it does that and fix.
         if (m_paintInvalidationContainer && m_paintInvalidationContainer->layer()->groupedMapping())
-            RenderLayer::mapRectToPaintInvalidationBacking(m_paintInvalidationContainer, m_paintInvalidationContainer, paintInvalidationRect);
+            RenderLayer::mapRectToPaintBackingCoordinates(m_paintInvalidationContainer, paintInvalidationRect);
         m_object->invalidatePaintUsingContainer(m_paintInvalidationContainer, enclosingIntRect(paintInvalidationRect), InvalidationSelection);
     }
 
