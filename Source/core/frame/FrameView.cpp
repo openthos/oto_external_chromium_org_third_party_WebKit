@@ -1523,7 +1523,12 @@ bool FrameView::computeCompositedSelectionBounds(LocalFrame& frame, CompositedSe
     RenderedPosition renderedEnd(visibleEnd);
 
     renderedStart.positionInGraphicsLayerBacking(start);
+    if (!start.layer)
+        return false;
+
     renderedEnd.positionInGraphicsLayerBacking(end);
+    if (!end.layer)
+        return false;
 
     if (selection.isCaret()) {
         start.type = end.type = CompositedSelectionBound::Caret;
@@ -1815,9 +1820,17 @@ void FrameView::scrollToAnchor()
     if (anchorNode != m_frame->document())
         rect = anchorNode->boundingBox();
 
+    RefPtrWillBeRawPtr<LocalFrame> boundaryFrame = m_frame->document()->findUnsafeParentScrollPropagationBoundary();
+
+    if (boundaryFrame)
+        boundaryFrame->view()->setSafeToPropagateScrollToParent(false);
+
     // Scroll nested layers and frames to reveal the anchor.
     // Align to the top and to the closest side (this matches other browsers).
     anchorNode->renderer()->scrollRectToVisible(rect, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignTopAlways);
+
+    if (boundaryFrame)
+        boundaryFrame->view()->setSafeToPropagateScrollToParent(true);
 
     if (AXObjectCache* cache = m_frame->document()->existingAXObjectCache())
         cache->handleScrolledToAnchor(anchorNode.get());
