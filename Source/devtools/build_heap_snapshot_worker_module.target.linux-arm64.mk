@@ -13,20 +13,7 @@ gyp_shared_intermediate_dir := $(call intermediates-dir-for,GYP,shared,,,$(GYP_V
 # Make sure our deps are built first.
 GYP_TARGET_DEPENDENCIES :=
 
-### Rules for action "build_heap_snapshot_worker_module":
-$(gyp_shared_intermediate_dir)/resources/inspector/heap_snapshot_worker.js: gyp_local_path := $(LOCAL_PATH)
-$(gyp_shared_intermediate_dir)/resources/inspector/heap_snapshot_worker.js: gyp_var_prefix := $(GYP_VAR_PREFIX)
-$(gyp_shared_intermediate_dir)/resources/inspector/heap_snapshot_worker.js: gyp_intermediate_dir := $(abspath $(gyp_intermediate_dir))
-$(gyp_shared_intermediate_dir)/resources/inspector/heap_snapshot_worker.js: gyp_shared_intermediate_dir := $(abspath $(gyp_shared_intermediate_dir))
-$(gyp_shared_intermediate_dir)/resources/inspector/heap_snapshot_worker.js: export PATH := $(subst $(ANDROID_BUILD_PATHS),,$(PATH))
-$(gyp_shared_intermediate_dir)/resources/inspector/heap_snapshot_worker.js: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/scripts/concatenate_module_scripts.py $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/heap_snapshot_worker/module.json $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/common/TextUtils.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/common/UIString.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/common/utilities.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/heap_snapshot_worker/AllocationProfile.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/heap_snapshot_worker/HeapSnapshot.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/heap_snapshot_worker/HeapSnapshotLoader.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/heap_snapshot_worker/HeapSnapshotWorker.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/heap_snapshot_worker/HeapSnapshotWorkerDispatcher.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/heap_snapshot_worker/JSHeapSnapshot.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/profiler/HeapSnapshotCommon.js $(GYP_TARGET_DEPENDENCIES)
-	@echo "Gyp action: third_party_WebKit_Source_devtools_devtools_gyp_build_heap_snapshot_worker_module_target_build_heap_snapshot_worker_module ($@)"
-	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/devtools; mkdir -p $(gyp_shared_intermediate_dir)/resources/inspector; python scripts/concatenate_module_scripts.py front_end/heap_snapshot_worker/module.json "$(gyp_shared_intermediate_dir)/resources/inspector/heap_snapshot_worker.js"
-
-
-
-GYP_GENERATED_OUTPUTS := \
-	$(gyp_shared_intermediate_dir)/resources/inspector/heap_snapshot_worker.js
+GYP_GENERATED_OUTPUTS :=
 
 # Make sure our deps and generated files are built first.
 LOCAL_ADDITIONAL_DEPENDENCIES := $(GYP_TARGET_DEPENDENCIES) $(GYP_GENERATED_OUTPUTS)

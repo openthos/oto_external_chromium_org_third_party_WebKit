@@ -17,6 +17,7 @@ GYP_TARGET_DEPENDENCIES := \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_supported_css_properties_gyp,,,$(GYP_VAR_PREFIX))/supported_css_properties.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_frontend_protocol_sources_gyp,,,$(GYP_VAR_PREFIX))/frontend_protocol_sources.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_build_applications_gyp,,,$(GYP_VAR_PREFIX))/build_applications.stamp \
+	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_copy_standalone_css_gyp,,,$(GYP_VAR_PREFIX))/copy_standalone_css.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_concatenated_devtools_css_gyp,,,$(GYP_VAR_PREFIX))/concatenated_devtools_css.stamp \
 	$(call intermediates-dir-for,GYP,third_party_WebKit_Source_devtools_concatenated_toolbox_css_gyp,,,$(GYP_VAR_PREFIX))/concatenated_toolbox_css.stamp
 

@@ -14,19 +14,19 @@ gyp_shared_intermediate_dir := $(call intermediates-dir-for,GYP,shared,,,$(GYP_V
 GYP_TARGET_DEPENDENCIES :=
 
 ### Rules for action "build_resources_module":
-$(gyp_shared_intermediate_dir)/resources/inspector/resources.js: gyp_local_path := $(LOCAL_PATH)
-$(gyp_shared_intermediate_dir)/resources/inspector/resources.js: gyp_var_prefix := $(GYP_VAR_PREFIX)
-$(gyp_shared_intermediate_dir)/resources/inspector/resources.js: gyp_intermediate_dir := $(abspath $(gyp_intermediate_dir))
-$(gyp_shared_intermediate_dir)/resources/inspector/resources.js: gyp_shared_intermediate_dir := $(abspath $(gyp_shared_intermediate_dir))
-$(gyp_shared_intermediate_dir)/resources/inspector/resources.js: export PATH := $(subst $(ANDROID_BUILD_PATHS),,$(PATH))
-$(gyp_shared_intermediate_dir)/resources/inspector/resources.js: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/scripts/concatenate_module_scripts.py $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/module.json $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/ApplicationCacheItemsView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/CookieItemsView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/DatabaseQueryView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/DatabaseTableView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/DirectoryContentView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/DOMStorageItemsView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/FileContentView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/FileSystemView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/IndexedDBViews.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/ResourcesPanel.js $(GYP_TARGET_DEPENDENCIES)
+$(gyp_shared_intermediate_dir)/resources/inspector/resources_module.js: gyp_local_path := $(LOCAL_PATH)
+$(gyp_shared_intermediate_dir)/resources/inspector/resources_module.js: gyp_var_prefix := $(GYP_VAR_PREFIX)
+$(gyp_shared_intermediate_dir)/resources/inspector/resources_module.js: gyp_intermediate_dir := $(abspath $(gyp_intermediate_dir))
+$(gyp_shared_intermediate_dir)/resources/inspector/resources_module.js: gyp_shared_intermediate_dir := $(abspath $(gyp_shared_intermediate_dir))
+$(gyp_shared_intermediate_dir)/resources/inspector/resources_module.js: export PATH := $(subst $(ANDROID_BUILD_PATHS),,$(PATH))
+$(gyp_shared_intermediate_dir)/resources/inspector/resources_module.js: $(LOCAL_PATH)/third_party/WebKit/Source/devtools/scripts/concatenate_module_scripts.py $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/module.json $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/ApplicationCacheItemsView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/CookieItemsView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/DatabaseQueryView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/DatabaseTableView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/DirectoryContentView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/DOMStorageItemsView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/FileContentView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/FileSystemView.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/IndexedDBViews.js $(LOCAL_PATH)/third_party/WebKit/Source/devtools/front_end/resources/ResourcesPanel.js $(GYP_TARGET_DEPENDENCIES)
 	@echo "Gyp action: third_party_WebKit_Source_devtools_devtools_gyp_build_resources_module_target_build_resources_module ($@)"
-	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/devtools; mkdir -p $(gyp_shared_intermediate_dir)/resources/inspector; python scripts/concatenate_module_scripts.py front_end/resources/module.json "$(gyp_shared_intermediate_dir)/resources/inspector/resources.js"
+	$(hide)cd $(gyp_local_path)/third_party/WebKit/Source/devtools; mkdir -p $(gyp_shared_intermediate_dir)/resources/inspector; python scripts/concatenate_module_scripts.py front_end/resources/module.json "$(gyp_shared_intermediate_dir)/resources/inspector/resources_module.js"
 
 
 
 GYP_GENERATED_OUTPUTS := \
-	$(gyp_shared_intermediate_dir)/resources/inspector/resources.js
+	$(gyp_shared_intermediate_dir)/resources/inspector/resources_module.js
 
 # Make sure our deps and generated files are built first.
 LOCAL_ADDITIONAL_DEPENDENCIES := $(GYP_TARGET_DEPENDENCIES) $(GYP_GENERATED_OUTPUTS)
