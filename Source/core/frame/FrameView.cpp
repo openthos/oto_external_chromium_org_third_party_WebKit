@@ -913,8 +913,6 @@ void FrameView::layout(bool allowSubtree)
 
     layer->updateLayerPositionsAfterLayout();
 
-    if (m_doFullPaintInvalidation)
-        renderView()->compositor()->fullyInvalidatePaint();
     renderView()->compositor()->didLayout();
 
     m_layoutCount++;
@@ -970,6 +968,9 @@ void FrameView::invalidateTreeIfNeeded()
 
     PaintInvalidationState rootPaintInvalidationState(rootForPaintInvalidation);
 
+    if (m_doFullPaintInvalidation)
+        renderView()->compositor()->fullyInvalidatePaint();
+
     rootForPaintInvalidation.invalidateTreeIfNeeded(rootPaintInvalidationState);
 
     // Invalidate the paint of the frameviews scrollbars if needed
@@ -979,7 +980,7 @@ void FrameView::invalidateTreeIfNeeded()
         invalidateRect(horizontalBarDamage());
     resetScrollbarDamage();
 
-    m_doFullPaintInvalidation = false;
+
 #ifndef NDEBUG
     renderView()->assertSubtreeClearedPaintInvalidationState();
 #endif
@@ -1627,6 +1628,8 @@ void FrameView::scrollbarExistenceDidChange()
     // http://crbug.com/269692
     bool useOverlayScrollbars = ScrollbarTheme::theme()->usesOverlayScrollbars();
 
+    // FIXME: this call to layout() could be called within FrameView::layout(), but before performLayout(),
+    // causing double-layout. See also crbug.com/429242.
     if (!useOverlayScrollbars && needsLayout())
         layout();
 
@@ -2167,7 +2170,13 @@ IntRect FrameView::scrollableAreaBoundingBox() const
     return ownerRenderer->absoluteContentQuad().enclosingBoundingBox();
 }
 
+
 bool FrameView::isScrollable()
+{
+    return scrollingReasons() == Scrollable;
+}
+
+FrameView::ScrollingReasons FrameView::scrollingReasons()
 {
     // Check for:
     // 1) If there an actual overflow.
@@ -2179,22 +2188,22 @@ bool FrameView::isScrollable()
     IntSize contentsSize = this->contentsSize();
     IntSize visibleContentSize = visibleContentRect().size();
     if ((contentsSize.height() <= visibleContentSize.height() && contentsSize.width() <= visibleContentSize.width()))
-        return false;
+        return NotScrollableNoOverflow;
 
     // Covers #2.
     // FIXME: Do we need to fix this for OOPI?
     HTMLFrameOwnerElement* owner = m_frame->deprecatedLocalOwner();
     if (owner && (!owner->renderer() || !owner->renderer()->visibleToHitTesting()))
-        return false;
+        return NotScrollableNotVisible;
 
     // Cover #3 and #4.
     ScrollbarMode horizontalMode;
     ScrollbarMode verticalMode;
     calculateScrollbarModesForLayoutAndSetViewportRenderer(horizontalMode, verticalMode, RulesFromWebContentOnly);
     if (horizontalMode == ScrollbarAlwaysOff && verticalMode == ScrollbarAlwaysOff)
-        return false;
+        return NotScrollableExplicitlyDisabled;
 
-    return true;
+    return Scrollable;
 }
 
 void FrameView::updateScrollableAreaSet()
@@ -2633,6 +2642,8 @@ void FrameView::invalidateTreeIfNeededRecursive()
 
         toLocalFrame(child)->view()->invalidateTreeIfNeededRecursive();
     }
+
+    m_doFullPaintInvalidation = false;
 }
 
 void FrameView::enableAutoSizeMode(const IntSize& minSize, const IntSize& maxSize)

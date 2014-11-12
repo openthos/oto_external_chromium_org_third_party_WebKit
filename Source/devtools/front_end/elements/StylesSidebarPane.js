@@ -61,6 +61,7 @@ WebInspector.StylesSidebarPane = function(computedStylePane, setPseudoClassCallb
     this.element.addEventListener("contextmenu", this._contextMenuEventFired.bind(this), true);
     WebInspector.settings.colorFormat.addChangeListener(this._colorFormatSettingChanged.bind(this));
     WebInspector.settings.showUserAgentStyles.addChangeListener(this._showUserAgentStylesSettingChanged.bind(this));
+    WebInspector.settings.showInheritedComputedStyleProperties.addChangeListener(this._showInheritedComputedStyleChanged.bind(this));
 
     this._createElementStatePane();
     this.bodyElement.appendChild(this._elementStatePane);
@@ -168,6 +169,17 @@ WebInspector.StylesSidebarPane._ignoreErrorsForProperty = function(property) {
 }
 
 WebInspector.StylesSidebarPane.prototype = {
+    _showInheritedComputedStyleChanged: function()
+    {
+        if (!this.sections || !this.sections[0])
+            return;
+        for (var i = 0; i < this.sections[0].length; ++i) {
+            var section = this.sections[0][i];
+            if (section instanceof WebInspector.ComputedStylePropertiesSection)
+                section.onShowInheritedChanged();
+        }
+    },
+
     /**
      * @param {!WebInspector.Event} event
      */
@@ -260,9 +272,15 @@ WebInspector.StylesSidebarPane.prototype = {
      */
     _styleSheetRuleEdited: function(editedRule, oldRange, newRange)
     {
-        var styleRuleSections = this.sections[0];
-        for (var i = 1; i < styleRuleSections.length; ++i)
-            styleRuleSections[i]._styleSheetRuleEdited(editedRule, oldRange, newRange);
+        for (var pseudoId in this.sections) {
+            var styleRuleSections = this.sections[pseudoId];
+            for (var i = 0; i < styleRuleSections.length; ++i) {
+                var section = styleRuleSections[i];
+                if (section.computedStyle)
+                    continue;
+                section._styleSheetRuleEdited(editedRule, oldRange, newRange);
+            }
+        }
     },
 
     /**
@@ -1820,8 +1838,6 @@ WebInspector.StylePropertiesSection.prototype = {
             return;
         }
 
-        var selectedNode = this._parentPane._node;
-
         /**
          * @param {!WebInspector.CSSRule} newRule
          * @this {WebInspector.StylePropertiesSection}
@@ -1841,7 +1857,7 @@ WebInspector.StylePropertiesSection.prototype = {
             this.rule = newRule;
             this.styleRule = { section: this, style: newRule.style, selectorText: newRule.selectorText, media: newRule.media, rule: newRule };
 
-            this._parentPane.update(selectedNode);
+            this._parentPane._refreshUpdate(this, false);
             this._parentPane._styleSheetRuleEdited(this.rule, oldSelectorRange, this.rule.selectorRange);
 
             finishOperationAndMoveEditor.call(this, moveDirection);
@@ -1858,6 +1874,7 @@ WebInspector.StylePropertiesSection.prototype = {
 
         // This gets deleted in finishOperationAndMoveEditor(), which is called both on success and failure.
         this._parentPane._userOperation = true;
+        var selectedNode = this._parentPane._node;
         this._parentPane._target.cssModel.setRuleSelector(this.rule, selectedNode ? selectedNode.id : 0, newContent, successCallback.bind(this), finishOperationAndMoveEditor.bind(this, moveDirection));
     },
 
@@ -1898,19 +1915,8 @@ WebInspector.ComputedStylePropertiesSection = function(stylesPane, styleRule, us
     this._hasFreshContent = false;
     this.element.className = "styles-section monospace read-only computed-style";
 
-    var showInheritedCheckbox = WebInspector.SettingsUI.createSettingCheckbox(WebInspector.UIString("Show inherited properties"), WebInspector.settings.showInheritedComputedStyleProperties, true);
-    showInheritedCheckbox.classList.add("checkbox-with-label");
-    this.headerElement.appendChild(showInheritedCheckbox);
-    WebInspector.settings.showInheritedComputedStyleProperties.addChangeListener(showInheritedChanged.bind(this));
-    showInheritedChanged.call(this);
-
-    /**
-     * @this {WebInspector.ComputedStylePropertiesSection}
-     */
-    function showInheritedChanged()
-    {
-        this.element.classList.toggle("styles-show-inherited", WebInspector.settings.showInheritedComputedStyleProperties.get());
-    }
+    this.headerElement.appendChild(WebInspector.ComputedStylePropertiesSection._showInheritedCheckbox());
+    this.onShowInheritedChanged();
 
     this._stylesPane = stylesPane;
     this.styleRule = styleRule;
@@ -1921,7 +1927,24 @@ WebInspector.ComputedStylePropertiesSection = function(stylesPane, styleRule, us
     this._expandedPropertyNames = {};
 }
 
+/**
+ * @return {!Element}
+ */
+WebInspector.ComputedStylePropertiesSection._showInheritedCheckbox = function()
+{
+    if (!WebInspector.ComputedStylePropertiesSection._showInheritedCheckboxElement) {
+        WebInspector.ComputedStylePropertiesSection._showInheritedCheckboxElement = WebInspector.SettingsUI.createSettingCheckbox(WebInspector.UIString("Show inherited properties"), WebInspector.settings.showInheritedComputedStyleProperties, true);
+        WebInspector.ComputedStylePropertiesSection._showInheritedCheckboxElement.classList.add("checkbox-with-label");
+    }
+    return WebInspector.ComputedStylePropertiesSection._showInheritedCheckboxElement;
+}
+
 WebInspector.ComputedStylePropertiesSection.prototype = {
+    onShowInheritedChanged: function()
+    {
+        this.element.classList.toggle("styles-show-inherited", WebInspector.settings.showInheritedComputedStyleProperties.get());
+    },
+
     collapse: function(dontRememberState)
     {
         // Overriding with empty body.

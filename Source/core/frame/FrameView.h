@@ -119,6 +119,7 @@ public:
     bool layoutSizeFixedToFrameSize() { return m_layoutSizeFixedToFrameSize; }
 
     bool needsFullPaintInvalidation() const { return m_doFullPaintInvalidation; }
+    void setNeedsFullPaintInvalidation() { m_doFullPaintInvalidation = true; }
 
     void updateAcceleratedCompositingSettings();
 
@@ -244,6 +245,14 @@ public:
 
     bool isFrameViewScrollCorner(RenderScrollbarPart* scrollCorner) const { return m_scrollCorner == scrollCorner; }
 
+    enum ScrollingReasons {
+        Scrollable,
+        NotScrollableNoOverflow,
+        NotScrollableNotVisible,
+        NotScrollableExplicitlyDisabled
+    };
+
+    ScrollingReasons scrollingReasons();
     bool isScrollable();
 
     enum ScrollbarModesCalculationStrategy { RulesFromWebContentOnly, AnyRule };
