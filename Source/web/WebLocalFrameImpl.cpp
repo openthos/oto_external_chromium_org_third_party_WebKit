@@ -323,26 +323,18 @@ public:
 
     float spoolSinglePage(GraphicsContext& graphicsContext, int pageNumber)
     {
-        frame()->document()->dispatchEventsForPrinting();
-        if (!frame()->document() || !frame()->document()->renderView())
-            return 0;
-
+        // FIXME: Why is it ok to proceed without all the null checks that
+        // spoolAllPagesWithBoundaries does?
         frame()->view()->updateLayoutAndStyleForPainting();
-        if (!frame()->document() || !frame()->document()->renderView())
-            return 0;
-
         return spoolPage(graphicsContext, pageNumber);
     }
 
     void spoolAllPagesWithBoundaries(GraphicsContext& graphicsContext, const FloatSize& pageSizeInPixels)
     {
-        frame()->document()->dispatchEventsForPrinting();
-        if (!frame()->document() || !frame()->document()->renderView())
+        if (!frame()->document() || !frame()->view() || !frame()->document()->renderView())
             return;
 
         frame()->view()->updateLayoutAndStyleForPainting();
-        if (!frame()->document() || !frame()->document()->renderView())
-            return;
 
         float pageHeight;
         computePageRects(FloatRect(FloatPoint(0, 0), pageSizeInPixels), 0, 0, 1, pageHeight);

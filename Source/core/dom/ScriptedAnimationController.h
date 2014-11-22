@@ -64,7 +64,6 @@ public:
     void suspend();
     void resume();
 
-    void dispatchEventsAndCallbacksForPrinting();
 private:
     explicit ScriptedAnimationController(Document*);
 
