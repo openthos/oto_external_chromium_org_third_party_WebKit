@@ -862,8 +862,9 @@ void Editor::copy()
 void Editor::paste()
 {
     ASSERT(frame().document());
-    if (tryDHTMLPaste(AllMimeTypes))
-        return; // DHTML did the whole operation
+    // TODO: Disable DHTML paste temporarily, use the default paste instead of.
+    //if (tryDHTMLPaste(AllMimeTypes))
+    //    return; // DHTML did the whole operation
     if (!canPaste())
         return;
     spellChecker().updateMarkersForWordsAffectedByEditing(false);
