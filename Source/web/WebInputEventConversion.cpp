@@ -240,6 +240,11 @@ PlatformGestureEventBuilder::PlatformGestureEventBuilder(Widget* widget, const W
         m_type = PlatformEvent::GestureTwoFingerTap;
         m_area = expandedIntSize(FloatSize(e.data.twoFingerTap.firstFingerWidth / scale, e.data.twoFingerTap.firstFingerHeight / scale));
         break;
+    case WebInputEvent::GestureTextSelection:
+        m_type = PlatformEvent::GestureTextSelection;
+        m_area = expandedIntSize(FloatSize(e.data.longPress.width / scale,
+                                           e.data.longPress.height / scale));
+        break;
     case WebInputEvent::GestureLongPress:
         m_type = PlatformEvent::GestureLongPress;
         m_area = expandedIntSize(FloatSize(e.data.longPress.width / scale, e.data.longPress.height / scale));

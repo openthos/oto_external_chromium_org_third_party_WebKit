@@ -58,6 +58,7 @@ PassRefPtrWillBeRawPtr<GestureEvent> GestureEvent::create(PassRefPtrWillBeRawPtr
         eventType = EventTypeNames::gestureshowpress; break;
     case PlatformEvent::GestureTwoFingerTap:
     case PlatformEvent::GestureLongPress:
+    case PlatformEvent::GestureTextSelection:
     case PlatformEvent::GesturePinchBegin:
     case PlatformEvent::GesturePinchEnd:
     case PlatformEvent::GesturePinchUpdate:

@@ -124,6 +124,7 @@ public:
         GestureDoubleTap,
         GestureTwoFingerTap,
         GestureLongPress,
+        GestureTextSelection,
         GestureLongTap,
         GesturePinchBegin,
         GesturePinchEnd,

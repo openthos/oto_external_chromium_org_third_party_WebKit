@@ -354,6 +354,7 @@ bool Scrollbar::gestureEvent(const PlatformGestureEvent& evt)
         return true;
     case PlatformEvent::GestureScrollEnd:
     case PlatformEvent::GestureLongPress:
+    case PlatformEvent::GestureTextSelection:
     case PlatformEvent::GestureFlingStart:
         m_scrollPos = 0;
         m_pressedPos = 0;

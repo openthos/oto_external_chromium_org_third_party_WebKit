@@ -71,6 +71,8 @@ public:
         TouchMove,
         TouchEnd,
         TouchCancel,
+
+        GestureTextSelection,
     };
 
     enum Modifiers {

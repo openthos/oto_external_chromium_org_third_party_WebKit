@@ -723,6 +723,7 @@ bool WebViewImpl::handleGestureEvent(const WebGestureEvent& event)
     case WebInputEvent::GestureTapCancel:
     case WebInputEvent::GestureTap:
     case WebInputEvent::GestureLongPress:
+    case WebInputEvent::GestureTextSelection:
         for (size_t i = 0; i < m_linkHighlights.size(); ++i)
             m_linkHighlights[i]->startHighlightAnimationIfNeeded();
         break;
@@ -798,6 +799,7 @@ bool WebViewImpl::handleGestureEvent(const WebGestureEvent& event)
     }
     case WebInputEvent::GestureTwoFingerTap:
     case WebInputEvent::GestureLongPress:
+    case WebInputEvent::GestureTextSelection:
     case WebInputEvent::GestureLongTap: {
         if (!mainFrameImpl() || !mainFrameImpl()->frameView())
             break;

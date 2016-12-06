@@ -2120,6 +2120,7 @@ bool EventHandler::handleGestureEventInFrame(const GestureEventWithHitTestResult
     case PlatformEvent::GestureShowPress:
         return handleGestureShowPress();
     case PlatformEvent::GestureLongPress:
+    case PlatformEvent::GestureTextSelection:
         return handleGestureLongPress(targetedEvent);
     case PlatformEvent::GestureLongTap:
         return handleGestureLongTap(targetedEvent);
@@ -2329,6 +2330,9 @@ bool EventHandler::handleGestureLongPress(const GestureEventWithHitTestResults& 
             }
         }
     }
+
+    if (gestureEvent.type() == PlatformEvent::GestureTextSelection)
+      return false;
     return sendContextMenuEventForGesture(targetedEvent);
 }
 
@@ -2646,6 +2650,7 @@ HitTestRequest::HitTestRequestType EventHandler::getHitTypeForGestureType(Platfo
         return hitType | HitTestRequest::Release;
     case PlatformEvent::GestureTapDown:
     case PlatformEvent::GestureLongPress:
+    case PlatformEvent::GestureTextSelection:
     case PlatformEvent::GestureLongTap:
     case PlatformEvent::GestureTwoFingerTap:
         // FIXME: Shouldn't LongTap and TwoFingerTap clear the Active state?
@@ -2674,6 +2679,7 @@ void EventHandler::applyTouchAdjustment(PlatformGestureEvent* gestureEvent, HitT
         adjusted = bestClickableNodeForHitTestResult(*hitTestResult, adjustedPoint, adjustedNode);
         break;
     case PlatformEvent::GestureLongPress:
+    case PlatformEvent::GestureTextSelection:
     case PlatformEvent::GestureLongTap:
     case PlatformEvent::GestureTwoFingerTap:
         adjusted = bestContextMenuNodeForHitTestResult(*hitTestResult, adjustedPoint, adjustedNode);
